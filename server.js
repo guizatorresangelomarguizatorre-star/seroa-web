@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Ruta principal: intenta cargar index.html
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.js'), (err) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'), (err) => {
         if (err) {
             console.error("Error enviando index.html:", err);
             res.status(404).send("Archivo index.html no encontrado en la carpeta public");
