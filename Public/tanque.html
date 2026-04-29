@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seroa - Estado del Tanque</title>
+  <title>Seroa - Inicio</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3b8b88">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="alertaGlobalSeroa" class="alerta-critica-flotante d-none" role="alert">
+  <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
+    
+    <div class="d-flex align-items-center mb-3 mb-md-0">
+      <i class="bi bi-exclamation-triangle-fill icono-alerta me-4"></i>
+      <div>
+        <h2 class="fw-bold mb-1 text-white text-uppercase" style="letter-spacing: 1px;">¡Alerta Crítica: SpO2 Bajo!</h2>
+        <p class="mb-0 fs-5 text-white">La saturación de <strong>Angel Guiza</strong> cayó al <strong class="fs-4 bg-dark px-2 rounded">88%</strong>. Válvula activada.</p>
+      </div>
+    </div>
+    
+    <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3" onclick="ocultarAlertaSeroa()">
+      <i class="bi bi-check2-circle me-2"></i> ENTERADO
+    </button>
+    
+  </div>
+</div>
+  <header class="topbar py-4 px-3 px-md-5 d-flex justify-content-between align-items-center bg-white">
+    <div class="logo d-flex align-items-center">
+      <img src="img/logo-icono.png" alt="Seroa Icono" class="logo-img me-3">
+      <div class="d-flex flex-column text-logo-container">
+        <img src="img/letras-seroa.png" alt="Seroa Letras" class="letras-img">  
+      </div>
+    </div>
+    <div class="text-end d-flex flex-column align-items-end justify-content-center">
+      <span id="fecha-tanque" class="date-text text-muted d-block fs-5 mb-1"></span>
+      <i class="bi bi-person-circle text-teal" style="font-size: 3rem;"></i>
+    </div>
+  </header>
+
+  <div class="pattern-separator"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
+    <div class="container-fluid">
+      <span class="navbar-brand text-success d-lg-none">Menú</span>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuSeroa" aria-controls="menuSeroa">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa" aria-labelledby="menuSeroaLabel">
+        <div class="offcanvas-header border-bottom border-light">
+          <h5 class="offcanvas-title text-white" id="menuSeroaLabel">Seroa Menú</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0 text-lg-dark text-white w-100 align-items-lg-center justify-content-lg-around">
+             <li class="nav-item p-2"><a class="nav-link" href="index.html">Inicio</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="pacientes.html">Pacientes</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="dosificacion.html">Dosificación</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="registro.html">Registro Diario</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="tanque.html">Estado del Tanque</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="configuracion.html">Configuración</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="text-success fw-bold mb-0" style="color: var(--color-seroa-teal) !important;">Estado del Tanque de Oxígeno</h4>
+      
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
+          <i class="bi bi-person-fill text-teal me-1"></i> Paciente: <strong>Angel Guiza</strong>
+        </span>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      
+      <div class="col-md-5 col-lg-4 text-center">
+        <div class="card shadow-sm border-0 h-100 p-4">
+          <h6 class="text-muted fw-bold mb-4">Nivel de Oxígeno</h6>
+          
+          <div class="tank-container mx-auto">
+            <div class="tank-body">
+              <div id="tankLiquid" class="tank-liquid" style="height: 75%;">
+                <div class="tank-water-glide"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-4">
+            <span id="txtPorcentaje" class="display-3 fw-bold text-success">75<span class="fs-5">%</span></span>
+            <p id="txtEstado" class="text-success fw-bold">Nivel Óptimo</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-7 col-lg-8">
+        <div class="card shadow-sm border-0 h-100 p-4">
+          <h6 class="text-muted fw-bold mb-4"><i class="bi bi-graph-up-arrow text-teal me-1"></i>Datos del Tanque</h6>
+          
+          <div class="row text-center mb-4 pb-4 border-bottom g-3">
+            <div class="col-6 col-lg-4">
+              <div class="bg-light p-3 rounded-4 border">
+                <small class="text-muted d-block">Presión Actual</small>
+                <span class="fs-4 fw-bold text-dark">1800 PSI</span>
+              </div>
+            </div>
+            <div class="col-6 col-lg-4">
+              <div class="bg-light p-3 rounded-4 border">
+                <small class="text-muted d-block">Flujo Promedio</small>
+                <span class="fs-4 fw-bold text-dark">2 L/min</span>
+              </div>
+            </div>
+            <div class="col-12 col-lg-4">
+              <div class="bg-light p-3 rounded-4 border">
+                <small class="text-muted d-block">Tiempo Restante (Est.)</small>
+                <span class="fs-4 fw-bold text-dark">14h 30m</span>
+              </div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold mb-3"><i class="bi bi-joystick text-warning me-1"></i>Prueba de Simulación </h6>
+          <p class="text-muted small mb-3">Utiliza estos botones para probar cómo se ve la animación del tanque al cambiar los niveles que mandaría el ESP32.</p>
+          
+          <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
+            <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="simularNivelTanque(10)">
+              <i class="bi bi-droplet"></i> Simular Crítico (10%)
+            </button>
+            <button class="btn btn-outline-warning btn-sm rounded-pill px-3" onclick="simularNivelTanque(40)">
+              <i class="bi bi-droplet-half"></i> Simular Bajo (40%)
+            </button>
+            <button class="btn btn-outline-success btn-sm rounded-pill px-3" onclick="simularNivelTanque(85)">
+              <i class="bi bi-droplet-fill"></i> Simular Alto (85%)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="global.js"></script>
+<script src="tanque.js"></script>
+ 
+</body>
+</html>

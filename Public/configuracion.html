@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seroa - Configuración</title>
+  <title>Seroa - Inicio</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3b8b88">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+    <div id="alertaGlobalSeroa" class="alerta-critica-flotante d-none" role="alert">
+  <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
+    
+    <div class="d-flex align-items-center mb-3 mb-md-0">
+      <i class="bi bi-exclamation-triangle-fill icono-alerta me-4"></i>
+      <div>
+        <h2 class="fw-bold mb-1 text-white text-uppercase" style="letter-spacing: 1px;">¡Alerta Crítica: SpO2 Bajo!</h2>
+        <p class="mb-0 fs-5 text-white">La saturación de <strong>Angel Guiza</strong> cayó al <strong class="fs-4 bg-dark px-2 rounded">88%</strong>. Válvula activada.</p>
+      </div>
+    </div>
+    
+    <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3" onclick="ocultarAlertaSeroa()">
+      <i class="bi bi-check2-circle me-2"></i> ENTERADO
+    </button>
+    
+  </div>
+</div>
+
+  <header class="topbar py-4 px-3 px-md-5 d-flex justify-content-between align-items-center bg-white">
+    <div class="logo d-flex align-items-center">
+      <img src="img/logo-icono.png" alt="Seroa Icono" class="logo-img me-3">
+      <div class="d-flex flex-column text-logo-container">
+        <img src="img/letras-seroa.png" alt="Seroa Letras" class="letras-img">  
+      </div>
+    </div>
+    <div class="text-end d-flex flex-column align-items-end justify-content-center">
+      <span id="fecha-config" class="date-text text-muted d-block fs-5 mb-1"></span>
+      <i class="bi bi-person-circle text-teal" style="font-size: 3rem;"></i>
+    </div>
+  </header>
+
+  <div class="pattern-separator"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
+    <div class="container-fluid">
+      <span class="navbar-brand text-success d-lg-none">Menú</span>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuSeroa" aria-controls="menuSeroa">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa" aria-labelledby="menuSeroaLabel">
+        <div class="offcanvas-header border-bottom border-light">
+          <h5 class="offcanvas-title text-white" id="menuSeroaLabel">Seroa Menú</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0 text-lg-dark text-white w-100 align-items-lg-center justify-content-lg-around">
+            <li class="nav-item p-2"><a class="nav-link" href="index.html">Inicio</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="pacientes.html">Pacientes</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="dosificacion.html">Dosificación</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="registro.html">Registro Diario</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="tanque.html">Estado del Tanque</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="configuracion.html">Configuración</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4 mb-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+      <h3 class="fw-light mb-0 text-dark">Configuración del Sistema</h3>
+      <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
+        <i class="bi bi-person-fill text-teal me-1"></i> Paciente: <strong>Angel Guiza</strong>
+      </span>
+    </div>
+
+    <div class="row mt-4">
+      
+      <div class="col-12 col-md-4 col-lg-3 mb-4">
+        <div class="nav flex-column nav-pills config-windows-menu pe-md-3 border-end h-100" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+          <button class="nav-link active text-start py-3 mb-1" id="tab-hardware" data-bs-toggle="pill" data-bs-target="#pane-hardware" type="button" role="tab">
+            <i class="bi bi-cpu fs-5 me-3 text-secondary"></i> Dispositivos y Red
+          </button>
+          <button class="nav-link text-start py-3 mb-1" id="tab-alertas" data-bs-toggle="pill" data-bs-target="#pane-alertas" type="button" role="tab">
+            <i class="bi bi-bell fs-5 me-3 text-secondary"></i> Notificaciones
+          </button>
+          <button class="nav-link text-start py-3 mb-1" id="tab-accesos" data-bs-toggle="pill" data-bs-target="#pane-accesos" type="button" role="tab">
+            <i class="bi bi-shield-lock fs-5 me-3 text-secondary"></i> Accesos
+          </button>
+          <button class="nav-link text-start py-3 mb-1" id="tab-datos" data-bs-toggle="pill" data-bs-target="#pane-datos" type="button" role="tab">
+            <i class="bi bi-person-gear fs-5 me-3 text-secondary"></i> Datos del Paciente
+          </button>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-8 col-lg-9 ps-md-5">
+        <div class="tab-content" id="v-pills-tabContent">
+          
+          <div class="tab-pane fade show active" id="pane-hardware" role="tabpanel">
+            <h3 class="fw-normal mb-4" style="color: var(--color-seroa-teal);">Dispositivo Seroa</h3>
+            
+            <div class="windows-setting-item border-0 pt-2">
+              <div class="d-flex justify-content-between align-items-center mb-5 pb-4 border-bottom">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-wifi fs-1 text-teal me-4"></i>
+                  <div>
+                    <span class="d-block fw-bold fs-5 text-dark">Estado de Conexión</span>
+                    <span class="text-muted fs-6">Conectado a "Red_Familia"</span>
+                  </div>
+                </div>
+                <span class="text-success fw-bold fs-5 bg-success bg-opacity-10 px-4 py-2 rounded-pill">En Línea</span>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center mb-5 pb-4 border-bottom">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-motherboard fs-1 text-secondary me-4"></i>
+                  <div>
+                    <span class="d-block fw-bold fs-5 text-dark">ID del Dispositivo</span>
+                    <span class="text-muted fs-6">SEROA-ESP-8842</span>
+                  </div>
+                </div>
+                <button class="btn btn-outline-danger px-4 py-2 rounded-pill shadow-sm" title="Desvincular equipo">
+                  <i class="bi bi-x-circle me-2"></i>Desvincular
+                </button>
+              </div>
+
+              <div class="mt-4 text-end">
+                <button class="btn btn-lg btn-light border px-5 rounded-pill shadow-sm text-secondary">
+                  <i class="bi bi-tools me-2"></i> Calibrar Sensor de Tanque
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="pane-alertas" role="tabpanel">
+            <h3 class="fw-normal mb-4" style="color: var(--color-seroa-teal);">Alertas y Notificaciones</h3>
+            
+            <div class="windows-setting-item border-0 pt-2">
+              <div class="d-flex justify-content-between align-items-center mb-5 pb-4 border-bottom">
+                <div>
+                  <span class="d-block fs-5 fw-bold text-dark mb-1">Alertas Críticas de SpO2</span>
+                  <span class="text-muted fs-6">Notificar inmediatamente si baja del límite seguro.</span>
+                </div>
+                <div class="form-check form-switch fs-2 m-0 text-teal">
+                  <input class="form-check-input shadow-sm" type="checkbox" role="switch" checked>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center mb-5 pb-4 border-bottom">
+                <div>
+                  <span class="d-block fs-5 fw-bold text-dark mb-1">Aviso de Tanque Bajo</span>
+                  <span class="text-muted fs-6">Notificar al dispositivo cuando llegue al 20% de capacidad.</span>
+                </div>
+                <div class="form-check form-switch fs-2 m-0">
+                  <input class="form-check-input shadow-sm" type="checkbox" role="switch" checked>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <span class="d-block fs-5 fw-bold text-dark mb-1">Alarma Sonora en App</span>
+                  <span class="text-muted fs-6">Reproducir un sonido fuerte en caso de emergencias.</span>
+                </div>
+                <div class="form-check form-switch fs-2 m-0">
+                  <input class="form-check-input shadow-sm" type="checkbox" role="switch">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="pane-accesos" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3 class="fw-normal mb-0" style="color: var(--color-seroa-teal);">Accesos al Paciente</h3>
+              <span class="badge bg-teal bg-opacity-10 text-teal px-4 py-2 fs-6 rounded-pill border border-teal">Tu rol: Administrador</span>
+            </div>
+
+            <div class="windows-setting-item border-0 pt-2">
+              <div class="d-flex justify-content-between align-items-center mb-5 pb-4 border-bottom">
+                <div class="d-flex align-items-center">
+                  <div class="avatar-circle bg-light text-secondary border me-4 shadow-sm" style="width: 65px; height: 65px;"><i class="bi bi-person fs-2"></i></div>
+                  <div>
+                    <span class="d-block fs-5 fw-bold text-dark">Dr. Angel Omar</span>
+                    <span class="text-muted fs-6">Permisos: Monitoreo y Ajustes</span>
+                  </div>
+                </div>
+                <button class="btn btn-outline-danger px-4 py-2 rounded-pill" title="Revocar acceso">
+                  <i class="bi bi-trash3 me-2"></i> Revocar
+                </button>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center mb-5 pb-4 border-bottom">
+                <div class="d-flex align-items-center">
+                  <div class="avatar-circle text-white me-4 shadow-sm" style="width: 65px; height: 65px; background-color: var(--color-seroa-teal); font-size: 1.5rem;">OS</div>
+                  <div>
+                    <span class="d-block fs-5 fw-bold text-dark">Oscar (Tú)</span>
+                    <span class="text-muted fs-6">Permisos: Administrador Principal</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 text-end">
+                <button class="btn btn-lg text-white shadow-sm px-5 rounded-pill" style="background: linear-gradient(135deg, #3b8b88, #6fc873);">
+                  <i class="bi bi-person-plus-fill me-2"></i> Generar Código de Invitación
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="pane-datos" role="tabpanel">
+            <h3 class="fw-normal mb-4" style="color: var(--color-seroa-teal);">Datos del Paciente</h3>
+            
+            <div class="windows-setting-item border-0 pt-2">
+              <div class="row g-4"> 
+                
+                <div class="col-md-9">
+                  <label class="form-label fw-bold text-dark fs-5 mb-2">Nombre Completo</label>
+                  <input type="text" class="form-control config-input shadow-sm" value="Vanessa Bernal">
+                </div>
+                
+                <div class="col-md-9 mt-4">
+                  <label class="form-label fw-bold text-dark fs-5 mb-2">Condición Médica / Notas</label>
+                  <textarea class="form-control config-input shadow-sm" rows="4">Oxigenoterapia continua</textarea>
+                </div>
+                
+                <div class="col-md-9 mt-5 text-end">
+                  <button class="btn btn-lg text-white shadow-sm px-5 rounded-pill" style="background: linear-gradient(135deg, #3b8b88, #6fc873);">
+                    <i class="bi bi-save me-2"></i> Guardar Cambios
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+    </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="global.js"></script>
+  </script>
+</body>
+</html>

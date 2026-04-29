@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seroa - Registro Diario</title>
+  <title>Seroa - Inicio</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3b8b88">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <div id="alertaGlobalSeroa" class="alerta-critica-flotante d-none" role="alert">
+  <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
+    
+    <div class="d-flex align-items-center mb-3 mb-md-0">
+      <i class="bi bi-exclamation-triangle-fill icono-alerta me-4"></i>
+      <div>
+        <h2 class="fw-bold mb-1 text-white text-uppercase" style="letter-spacing: 1px;">¡Alerta Crítica: SpO2 Bajo!</h2>
+        <p class="mb-0 fs-5 text-white">La saturación de <strong>Angel Guiza</strong> cayó al <strong class="fs-4 bg-dark px-2 rounded">88%</strong>. Válvula activada.</p>
+      </div>
+    </div>
+    
+    <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3" onclick="ocultarAlertaSeroa()">
+      <i class="bi bi-check2-circle me-2"></i> ENTERADO
+    </button>
+    
+  </div>
+</div>
+
+  <header class="topbar py-4 px-3 px-md-5 d-flex justify-content-between align-items-center bg-white">
+    <div class="logo d-flex align-items-center">
+      <img src="img/logo-icono.png" alt="Seroa Icono" class="logo-img me-3">
+      <div class="d-flex flex-column text-logo-container">
+        <img src="img/letras-seroa.png" alt="Seroa Letras" class="letras-img">  
+      </div>
+    </div>
+    <div class="text-end d-flex flex-column align-items-end justify-content-center">
+      <span id="fecha-registro" class="date-text text-muted d-block fs-5 mb-1"></span>
+      <i class="bi bi-person-circle text-teal" style="font-size: 3rem;"></i>
+    </div>
+  </header>
+
+  <div class="pattern-separator"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
+    <div class="container-fluid">
+      <span class="navbar-brand text-success d-lg-none">Menú</span>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuSeroa" aria-controls="menuSeroa">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa" aria-labelledby="menuSeroaLabel">
+        <div class="offcanvas-header border-bottom border-light">
+          <h5 class="offcanvas-title text-white" id="menuSeroaLabel">Seroa Menú</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0 text-lg-dark text-white w-100 align-items-lg-center justify-content-lg-around">
+             <li class="nav-item p-2"><a class="nav-link" href="index.html">Inicio</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="pacientes.html">Pacientes</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="dosificacion.html">Dosificación</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="registro.html">Registro Diario</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="tanque.html">Estado del Tanque</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="configuracion.html">Configuración</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4 mb-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="text-success fw-bold mb-0" style="color: var(--color-seroa-teal) !important;">Registro Semanal</h4>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
+          <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte
+        </button>
+        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
+          <i class="bi bi-person-fill text-teal me-1"></i> Paciente: <strong>Angel Guiza</strong>
+        </span>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3"><i class="bi bi-pencil-square me-2"></i>Agregar Nota al Registro de Hoy</h6>
+        <form id="formNotas" class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Hora</label>
+            <input type="time" class="form-control" id="notaHora" required>
+          </div>
+          <div class="col-md-7">
+            <label class="form-label small text-muted">Observaciones del paciente</label>
+            <input type="text" class="form-control" id="notaTexto" placeholder="Ej: El paciente reportó fatiga después de comer..." required>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary bg-teal border-0 w-100"><i class="bi bi-send"></i> Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
+          <small class="text-muted d-block fw-bold">Promedio SpO2 (Hoy)</small>
+          <span class="fs-3 fw-bold text-success">96%</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
+          <small class="text-muted d-block fw-bold">Promedio BPM (Hoy)</small>
+          <span class="fs-3 fw-bold text-teal">68 bpm</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
+          <small class="text-muted d-block fw-bold">Activaciones de Válvula</small>
+          <span class="fs-3 fw-bold text-warning">3 veces</span>
+        </div>
+      </div>
+    </div>
+
+    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-clock-history me-2"></i>Historial Detallado</h6>
+    
+    <div class="accordion shadow-sm" id="acordeonDias">
+      
+      <div class="accordion-item border-0 mb-2 rounded overflow-hidden">
+        <h2 class="accordion-header">
+          <button class="accordion-button bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#diaLunes">
+            Lunes, 09 de Marzo
+          </button>
+        </h2>
+        <div id="diaLunes" class="accordion-collapse collapse show" data-bs-parent="#acordeonDias">
+          <div class="accordion-body bg-white p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th class="ps-3">Hora</th>
+                    <th>SpO2 Promedio</th>
+                    <th>BPM</th>
+                    <th>Estado Válvula</th>
+                    <th>Notas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="ps-3 fw-bold text-secondary">08:00 - 09:00</td>
+                    <td class="text-success fw-bold">98%</td>
+                    <td>65</td>
+                    <td><span class="badge bg-light text-muted border">Cerrada</span></td>
+                    <td>Despertó estable.</td>
+                  </tr>
+                  <tr>
+                    <td class="ps-3 fw-bold text-secondary">14:00 - 15:00</td>
+                    <td class="text-warning fw-bold">91%</td>
+                    <td>75</td>
+                    <td><span class="badge bg-teal text-white">Abierta (10 min)</span></td>
+                    <td>Agitación post-comida.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item border-0 mb-2 rounded overflow-hidden">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#diaMartes">
+            Martes, 10 de Marzo
+          </button>
+        </h2>
+        <div id="diaMartes" class="accordion-collapse collapse" data-bs-parent="#acordeonDias">
+          <div class="accordion-body bg-white p-3 text-center text-muted">
+            No hay registros  para este día. Promedios dentro del rango seguro.
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item border-0 mb-2 rounded overflow-hidden">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#diaMiercoles">
+            Miércoles, 11 de Marzo (Hoy)
+          </button>
+        </h2>
+        <div id="diaMiercoles" class="accordion-collapse collapse" data-bs-parent="#acordeonDias">
+          <div class="accordion-body bg-white p-3 text-center text-muted">
+            Los datos se están recolectando actualmente...
+          </div>
+        </div>
+      </div>
+
+    </div> </div> <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+ <script src="global.js"></script>
+
+  </script>
+</body>
+</html>

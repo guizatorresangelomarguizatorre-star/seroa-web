@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEROA Dashboard</title>
+  <title>Seroa - Inicio</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3b8b88">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+  <div id="alertaGlobalSeroa" class="alerta-critica-flotante d-none" role="alert">
+  <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
+    
+    <div class="d-flex align-items-center mb-3 mb-md-0">
+      <i class="bi bi-exclamation-triangle-fill icono-alerta me-4"></i>
+      <div>
+        <h2 class="fw-bold mb-1 text-white text-uppercase" style="letter-spacing: 1px;">¡Alerta Crítica: SpO2 Bajo!</h2>
+        <p class="mb-0 fs-5 text-white">La saturación de <strong>Angel Guiza</strong> cayó al <strong class="fs-4 bg-dark px-2 rounded">88%</strong>. Válvula activada.</p>
+      </div>
+    </div>
+    
+    <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3" onclick="ocultarAlertaSeroa()">
+      <i class="bi bi-check2-circle me-2"></i> ENTERADO
+    </button>
+    
+  </div>
+</div>
+
+  <header class="topbar py-4 px-3 px-md-5 d-flex justify-content-between align-items-center bg-white">
+    <div class="logo d-flex align-items-center">
+      <img src="img/logo-icono.png" alt="Seroa Icono" class="logo-img me-3">
+      <div class="d-flex flex-column text-logo-container">
+        <img src="img/letras-seroa.png" alt="Seroa Letras" class="letras-img">  
+      </div>
+    </div>
+
+    <div class="text-end d-flex flex-column align-items-end justify-content-center">
+      <span id="fecha" class="date-text text-muted d-block fs-5 mb-1"></span>
+      <i class="bi bi-person-circle text-teal" style="font-size: 3rem;"></i>
+    </div>
+  </header>
+
+  <div class="pattern-separator"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
+    <div class="container-fluid">
+      <span class="navbar-brand text-success d-lg-none">Menú</span>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuSeroa" aria-controls="menuSeroa">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      
+
+      <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa" aria-labelledby="menuSeroaLabel">
+        <div class="offcanvas-header border-bottom border-light">
+          <h5 class="offcanvas-title text-white" id="menuSeroaLabel">Seroa Menú</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0 text-lg-dark text-white w-100 align-items-lg-center justify-content-lg-around">
+            <li class="nav-item p-2"><a class="nav-link" href="index.html">Inicio</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="pacientes.html">Pacientes</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="dosificacion.html">Dosificación</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="registro.html">Registro Diario</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="tanque.html">Estado del Tanque</a></li>
+            <li class="nav-item p-2"><a class="nav-link" href="configuracion.html">Configuración</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <h5 class="text-success fw-bold">Hola Oscar, Bienvenido</h5>
+      <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
+        <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte
+      </button>
+      <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
+        <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Angel Guiza</strong>
+      </span>
+    </div>
+   </div>
+
+
+    <div class="row mt-3">
+      <div class="col-md-6 mb-3">
+        <div class="card metric-card shadow-sm p-2">
+          <div class="card-body">
+            <small class="text-white-50">Normal: 95-100%</small>
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="mt-2"><i class="bi bi-lungs-fill"></i> % SpO2</h6>
+                <h1 class="display-4 fw-bold">99</h1>
+              </div>
+              <div id="miniChartSpo2"></div>
+            </div>
+            <small>Promedio (Última hora): 98%</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 mb-3">
+        <div class="card metric-card shadow-sm p-2">
+          <div class="card-body">
+            <small class="text-white-50">Normal: 60-90 BPM</small>
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="mt-2"><i class="bi bi-heart-pulse-fill"></i> PR bpm</h6>
+                <h1 class="display-4 fw-bold">60</h1>
+              </div>
+              <div id="miniChartBpm"></div>
+            </div>
+            <small>Promedio (Última hora): 62 BPM</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-3 mb-5">
+      <div class="col-md-12 mb-4">
+        <div class="card shadow-sm chart-container">
+          <div class="card-body">
+            <h6 class="text-white text-center">SpO2 Trend</h6>
+            <div id="spo2Chart"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-12 mb-4">
+        <div class="card shadow-sm chart-container">
+          <div class="card-body">
+            <h6 class="text-white text-center">Heart Rate (BPM)</h6>
+            <div id="bpmChart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="global.js"></script>
+  <script src="index.js"></script>
+  
+</body>
+
+</html>

@@ -1,0 +1,399 @@
+
+/*  VARIABLES GLOBALES DE COLOR */
+
+:root {
+  --color-seroa-dark: #2c3e50;    /* Azul oscuro para texto principal 'Seroa' */
+  --color-seroa-teal: #3b8b88;    /* Turquesa/Verde Institucional Seroa */
+  --color-accent-green: #66bb6a;  /* Verde para bordes/botones*/
+  --bg-light-gray: #f5f7fa;       /* Fondo de página */
+  
+  --tank-liquid-color: #49d45b;   /* Optimo */
+  --tank-bajo-color: #ff9800;     /* Naranja bajo */
+  --tank-critico-color: #dc3545;  /* Rojo crítico */
+}
+
+
+body {
+  background: var(--bg-light-gray);
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* --- HEADER Y NAVEGACIÓN --- */
+.topbar {
+  background-color: #ffffff !important;
+  border-bottom: none; 
+  box-shadow: none !important;
+  min-height: 130px; 
+}
+
+.border-teal { border-bottom: 3px solid var(--color-accent-green); }
+.text-teal { color: var(--color-seroa-teal); }
+
+.logo-img {
+  height: 125px; 
+  width: auto;
+  object-fit: contain;
+}
+
+.letras-img {
+  height: 125px; 
+  width: auto;
+}
+
+.text-logo-container { line-height: 1; }
+.seroa-title { color: var(--color-seroa-dark); letter-spacing: 1px; }
+.seroa-tagline { color: var(--color-seroa-teal); font-weight: 300; margin-top: -2px; }
+.date-text { font-weight: 500; }
+
+.metric-card {
+  background: linear-gradient(135deg, #309b9f, #6fc873);
+  color: white;
+  border-radius: 16px;
+  border: none;
+}
+
+.navbar .nav-link {
+  text-decoration: none;
+  color: #555; 
+  padding: 10px 15px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent; 
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link.activo {
+  color: var(--color-seroa-teal); 
+  border-bottom: 3px solid var(--color-seroa-teal); 
+}
+
+/* El Patrón Maya Repetitivo (Separador Horizontal) */
+.pattern-separator {
+  width: 100%;
+  height: 60px;
+  background-image: url('img/patron-separador.png'), url('img/patron-separador.png'); 
+  background-repeat: repeat-x, repeat-x;
+  background-size: auto 30px, auto 30px;
+  background-position: 0 0, -40px 30px;               
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+  position: relative;
+  z-index: 10;
+}
+
+/* --- SECCIÓN PACIENTES --- */
+.bg-teal { background-color: #3b8b88 !important; }
+
+.avatar-circle {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+}
+
+.patient-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border-radius: 16px; /* Corregido: tenías 166px aquí, lo cual deformaría la tarjeta */
+}
+
+.patient-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+}
+
+.btn-outline-teal {
+  color: #3b8b88;
+  border: 1px solid #3b8b88;
+  background-color: transparent;
+}
+
+.btn-outline-teal:hover {
+  background-color: #3b8b88;
+  color: white;
+}
+
+.border-warning-left { border-left: 4px solid #ffc107 !important; }
+.border-critic-left { border-left: 4px solid #ff0707 !important; }
+
+/* --- SECCIÓN DOSIFICACIÓN --- */
+.indicador-valvula {
+  width: 100px;
+  height: 100px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 4px solid white;
+}
+
+.indicador-valvula.activa {
+  animation: pulsoOxigeno 2s infinite ease-in-out;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+}
+
+@keyframes pulsoOxigeno {
+  0% { transform: scale(0.9); box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); }
+  50% { transform: scale(1); box-shadow: 0 0 40px rgba(255, 255, 255, 1); }
+  100% { transform: scale(0.9); box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); }
+}
+
+.indicador-valvula.inactiva {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.3);
+  animation: none;
+  box-shadow: none;
+}
+
+/* --- SECCIÓN TANQUE IOT --- */
+.tank-container {
+  width: 120px;
+  height: 250px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tank-cap {
+  width: 50px;
+  height: 30px;
+  background-color: #b0b0b0;
+  border-radius: 10px 10px 0 0;
+  border: 3px solid #7d7d7d;
+  margin-bottom: -5px;
+  z-index: 2;
+}
+
+.tank-body {
+  width: 100%;
+  height: 220px;
+  background-color: #f1f1f1; 
+  border: 4px solid #b0b0b0;
+  border-radius: 30px 30px 20px 20px;
+  position: relative;
+  overflow: hidden; 
+  z-index: 1;
+}
+
+.tank-liquid {
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background-color: var(--tank-liquid-color);
+  transition: height 0.8s ease-out, background-color 0.8s; 
+  overflow: hidden;
+}
+
+.tank-water-glide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: repeating-linear-gradient(60deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1) 10px, rgba(255, 255, 255, 0) 10px, rgba(255, 255, 255, 0) 20px);
+  opacity: 0.5;
+  animation: glideBackground 10s linear infinite;
+}
+
+.tank-liquid.bg-optimo { background-color: var(--tank-liquid-color); }
+.tank-liquid.bg-bajo { background-color: var(--tank-bajo-color); }
+.tank-liquid.bg-critico { background-color: var(--tank-critico-color); }
+
+@keyframes glideBackground {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* --- ALERTA GLOBAL FLOTANTE --- */
+.alerta-critica-flotante {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(135deg, #be1313 0%, #44130d 100%); 
+  z-index: 10000; 
+  padding: 25px 0;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5); 
+  animation: deslizarAlarma 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.icono-alerta {
+  font-size: 3.5rem; 
+  color: #f8f9fa;
+  opacity: 0.9;
+}
+
+@keyframes deslizarAlarma {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+/* ========================================== */
+/* ESTILOS TIPO WINDOWS - TEMA SEROA          */
+/* ========================================== */
+
+/* Menú lateral (Más grande y espacioso) */
+.config-windows-menu .nav-link {
+    color: #666;
+    border-radius: 12px; /* Bordes más suaves, estilo Seroa */
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    font-size: 1.15rem; /* Letra más grande */
+    padding: 1.2rem 1.5rem !important; /* Más espacio interior para botones más altos */
+    margin-bottom: 0.5rem;
+}
+
+.config-windows-menu .nav-link:hover {
+    background-color: rgba(59, 139, 136, 0.05); /* Fondo sutil al pasar el mouse */
+    color: var(--color-seroa-teal);
+}
+
+/* ESTADO ACTIVO - Forzamos el color Seroa y matamos el azul de Bootstrap */
+.config-windows-menu .nav-pills .nav-link.active,
+.config-windows-menu .nav-link.active {
+    background-color: rgba(59, 139, 136, 0.1) !important; /* Fondo turquesa súper transparente */
+    color: var(--color-seroa-teal) !important;
+    border-left: 4px solid var(--color-seroa-teal) !important; /* Línea lateral gruesa y turquesa */
+    font-weight: 600;
+}
+
+/* Iconos del menú lateral */
+.config-windows-menu .nav-link i {
+    font-size: 1.4rem; /* Iconos más grandes */
+    transition: color 0.3s ease;
+}
+.config-windows-menu .nav-link.active i {
+    color: var(--color-seroa-teal) !important;
+}
+
+/* Listas planas y grandes en el panel derecho */
+.windows-setting-item {
+    border-bottom: 1px solid #eaeaea;
+    padding: 2rem 0; /* Aumentamos la separación vertical a 2rem (más alto) */
+}
+
+.windows-setting-item:last-child {
+    border-bottom: none;
+}
+
+/* Estilo personalizado para los inputs y textareas de esta sección */
+.config-input {
+    border-radius: 12px;
+    border: 1px solid #ced4da;
+    padding: 1rem 1.2rem; /* Inputs mucho más grandes */
+    font-size: 1.1rem;
+    background-color: #fcfcfc;
+    transition: all 0.2s;
+}
+
+.config-input:focus {
+    background-color: #ffffff;
+    border-color: var(--color-accent-green);
+    box-shadow: 0 0 0 0.25rem rgba(102, 187, 106, 0.25); /* Resplandor verde Seroa */
+}
+.form-check-input:checked {
+    background-color: var(--color-seroa-teal);
+    border-color: var(--color-seroa-teal);
+}
+
+/* DISEÑO RESPONSIVO (CORRECCIONES MÓVIL)  */
+/* Estilos específicos para la barra lateral en Tablets y Móviles */
+@media (max-width: 991.98px) {
+    /* FONDO DE LA BARRA LATERAL: Patrón Maya + Transparencia Verde Seroa */
+    .offcanvas.sidebar-custom {
+        /* Usamos la variable nativa de Bootstrap para no romper su animación */
+        --bs-offcanvas-width: 300px !important; 
+        background: linear-gradient(rgba(59, 139, 136, 0.95), rgba(106, 219, 62, 0.95)), url('img/patron-separador.png') repeat !important;
+        background-size: auto, auto 150px !important; 
+        border-left: none !important;
+    }
+
+    /* Estilos para el texto dentro del menú lateral */
+    .offcanvas.sidebar-custom .offcanvas-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .offcanvas.sidebar-custom .offcanvas-title {
+        color: white !important;
+    }
+
+    .offcanvas.sidebar-custom .btn-close-white {
+        opacity: 0.8;
+    }
+
+    /* Estilos para los enlaces del menú lateral (Normales) */
+    .offcanvas.sidebar-custom .nav-link {
+        color: rgba(255, 255, 255, 0.8) !important; 
+        border-radius: 8px;
+        padding: 0.8rem 1rem !important;
+        margin-bottom: 0.3rem;
+        transition: all 0.3s ease;
+    }
+
+    /* Efecto hover en los enlaces */
+    .offcanvas.sidebar-custom .nav-link:hover {
+        color: white !important;
+        background-color: rgba(255, 255, 255, 0.1);
+        transform: translateX(5px);
+    }
+
+    /* EL HIGHLIGHT DE NAVEGACIÓN (Apartado Actual) */
+    .offcanvas.sidebar-custom .nav-item.active-nav .nav-link,
+    .offcanvas.sidebar-custom .nav-link.active {
+        background-color: var(--color-accent-green) !important; 
+        color: white !important;
+        font-weight: 600;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* Correcciones específicas para Móviles más pequeños (<768px) */
+/* Correcciones específicas para Móviles más pequeños (<768px) */
+@media (max-width: 768px) {
+  
+  .topbar {
+    min-height: 80px; 
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+  
+  .logo-img, .letras-img {
+    height: 60px; 
+  }
+  
+  .date-text {
+    font-size: 0.85rem !important; 
+  }
+  
+  .bi-person-circle {
+    font-size: 2rem !important; 
+  }
+
+  .alerta-critica-flotante { padding: 15px 0; }
+  .icono-alerta { font-size: 2.5rem; margin-right: 15px !important; margin-bottom: 10px; }
+  .alerta-critica-flotante h2 { font-size: 1.2rem; }
+  .alerta-critica-flotante p { font-size: 0.95rem !important; }
+  .alerta-critica-flotante .container { flex-direction: column !important; text-align: center; }
+  .alerta-critica-flotante button { width: 100%; margin-top: 15px; padding: 15px !important; font-size: 1.1rem; }
+
+  .pattern-separator {
+    height: 30px; 
+    background-size: auto 15px, auto 15px; 
+    background-position: 0 0, -20px 15px;
+  }
+  
+  /* ========================================== */
+  /* LA REGLA NUCLEAR PARA EL MENÚ EN CELULARES */
+  /* ========================================== */
+  .offcanvas.sidebar-custom {
+      /* Atacamos la propiedad width directamente con píxeles fijos, nada de variables o vw */
+      width: 260px !important; 
+      max-width: 80% !important; /* Límite de seguridad por si el teléfono es exageradamente pequeño */
+      background-size: auto, auto 150px !important;
+  }
+}

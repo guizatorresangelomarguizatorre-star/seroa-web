@@ -1,0 +1,22 @@
+{
+  "name": "Seroa - Sistema de Soporte Respiratorio",
+  "short_name": "Seroa",
+  "description": "Monitoreo inteligente y dosificación automática de oxígeno.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#3b8b88",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "img/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "img/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
