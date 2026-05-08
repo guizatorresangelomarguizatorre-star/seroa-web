@@ -1,23 +1,14 @@
 const mysql = require('mysql2');
 
-// Conexión directa forzada al Proxy Público para diagnóstico
-const pool = mysql.createPool({
-    host: 'switchback.proxy.rlwy.net',
-    user: 'root',
-    password: 'DYFgQxnovIUFCHrgUPusszxMGMYfUrux',
-    database: 'railway',
-    port: 35115,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+// Le decimos que use la URL completa directamente desde las variables de Railway
+const pool = mysql.createPool(process.env.MYSQL_URL);
 
 pool.getConnection((err, connection) => {
     if (err) {
-        console.error('Error crítico conectando a MySQL:', err.message);
+        console.error('Error conectando a MySQL:', err.message);
         return;
     }
-    console.log('¡Conexión directa exitosa a la base de datos!');
+    console.log('¡Conexión exitosa a la base de datos interna de Railway!');
     connection.release();
 });
 
