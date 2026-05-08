@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const db = mysql.createPool({
     host: 'switchback.proxy.rlwy.net',
     user: 'root',
-    password: 'DYFgQxnovIUFCHrgUPusszxMGMYfUrux',
+    password: 'DYfgQxnovIUFCHrgUPusszxMGMYfUrux',
     database: 'railway',
     port: 35115,
     ssl: {
