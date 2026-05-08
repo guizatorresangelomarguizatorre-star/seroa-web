@@ -5,8 +5,8 @@ const pool = mysql.createPool({
   host: process.env.MYSQLHOST || 'localhost',
   user: process.env.MYSQLUSER || 'root',
   password: process.env.MYSQLPASSWORD || '',
-  database: process.env.MYSQLDATABASE || 'seroa_db',
-  port: process.env.MYSQLPORT || 8080, // Cambiamos al 8080 que configuramos en tu XAMPP
+  database: process.env.MYSQLDATABASE || 'seroa', // Asegúrate de que coincida con el nombre de tu BD
+  port: process.env.MYSQLPORT || 3306, // 3306 es el puerto estándar universal para MySQL
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -22,4 +22,6 @@ pool.getConnection((err, connection) => {
   connection.release();
 });
 
-module.exports = pool.promise();
+// Exportamos 'pool' normal, quitando el .promise() para que 
+// encaje perfecto con las funciones de tu server.js
+module.exports = pool;

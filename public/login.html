@@ -4,37 +4,118 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seroa - Acceso</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="estilos.css">
+    
+    <style>
+        /* Ajustes específicos para centrar el Login respetando la estética Seroa */
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Usamos tu patrón maya sutilmente en el fondo de la pantalla */
+            background-image: url('img/patron-separador.png'); 
+            background-repeat: repeat-x;
+            background-position: center bottom;
+            background-size: auto 30px;
+        }
+
+        .auth-card {
+            background: white;
+            border-radius: 16px; /* Mismo borde que tus patient-cards */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08); /* Sombra suave */
+            padding: 3rem 2.5rem;
+            width: 100%;
+            max-width: 450px;
+            transition: transform 0.3s ease;
+        }
+
+        .auth-card:hover {
+            box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+        }
+
+        /* Botón principal usando el degradado de tus tarjetas de métricas */
+        .btn-seroa {
+            background: linear-gradient(135deg, #309b9f, #6fc873);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-seroa:hover {
+            opacity: 0.9;
+            color: white;
+            transform: scale(0.98);
+        }
+
+        .captcha-box {
+            background-color: rgba(59, 139, 136, 0.05); /* Fondo turquesa transparente */
+            border-left: 4px solid var(--color-seroa-teal);
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-container">
-        <div id="login-section" class="form-section">
-            <h2>Iniciar Sesión</h2>
-            <form id="loginForm">
-                <input type="text" id="loginUser" placeholder="Usuario" pattern="[a-zA-Z0-9]+" title="Sin espacios ni caracteres especiales" required>
-                <input type="password" id="loginPass" placeholder="Contraseña" required>
-                <button type="submit" class="btn-primary">Entrar</button>
-            </form>
-            <p>¿No tienes cuenta? <a href="#" onclick="toggleForm('register')">Regístrate aquí</a></p>
-        </div>
-
-        <div id="register-section" class="form-section" style="display: none;">
-            <h2>Registro de Paciente/Médico</h2>
-            <form id="registerForm">
-                <input type="text" id="regNombre" placeholder="Nombre completo" pattern="[a-zA-Z0-9 ]+" title="Solo letras, números y espacios" required>
-                <input type="email" id="regEmail" placeholder="Correo electrónico" required>
-               <input type="password" id="regPass" placeholder="Contraseña segura" title="Debe contener letras y números, y no incluir secuencias (ej. 123 o 321)" required>
-                
-                <div class="captcha-box">
-                    <label id="captchaQuestion">¿Cuánto es X + Y?</label>
-                    <input type="number" id="captchaAnswer" placeholder="Respuesta" required>
+    
+    <div class="login-wrapper">
+        <div class="auth-card">
+            
+            <div class="text-center mb-4 pb-2">
+                <div class="d-flex justify-content-center align-items-center mb-2">
+                    <img src="img/logo-icono.png" alt="Seroa Icono" height="65" class="me-2">
+                    <img src="img/letras-seroa.png" alt="Seroa Letras" height="55">
                 </div>
+            </div>
+            <div id="login-section" class="form-section">
+                <h4 class="text-center mb-4 text-teal fw-bold">Iniciar Sesión</h4>
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <input type="email" id="loginUser" class="form-control config-input" placeholder="Correo electrónico" required>
+                    </div>
+                    <div class="mb-4">
+                        <input type="password" id="loginPass" class="form-control config-input" placeholder="Contraseña" required>
+                    </div>
+                    <button type="submit" class="btn w-100 btn-seroa">Entrar al Sistema</button>
+                </form>
+                <p class="text-center mt-4 text-muted">
+                    ¿No tienes cuenta? <br>
+                    <a href="#" onclick="toggleForm('register')" class="text-decoration-none fw-bold mt-1 d-inline-block" style="color: var(--color-accent-green);">Regístrate aquí</a>
+                </p>
+            </div>
 
-                <button type="submit" class="btn-primary">Crear Cuenta</button>
-            </form>
-            <p>¿Ya tienes cuenta? <a href="#" onclick="toggleForm('login')">Inicia sesión</a></p>
+            <div id="register-section" class="form-section" style="display: none;">
+                <h4 class="text-center mb-4 text-teal fw-bold">Registro de Paciente</h4>
+                <form id="registerForm">
+                    <div class="mb-3">
+                        <input type="text" id="regNombre" class="form-control config-input" placeholder="Nombre completo" pattern="[a-zA-Z0-9 ]+" title="Solo letras, números y espacios" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="email" id="regEmail" class="form-control config-input" placeholder="Correo electrónico" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" id="regPass" class="form-control config-input" placeholder="Contraseña segura" title="Debe contener letras y números, y no incluir secuencias (ej. 123 o 321)" required>
+                    </div>
+                    
+                    <div class="mb-4 p-3 rounded-3 text-center captcha-box">
+                        <label id="captchaQuestion" class="fw-semibold mb-2 text-teal d-block">¿Cuánto es X + Y?</label>
+                        <input type="number" id="captchaAnswer" class="form-control config-input text-center mx-auto" style="max-width: 140px; padding: 0.5rem;" placeholder="Respuesta" required>
+                    </div>
+
+                    <button type="submit" class="btn w-100 btn-seroa">Crear Cuenta Blindada</button>
+                </form>
+                <p class="text-center mt-4 text-muted">
+                    ¿Ya tienes cuenta? <br>
+                    <a href="#" onclick="toggleForm('login')" class="text-decoration-none fw-bold mt-1 d-inline-block" style="color: var(--color-seroa-teal);">Inicia sesión</a>
+                </p>
+            </div>
+
         </div>
     </div>
+
     <script src="utils.js"></script>
     <script src="auth.js"></script>
 </body>
