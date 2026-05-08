@@ -1,9 +1,9 @@
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
-const db = require('./db'); 
+const mysql = require('mysql2'); // Importamos mysql2 directamente aquí
 
-// Importamos nuestras funciones modulares
+// Importamos nuestras funciones modulares de seguridad
 const { encriptar, desencriptar, generarHashBusqueda } = require('./security');
 
 const app = express();
@@ -11,6 +11,32 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// === CONEXIÓN MAESTRA A BASE DE DATOS ===
+// Integrada directamente con SSL forzado y ruta pública para evitar bloqueos
+const db = mysql.createPool({
+    host: 'switchback.proxy.rlwy.net',
+    user: 'root',
+    password: 'DYFgQxnovIUFCHrgUPusszxMGMYfUrux',
+    database: 'railway',
+    port: 35115,
+    ssl: {
+        rejectUnauthorized: false // Permite la conexión segura a Railway
+    },
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+
+// Verificación de conexión al arrancar el servidor
+db.getConnection((err, connection) => {
+    if (err) {
+        console.error('Error crítico conectando a la BD:', err.message);
+    } else {
+        console.log('¡Conexión blindada SSL exitosa a Seroa BD!');
+        connection.release();
+    }
+});
 
 // === RUTAS DEL SISTEMA ===
 
