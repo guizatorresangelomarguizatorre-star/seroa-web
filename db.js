@@ -1,18 +1,11 @@
 const mysql = require('mysql2');
 
-// Creamos un grupo de conexiones (pool) para que sea más eficiente
-const pool = mysql.createPool({
-  host: process.env.MYSQLHOST || 'localhost',
-  user: process.env.MYSQLUSER || 'root',
-  password: process.env.MYSQLPASSWORD || '',
-  database: process.env.MYSQLDATABASE || 'seroa', // Asegúrate de que coincida con el nombre de tu BD
-  port: process.env.MYSQLPORT || 3306, // 3306 es el puerto estándar universal para MySQL
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+// Usamos las URL maestras de Railway. 
+// Primero intenta la pública, luego la interna, y por último la local de tu PC (XAMPP).
+const dbUrl = process.env.MYSQL_PUBLIC_URL || process.env.MYSQL_URL || 'mysql://root:@localhost:3306/seroa';
 
-// Probamos la conexión al arrancar
+const pool = mysql.createPool(dbUrl);
+
 pool.getConnection((err, connection) => {
   if (err) {
     console.error(' Error conectando a MySQL:', err.message);
@@ -22,6 +15,4 @@ pool.getConnection((err, connection) => {
   connection.release();
 });
 
-// Exportamos 'pool' normal, quitando el .promise() para que 
-// encaje perfecto con las funciones de tu server.js
 module.exports = pool;
