@@ -20,7 +20,6 @@ function actualizarReloj() {
     });
 }
 setInterval(actualizarReloj, 60000);
-actualizarReloj();
 
 // --- ALERTA CRÍTICA GIGANTE ---
 function mostrarAlertaSeroa() {
@@ -60,29 +59,78 @@ if ('serviceWorker' in navigator) {
 }
 
 // ==========================================
-// NAVEGACIÓN INTELIGENTE (Resalta el menú actual)
+// CARGA DINÁMICA DE CABECERA, SESIÓN Y NAVEGACIÓN
 // ==========================================
-document.addEventListener("DOMContentLoaded", () => {
-  // 1. Obtenemos el nombre del archivo actual en la barra del navegador
-  let paginaActual = window.location.pathname.split("/").pop();
-  
-  // Si la ruta está vacía (ej. localhost/seroa/), asumimos que es el index
-  if (paginaActual === "" || paginaActual === "/") {
-      paginaActual = "index.html";
-  }
-
-  // 2. Buscamos todos los enlaces dentro de tu menú
-  const enlacesNav = document.querySelectorAll(".navbar-nav .nav-link");
-
-  enlacesNav.forEach(enlace => {
-    // Primero, limpiamos el estado activo por precaución
-    enlace.parentElement.classList.remove("active-nav", "fw-bold");
-
-    // 3. Comparamos si el href coincide con la página actual
-    const href = enlace.getAttribute("href");
-    if (href === paginaActual) {
-      // Si coincide, aplicamos tus clases de resaltado al <li>
-      enlace.parentElement.classList.add("active-nav", "fw-bold");
+document.addEventListener("DOMContentLoaded", async () => {
+    
+    // 1. INYECTAR HEADER DINÁMICO
+    const contenedorHeader = document.getElementById('header-container');
+    if (contenedorHeader) {
+        try {
+            const response = await fetch('header.html');
+            const headerHtml = await response.text();
+            contenedorHeader.innerHTML = headerHtml;
+        } catch (error) {
+            console.error("Error cargando el header:", error);
+        }
     }
-  });
+
+    // 2. DISPARAR EL RELOJ (Para que llene la fecha en el header inyectado al instante)
+    actualizarReloj();
+
+    // 3. VALIDAR SESIÓN DEL PACIENTE
+    validarSesionUsuario();
+
+    // 4. NAVEGACIÓN INTELIGENTE (Resalta el menú actual)
+    let paginaActual = window.location.pathname.split("/").pop();
+    
+    if (paginaActual === "" || paginaActual === "/") {
+        paginaActual = "index.html";
+    }
+
+    const enlacesNav = document.querySelectorAll(".navbar-nav .nav-link");
+
+    enlacesNav.forEach(enlace => {
+        enlace.parentElement.classList.remove("active-nav", "fw-bold");
+        const href = enlace.getAttribute("href");
+        
+        if (href === paginaActual) {
+            enlace.parentElement.classList.add("active-nav", "fw-bold");
+        }
+    });
 });
+
+// ==========================================
+// FUNCIONES DE CONTROL DE ACCESO
+// ==========================================
+function validarSesionUsuario() {
+    const nombreGuardado = localStorage.getItem('nombrePaciente');
+    
+    if (nombreGuardado) {
+        const primerNombre = nombreGuardado.split(' ')[0];
+        
+        // Inyectamos el nombre en la cabecera dinámica
+        const elementoNombreHeader = document.getElementById('nombreUsuarioHeader');
+        if (elementoNombreHeader) {
+            elementoNombreHeader.textContent = primerNombre;
+        }
+        
+        // Inyectamos el nombre en el saludo grande de la página de inicio
+        const saludoPantalla = document.getElementById('nombreUsuarioPantalla');
+        if (saludoPantalla) {
+            saludoPantalla.textContent = primerNombre;
+        }
+    } else {
+        // Prevención de bucle infinito: Solo redirige si NO estamos ya en el login
+        const paginaActual = window.location.pathname.split("/").pop();
+        if (paginaActual !== 'login.html') {
+            window.location.href = 'login.html';
+        }
+    }
+}
+
+function cerrarSesion() {
+    // Limpiamos la memoria del navegador y mandamos al usuario a la puerta de entrada
+    localStorage.removeItem('nombrePaciente');
+    window.location.href = 'login.html';
+}
