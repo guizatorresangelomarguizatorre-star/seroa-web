@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SEROA Dashboard</title>
   <title>Seroa - Inicio</title>
   
   <link rel="manifest" href="manifest.json">
@@ -43,9 +42,9 @@
   <div class="text-end d-flex flex-column align-items-end justify-content-center">
     <span id="fecha" class="date-text text-muted d-block fs-5 mb-1"></span>
   
-    <a href="login.html" title="Iniciar Sesión / Registro" class="text-decoration-none transition-transform d-flex align-items-center text-teal" style="cursor: pointer;">
-      <span class="me-2 fw-semibold fs-5 text-dark">Iniciar sesión</span>
-      <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
+    <a href="#" onclick="cerrarSesion()" title="Cerrar Sesión" class="text-decoration-none transition-transform d-flex align-items-center text-danger" style="cursor: pointer;">
+      <span class="me-2 fw-semibold fs-5 text-dark">Cerrar sesión</span>
+      <i class="bi bi-box-arrow-right" style="font-size: 2.5rem; color: #dc3545;"></i>
     </a>
   </div>
 </header>
@@ -59,7 +58,6 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       
-
       <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa" aria-labelledby="menuSeroaLabel">
         <div class="offcanvas-header border-bottom border-light">
           <h5 class="offcanvas-title text-white" id="menuSeroaLabel">Seroa Menú</h5>
@@ -67,7 +65,7 @@
         </div>
         <div class="offcanvas-body">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0 text-lg-dark text-white w-100 align-items-lg-center justify-content-lg-around">
-            <li class="nav-item p-2"><a class="nav-link" href="index.html">Inicio</a></li>
+            <li class="nav-item p-2"><a class="nav-link active" href="index.html">Inicio</a></li>
             <li class="nav-item p-2"><a class="nav-link" href="pacientes.html">Pacientes</a></li>
             <li class="nav-item p-2"><a class="nav-link" href="dosificacion.html">Dosificación</a></li>
             <li class="nav-item p-2"><a class="nav-link" href="registro.html">Registro Diario</a></li>
@@ -81,7 +79,8 @@
 
   <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center">
-      <h5 class="text-success fw-bold">Hola Oscar, Bienvenido</h5>
+      <h5 class="text-success fw-bold">Hola <span id="nombreUsuarioPantalla">Usuario</span>, Bienvenido</h5>
+      
       <div class="d-flex align-items-center gap-2">
       <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
         <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte
@@ -91,7 +90,6 @@
       </span>
     </div>
    </div>
-
 
     <div class="row mt-3">
       <div class="col-md-6 mb-3">
@@ -152,6 +150,29 @@
   <script src="global.js"></script>
   <script src="index.js"></script>
   
-</body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Recuperamos el nombre que guardamos durante el Login
+      const nombreGuardado = localStorage.getItem('nombrePaciente');
 
+      if (nombreGuardado) {
+        // Extraemos solo el primer nombre para que el saludo se vea más limpio (Ej. "Angel" en lugar de "Angel Omar Guiza Torres")
+        const primerNombre = nombreGuardado.split(' ')[0];
+        
+        // Inyectamos el nombre en el HTML
+        document.getElementById('nombreUsuarioPantalla').textContent = primerNombre;
+      } else {
+        // MEDIDA DE SEGURIDAD: Si no hay nombre guardado, significa que alguien intentó entrar a index.html sin iniciar sesión. Lo pateamos de vuelta al login.
+        window.location.href = 'login.html';
+      }
+    });
+
+    // Función para destruir la sesión y salir
+    function cerrarSesion() {
+      localStorage.removeItem('nombrePaciente'); // Borramos la memoria
+      window.location.href = 'login.html';       // Lo mandamos al login
+    }
+  </script>
+  
+</body>
 </html>

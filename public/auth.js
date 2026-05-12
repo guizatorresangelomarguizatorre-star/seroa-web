@@ -63,6 +63,42 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         alert("Error de conexión con el servidor.");
     }
 });
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); // Evita que la página recargue al instante
 
+    // Capturamos los datos de tus inputs (usando los IDs de tu HTML)
+    const email = document.getElementById('loginUser').value;
+    const password = document.getElementById('loginPass').value;
+
+    try {
+        // Hacemos la llamada a nuestro servidor
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        // Si el servidor nos dice que las credenciales son correctas...
+        if (response.ok) {
+            
+            // 1. Opcional pero recomendado: Guardamos el nombre del paciente en la memoria 
+            // del navegador para poder mostrarlo arriba a la derecha en el Dashboard
+            localStorage.setItem('nombrePaciente', data.nombre);
+            
+            // 2. ¡LA INSTRUCCIÓN CRÍTICA! Movemos al usuario al Dashboard
+            window.location.href = 'index.html'; 
+            
+        } else {
+            // Si el servidor rechaza la entrada (contraseña incorrecta), mostramos el error
+            alert(data.error);
+        }
+        
+    } catch (error) {
+        console.error("Error de red:", error);
+        alert("Ocurrió un error al intentar conectar con el servidor Seroa.");
+    }
+});
 // Inicializar
 generateCaptcha();
