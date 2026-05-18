@@ -51,7 +51,7 @@ db.getConnection((err, connection) => {
 // === RUTAS DEL SISTEMA ===
 
 app.post('/api/registro', async (req, res) => {
-    const { nombre, email, password } = req.body;
+    const query = 'INSERT INTO usuarios (nombre, email_encriptado, email_hash, password, verificado, token_verificacion) VALUES (?, ?, ?, ?, FALSE, ?)';
 
     try {
         // 1. TU BLINDAJE ORIGINAL: Encriptamos los datos antes de tocar la BD
