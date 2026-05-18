@@ -51,24 +51,25 @@ db.getConnection((err, connection) => {
 // === RUTAS DEL SISTEMA ===
 
 app.post('/api/registro', async (req, res) => {
-    const query = 'INSERT INTO usuarios (nombre, email_encriptado, email_hash, password, verificado, token_verificacion) VALUES (?, ?, ?, ?, FALSE, ?)';
+    
+    // ⚠️ ESTA ES LA LÍNEA QUE FALTABA O ESTABA MAL ESCRITA ⚠️
+    const { nombre, email, password } = req.body;
 
     try {
-        // 1. TU BLINDAJE ORIGINAL: Encriptamos los datos antes de tocar la BD
+        // 1. TU BLINDAJE ORIGINAL
         const passwordHash = await bcrypt.hash(password, 10);
-        const nombreEncriptado = encriptar(nombre); // Asumiendo que esta es tu función
+        const nombreEncriptado = encriptar(nombre);
         const emailEncriptado = encriptar(email);
         const emailHash = generarHashBusqueda(email);
 
         // 2. NUEVO: Generamos el token de verificación del correo
         const tokenVerificacion = crypto.randomBytes(32).toString('hex');
 
-        // 3. Insertamos TODOS los campos (incluyendo el email_hash y los datos protegidos)
-        const query = 'INSERT INTO usuarios (nombre, email, email_hash, password, verificado, token_verificacion) VALUES (?, ?, ?, ?, FALSE, ?)';
+        // 3. Insertamos TODOS los campos en la BD
+        const query = 'INSERT INTO usuarios (nombre, email_encriptado, email_hash, password, verificado, token_verificacion) VALUES (?, ?, ?, ?, FALSE, ?)';
         
         db.query(query, [nombreEncriptado, emailEncriptado, emailHash, passwordHash, tokenVerificacion], async (err, result) => {
             if (err) {
-                // ESTA LÍNEA ES VITAL: Ahora sí veremos en Railway por qué se queja MySQL si algo falla
                 console.error("Error MySQL al registrar:", err); 
                 
                 if (err.code === 'ER_DUP_ENTRY') {
@@ -83,7 +84,7 @@ app.post('/api/registro', async (req, res) => {
             // 5. Creamos el correo electrónico
             const mailOptions = {
                 from: `"Seroa Plataforma" <${process.env.EMAIL_USER}>`,
-                to: email, // Enviamos el correo a la dirección original, no a la encriptada
+                to: email, // Enviamos el correo a la dirección original
                 subject: 'Verifica tu cuenta - Seroa',
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e4ecec; border-radius: 12px;">
