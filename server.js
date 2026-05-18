@@ -54,28 +54,36 @@ app.post('/api/registro', async (req, res) => {
     const { nombre, email, password } = req.body;
 
     try {
-        // 1. Generamos un token único y aleatorio de 64 caracteres
+        // 1. TU BLINDAJE ORIGINAL: Encriptamos los datos antes de tocar la BD
+        const passwordHash = await bcrypt.hash(password, 10);
+        const nombreEncriptado = encriptar(nombre); // Asumiendo que esta es tu función
+        const emailEncriptado = encriptar(email);
+        const emailHash = generarHashBusqueda(email);
+
+        // 2. NUEVO: Generamos el token de verificación del correo
         const tokenVerificacion = crypto.randomBytes(32).toString('hex');
 
-        // 2. Insertamos el usuario en la base de datos 
-        // (Las nuevas columnas 'verificado' entra en FALSE y guardamos el token)
-        const query = 'INSERT INTO usuarios (nombre, email, password, verificado, token_verificacion) VALUES (?, ?, ?, FALSE, ?)';
+        // 3. Insertamos TODOS los campos (incluyendo el email_hash y los datos protegidos)
+        const query = 'INSERT INTO usuarios (nombre, email, email_hash, password, verificado, token_verificacion) VALUES (?, ?, ?, ?, FALSE, ?)';
         
-        db.query(query, [nombre, email, password, tokenVerificacion], async (err, result) => {
+        db.query(query, [nombreEncriptado, emailEncriptado, emailHash, passwordHash, tokenVerificacion], async (err, result) => {
             if (err) {
+                // ESTA LÍNEA ES VITAL: Ahora sí veremos en Railway por qué se queja MySQL si algo falla
+                console.error("Error MySQL al registrar:", err); 
+                
                 if (err.code === 'ER_DUP_ENTRY') {
                     return res.status(400).json({ error: 'El correo electrónico ya está registrado.' });
                 }
                 return res.status(500).json({ error: 'Error al registrar en la base de datos.' });
             }
 
-            // 3. Diseñamos el enlace de verificación que irá en el correo
+            // 4. Diseñamos el enlace usando el token
             const urlVerificacion = `https://seroa-web-production.up.railway.app/api/verificar-correo?token=${tokenVerificacion}`;
 
-            // 4. Creamos el diseño del correo electrónico en HTML
+            // 5. Creamos el correo electrónico
             const mailOptions = {
                 from: `"Seroa Plataforma" <${process.env.EMAIL_USER}>`,
-                to: email,
+                to: email, // Enviamos el correo a la dirección original, no a la encriptada
                 subject: 'Verifica tu cuenta - Seroa',
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e4ecec; border-radius: 12px;">
@@ -92,23 +100,22 @@ app.post('/api/registro', async (req, res) => {
                 `
             };
 
-            // 5. Enviamos el correo de forma asíncrona
+            // 6. Lanzamos el correo
             transporter.sendMail(mailOptions, (mailErr, info) => {
                 if (mailErr) {
-                    console.error("Error enviando correo:", mailErr);
-                    // Registramos al usuario pero avisamos que el correo falló temporalmente
+                    console.error("Error enviando correo con Nodemailer:", mailErr);
                     return res.json({ mensaje: 'Cuenta creada, pero hubo un problema al enviar el correo de verificación.' });
                 }
-                
-                // Respuesta exitosa total
                 res.json({ mensaje: 'Registro exitoso. Por favor, revisa tu bandeja de entrada para verificar tu cuenta.' });
             });
         });
 
     } catch (error) {
+        console.error("Error interno del servidor en Registro:", error);
         res.status(500).json({ error: 'Error interno en el servidor.' });
     }
 });
+
             //Verificar correo
 app.get('/api/verificar-correo', (req, res) => {
     const { token } = req.query;
