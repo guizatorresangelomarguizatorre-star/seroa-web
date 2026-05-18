@@ -1,4 +1,5 @@
 let captchaCorrectAnswer;
+let verificacionInterval; // Variable para controlar el reloj que pregunta a la BD
 
 function generateCaptcha() {
     const n1 = Math.floor(Math.random() * 10) + 1;
@@ -9,20 +10,30 @@ function generateCaptcha() {
 }
 
 function toggleForm(type) {
+    // Si el usuario se desespera y cambia de pantalla, detenemos el reloj del servidor
+    if (verificacionInterval) clearInterval(verificacionInterval);
+
+    // Ocultamos las 3 secciones por defecto
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('register-section').style.display = 'none';
+    const waitingSection = document.getElementById('waiting-section');
+    if (waitingSection) waitingSection.style.display = 'none';
+
+    // Mostramos solo la que necesitamos
     if (type === 'register') {
-        document.getElementById('login-section').style.display = 'none';
         document.getElementById('register-section').style.display = 'block';
         generateCaptcha();
     } else {
-        document.getElementById('register-section').style.display = 'none';
         document.getElementById('login-section').style.display = 'block';
     }
 }
 
+// === LÓGICA DE REGISTRO ===
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const pass = document.getElementById('regPass').value;
+    const emailIngresado = document.getElementById('regEmail').value;
     
     // Llamamos a la función modular que vive en utils.js
     const errorPass = validarPasswordSeguro(pass);
@@ -40,7 +51,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
 
     const data = {
         nombre: document.getElementById('regNombre').value,
-        email: document.getElementById('regEmail').value,
+        email: emailIngresado,
         password: pass
     };
 
@@ -53,9 +64,13 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         const result = await res.json();
         
         if (res.ok) {
-            alert(result.mensaje);
+            // ¡EL CAMBIO CRÍTICO! Ocultamos el registro y mostramos la pantalla de espera
+            document.getElementById('register-section').style.display = 'none';
+            document.getElementById('waiting-section').style.display = 'block';
             document.getElementById('registerForm').reset();
-            toggleForm('login');
+            
+            // Arrancamos el monitoreo silencioso
+            iniciarMonitoreoVerificacion(emailIngresado);
         } else {
             alert("Error: " + result.error);
         }
@@ -63,6 +78,37 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         alert("Error de conexión con el servidor.");
     }
 });
+
+// === EL MOTOR DE SONDEO (NUEVO) ===
+function iniciarMonitoreoVerificacion(email) {
+    if (verificacionInterval) clearInterval(verificacionInterval);
+
+    // Le preguntamos a la base de datos cada 3 segundos (3000 ms)
+    verificacionInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/status-verificacion?email=${encodeURIComponent(email)}`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Si la BD nos dice que el usuario ya le dio clic al correo...
+                if (data.verificado) {
+                    clearInterval(verificacionInterval); // Apagamos el reloj
+                    
+                    alert("¡Excelente! Tu correo electrónico ha sido confirmado. Iniciando sesión automáticamente...");
+                    
+                    // Iniciamos su sesión automáticamente
+                    localStorage.setItem('nombrePaciente', data.nombre);
+                    window.location.href = 'index.html';
+                }
+            }
+        } catch (err) {
+            console.error("Error consultando el estado de verificación:", err);
+        }
+    }, 3000);
+}
+
+// === LÓGICA DE LOGIN ===
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault(); // Evita que la página recargue al instante
 
@@ -91,7 +137,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             window.location.href = 'index.html'; 
             
         } else {
-            // Si el servidor rechaza la entrada (contraseña incorrecta), mostramos el error
+            // Si el servidor rechaza la entrada (contraseña incorrecta o no verificado), mostramos el error
             alert(data.error);
         }
         
@@ -100,5 +146,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         alert("Ocurrió un error al intentar conectar con el servidor Seroa.");
     }
 });
-// Inicializar
+
+// Inicializar la primera vez
 generateCaptcha();

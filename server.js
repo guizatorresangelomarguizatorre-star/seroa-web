@@ -51,8 +51,6 @@ db.getConnection((err, connection) => {
 // === RUTAS DEL SISTEMA ===
 
 app.post('/api/registro', async (req, res) => {
-    
-    // ⚠️ ESTA ES LA LÍNEA QUE FALTABA O ESTABA MAL ESCRITA ⚠️
     const { nombre, email, password } = req.body;
 
     try {
@@ -160,22 +158,46 @@ app.post('/api/login', (req, res) => {
         
         const usuario = results[0];
         
-        // ==========================================
-        // NUEVA VALIDACIÓN: BLOQUEO POR CORREO NO VERIFICADO
-        // ==========================================
+        // NUEVA VALIDACIÓN: BLOQUEO POR CORREO NO VERIFICADO     
         if (!usuario.verificado) {
             return res.status(403).json({ 
                 error: "Tu cuenta aún no está activa. Por favor, revisa tu bandeja de entrada y verifica tu correo antes de entrar." 
             });
-        }
-        // ==========================================
-        
+        }   
         const esValida = await bcrypt.compare(password, usuario.password);
         if (!esValida) return res.status(401).json({ error: "Credenciales inválidas" });
 
         res.json({ 
             mensaje: "Inicio de sesión exitoso", 
             nombre: desencriptar(usuario.nombre) // Usamos la función importada
+        });
+    });
+});
+
+                //  comprobar en tiempo real si el usuario ya verificó su correo   //
+app.get('/api/status-verificacion', (req, res) => {
+    const { email } = req.query;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email requerido.' });
+    }
+
+    // Generamos el hash para buscarlo de forma segura en la BD
+    const emailHashBuscado = generarHashBusqueda(email);
+
+    const query = 'SELECT verificado, nombre FROM usuarios WHERE email_hash = ?';
+    
+    db.query(query, [emailHashBuscado], (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado.' });
+        }
+
+        const usuario = results[0];
+
+        // Retornamos si ya está verificado (1 o true) y su nombre desencriptado
+        res.json({
+            verificado: usuario.verificado === 1 || usuario.verificado === true,
+            nombre: desencriptar(usuario.nombre)
         });
     });
 });
