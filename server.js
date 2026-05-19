@@ -4,7 +4,9 @@ const bcrypt = require('bcryptjs');
 const mysql = require('mysql2'); 
 const nodemailer = require('nodemailer');
 const crypto = require('crypto'); 
+const dns = require('dns');
 
+dns.setDefaultResultOrder('ipv4first');
 // Importamos nuestras funciones modulares de seguridad
 const { encriptar, desencriptar, generarHashBusqueda } = require('./security');
 
