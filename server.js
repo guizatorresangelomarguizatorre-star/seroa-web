@@ -30,13 +30,16 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-           user: process.env.EMAIL_USER,
-           pass: process.env.EMAIL_PASS
-     }
-    });
+    // Configuración explícita para Gmail
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Usa una conexión segura desde el inicio
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
 
 // Verificación de conexión al arrancar el servidor
 db.getConnection((err, connection) => {
