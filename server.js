@@ -30,7 +30,7 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-    // Configuración explícita para Gmail
+// Configuración explícita para Gmail
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
@@ -63,7 +63,7 @@ app.post('/api/registro', async (req, res) => {
         const emailEncriptado = encriptar(email);
         const emailHash = generarHashBusqueda(email);
 
-        // 2. NUEVO: Generamos el token de verificación del correo
+        // 2. Generamos el token de verificación del correo
         const tokenVerificacion = crypto.randomBytes(32).toString('hex');
 
         // 3. Insertamos TODOS los campos en la BD
@@ -83,6 +83,7 @@ app.post('/api/registro', async (req, res) => {
             const urlVerificacion = `https://seroa-web-production.up.railway.app/api/verificar-correo?token=${tokenVerificacion}`;
 
             // 5. Creamos el correo electrónico
+            // AQUÍ ESTÁ LA LÍNEA QUE PREGUNTABAS:
             const mailOptions = {
                 from: `"Seroa Plataforma" <${process.env.EMAIL_USER}>`,
                 to: email, // Enviamos el correo a la dirección original
@@ -102,12 +103,15 @@ app.post('/api/registro', async (req, res) => {
                 `
             };
 
-            // 6. Lanzamos el correo
+            // 6. Lanzamos el correo 
             transporter.sendMail(mailOptions, (mailErr, info) => {
                 if (mailErr) {
-                    console.error("Error enviando correo con Nodemailer:", mailErr);
-                    return res.json({ mensaje: 'Cuenta creada, pero hubo un problema al enviar el correo de verificación.' });
+                    // Si falla, avisamos a la consola de Railway y le decimos a la página que se detenga (status 500)
+                    console.error("Error crítico enviando correo con Nodemailer:", mailErr);
+                    return res.status(500).json({ error: 'Tu usuario se guardó, pero hubo un error de Google al enviar el correo. Revisa Railway.' });
                 }
+                
+                // Si todo sale bien, la página avanza a la pantalla de "Esperando confirmación"
                 res.json({ mensaje: 'Registro exitoso. Por favor, revisa tu bandeja de entrada para verificar tu cuenta.' });
             });
         });
@@ -118,7 +122,7 @@ app.post('/api/registro', async (req, res) => {
     }
 });
 
-            //Verificar correo
+// Verificar correo
 app.get('/api/verificar-correo', (req, res) => {
     const { token } = req.query;
 
@@ -136,7 +140,7 @@ app.get('/api/verificar-correo', (req, res) => {
 
         const usuarioId = results[0].id;
 
-        // Si lo encuentra, cambiamos verificado a TRUE y borramos el token para que no se use dos veces
+        // Si lo encuentra, cambiamos verificado a TRUE y borramos el token
         const queryActualizar = 'UPDATE usuarios SET verificado = TRUE, token_verificacion = NULL WHERE id = ?';
         
         db.query(queryActualizar, [usuarioId], (updateErr, updateResult) => {
@@ -144,16 +148,16 @@ app.get('/api/verificar-correo', (req, res) => {
                 return res.status(500).send('Error al activar la cuenta.');
             }
 
-            // Redirección directa a tu login.html pasándole una señal por la URL
+            // Redirección directa a tu login.html
             res.redirect('/login.html?verificado=true');
         });
     });
 });
-                    //LOGIN
+
+// LOGIN
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
     
-    // Usamos la función importada para buscar el correo encriptado
     const emailHashBuscado = generarHashBusqueda(email);
 
     db.query("SELECT * FROM usuarios WHERE email_hash = ?", [emailHashBuscado], async (err, results) => {
@@ -161,7 +165,7 @@ app.post('/api/login', (req, res) => {
         
         const usuario = results[0];
         
-        // NUEVA VALIDACIÓN: BLOQUEO POR CORREO NO VERIFICADO     
+        // BLOQUEO POR CORREO NO VERIFICADO     
         if (!usuario.verificado) {
             return res.status(403).json({ 
                 error: "Tu cuenta aún no está activa. Por favor, revisa tu bandeja de entrada y verifica tu correo antes de entrar." 
@@ -172,12 +176,12 @@ app.post('/api/login', (req, res) => {
 
         res.json({ 
             mensaje: "Inicio de sesión exitoso", 
-            nombre: desencriptar(usuario.nombre) // Usamos la función importada
+            nombre: desencriptar(usuario.nombre) 
         });
     });
 });
 
-                //  comprobar en tiempo real si el usuario ya verificó su correo   //
+// Comprobar en tiempo real si el usuario ya verificó su correo
 app.get('/api/status-verificacion', (req, res) => {
     const { email } = req.query;
 
@@ -185,7 +189,6 @@ app.get('/api/status-verificacion', (req, res) => {
         return res.status(400).json({ error: 'Email requerido.' });
     }
 
-    // Generamos el hash para buscarlo de forma segura en la BD
     const emailHashBuscado = generarHashBusqueda(email);
 
     const query = 'SELECT verificado, nombre FROM usuarios WHERE email_hash = ?';
@@ -197,7 +200,6 @@ app.get('/api/status-verificacion', (req, res) => {
 
         const usuario = results[0];
 
-        // Retornamos si ya está verificado (1 o true) y su nombre desencriptado
         res.json({
             verificado: usuario.verificado === 1 || usuario.verificado === true,
             nombre: desencriptar(usuario.nombre)
