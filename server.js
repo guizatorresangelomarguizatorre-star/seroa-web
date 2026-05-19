@@ -30,11 +30,12 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-// Configuración explícita para Gmail
+
+// Configuración explícita para Gmail (Optimizada para la nube)
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Usa una conexión segura desde el inicio
+    port: 587, 
+    secure: false, // Debe estar en false cuando usamos el puerto 587
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
