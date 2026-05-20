@@ -2,7 +2,7 @@
 const firebaseConfig = {
     apiKey: "AIzaSyD8GcNRjouSlrlNSKXcNrjl0gjAYuXvTMQ",
     authDomain: "seroa-e8606.firebaseapp.com",
-    databaseURL: "https://console.firebase.google.com/u/0/project/seroa-e8606/database/seroa-e8606-default-rtdb/data/~2F",
+    databaseURL: "seroa-e8606-default-rtdb.firebaseio.com",
     projectId: "seroa-e8606",
     storageBucket: "seroa-e8606.firebasestorage.app",
     messagingSenderId: "985506819702",
