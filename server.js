@@ -97,7 +97,6 @@ app.post('/api/registro', async (req, res) => {
                         'content-type': 'application/json'
                     },
                     body: JSON.stringify({
-                        // 👇 ¡PON TU CORREO AQUÍ! 👇
                         sender: { name: 'Seroa Plataforma', email: 'seroaweb@gmail.com' }, 
                         to: [{ email: email }],
                         subject: 'Verifica tu cuenta - Seroa',
