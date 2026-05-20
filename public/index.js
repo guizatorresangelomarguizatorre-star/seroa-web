@@ -1,8 +1,9 @@
-// 1. CONFIGURACIÓN DE FIREBASE (Usa las llaves del Paso 1)
+// 1. CONFIGURACIÓN DE FIREBASE
 const firebaseConfig = {
-    apiKey: "AIzaSyD8GcNRjouSlrlNSKXcNrjl0gjAYuXvTMQ",
+    apiKey: "AIzaSyD8GcNrjousLrlNSKXcNrjl0gjAYuXvTMQ",
     authDomain: "seroa-e8606.firebaseapp.com",
-    databaseURL: "seroa-e8606-default-rtdb.firebaseio.com",
+    // OJO: Para la página web SÍ se necesita poner https:// (es distinto al código del ESP32)
+    databaseURL: "https://seroa-e8606-default-rtdb.firebaseio.com",
     projectId: "seroa-e8606",
     storageBucket: "seroa-e8606.firebasestorage.app",
     messagingSenderId: "985506819702",
@@ -13,18 +14,21 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Arreglos para guardar el historial de la gráfica (últimas 10 lecturas)
-let historialSpo2 = [90, 90, 90, 90, 90, 90, 90, 90, 90, 90];
-let historialBpm = [60, 60, 60, 60, 60, 60, 60, 60, 60, 60];
-let categoriasTiempo = ['','','','','','','','','',''];
+// 2. RECUPERAR LA MEMORIA (Buscamos si hay datos guardados de antes)
+let historialSpo2 = JSON.parse(localStorage.getItem('seroaHistorialSpo2')) || [];
+let historialBpm = JSON.parse(localStorage.getItem('seroaHistorialBpm')) || [];
+let categoriasTiempo = JSON.parse(localStorage.getItem('seroaCategoriasTiempo')) || [];
 
-// 2. CONFIGURACIÓN DE LAS GRÁFICAS (Igual de bonitas, pero dinámicas)
+// Límite de puntos en la gráfica para que no se apelmace y se vea limpia
+const LIMITE_PUNTOS = 15;
+
+// 3. CONFIGURACIÓN DE LAS GRÁFICAS
 const commonOptions = {
     chart: { type: 'area', height: 250, toolbar: { show: false }, foreColor: '#555', animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } } },
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
     dataLabels: { enabled: false },
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
-    xaxis: { range: 10 } // Mostrar solo los últimos 10 puntos
+    xaxis: { range: 10 } // Muestra los últimos 10 saltos visualmente
 };
 
 let chartSpo2, chartBpm;
@@ -41,7 +45,7 @@ if(document.querySelector("#bpmChart")) {
     chartBpm.render();
 }
 
-// 3. EL MOTOR DE TIEMPO REAL
+// 4. EL MOTOR DE TIEMPO REAL CON MEMORIA
 // Nos quedamos escuchando el "Pizarrón" de Firebase
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
@@ -51,20 +55,32 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
         const actualSpo2 = datos.spo2;
         const actualBpm = datos.bpm;
 
-        // Actualizamos los números grandotes en el HTML
+        // 1. Actualizamos los números grandotes en el HTML
         document.getElementById('spo2Valor').innerText = actualSpo2;
         document.getElementById('bpmValor').innerText = actualBpm;
 
-        // Generamos la hora actual para la gráfica
+        // 2. Generamos la hora exacta
         const ahora = new Date();
         const horaTexto = ahora.getHours() + ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() + ':' + (ahora.getSeconds() < 10 ? '0' : '') + ahora.getSeconds();
 
-        // Recorremos el historial y agregamos el dato nuevo
+        // 3. Metemos el dato nuevo al final de las listas
         historialSpo2.push(actualSpo2);
         historialBpm.push(actualBpm);
         categoriasTiempo.push(horaTexto);
 
-        // Actualizamos las gráficas en pantalla
+        // 4. Si la lista ya tiene más de 15 puntos, borramos el más viejo
+        if (historialSpo2.length > LIMITE_PUNTOS) {
+            historialSpo2.shift();
+            historialBpm.shift();
+            categoriasTiempo.shift();
+        }
+
+        // 5. ¡EL TRUCO DE LA MEMORIA! Guardamos las listas en el navegador
+        localStorage.setItem('seroaHistorialSpo2', JSON.stringify(historialSpo2));
+        localStorage.setItem('seroaHistorialBpm', JSON.stringify(historialBpm));
+        localStorage.setItem('seroaCategoriasTiempo', JSON.stringify(categoriasTiempo));
+
+        // 6. Refrescamos los dibujos de las gráficas
         if(chartSpo2) {
             chartSpo2.updateSeries([{ data: historialSpo2 }]);
             chartSpo2.updateOptions({ xaxis: { categories: categoriasTiempo } });
@@ -74,11 +90,10 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
             chartBpm.updateOptions({ xaxis: { categories: categoriasTiempo } });
         }
         
-        // Disparador de Alerta Crítica Visual (Si baja de 90%)
+        // 7. Disparador de Alerta Crítica Visual (Si baja de 90%)
         const alertaGlobal = document.getElementById('alertaGlobalSeroa');
-        if (actualSpo2 < 90 && alertaGlobal.classList.contains('d-none')) {
+        if (actualSpo2 < 90 && alertaGlobal && alertaGlobal.classList.contains('d-none')) {
             alertaGlobal.classList.remove('d-none');
-            // Aquí puedes conectar el sonido de la alarma
         }
     }
 });

@@ -75,34 +75,50 @@
    </div>
 
     <div class="row mt-3">
-      <div class="col-md-6 mb-3">
-        <div class="card metric-card shadow-sm p-2">
+      <div class="col-md-12 mb-3">
+        <div class="card metric-card shadow-sm p-3">
           <div class="card-body">
             <small class="text-white-50">Normal: 95-100%</small>
             <div class="d-flex align-items-center justify-content-between">
               <div>
                 <h6 class="mt-2"><i class="bi bi-lungs-fill"></i> % SpO2</h6>
-                <h1 class="display-4 fw-bold" id="spo2Valor">--</h1>
+                <h1 class="display-3 fw-bold" id="spo2Valor">--</h1>
               </div>
               <div id="miniChartSpo2"></div>
             </div>
-            <small>Promedio (Última hora): 98%</small>
           </div>
         </div>
       </div>
+      <div class="col-md-12 mb-5">
+        <div class="card shadow-sm chart-container">
+          <div class="card-body">
+            <h6 class="text-white text-center">Tendencia de Oxígeno (SpO2)</h6>
+            <div id="spo2Chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <div class="col-md-6 mb-3">
-        <div class="card metric-card shadow-sm p-2">
+    <div class="row mt-3 mb-5">
+      <div class="col-md-12 mb-3">
+        <div class="card metric-card shadow-sm p-3">
           <div class="card-body">
             <small class="text-white-50">Normal: 60-90 BPM</small>
             <div class="d-flex align-items-center justify-content-between">
               <div>
                 <h6 class="mt-2"><i class="bi bi-heart-pulse-fill"></i> PR bpm</h6>
-                <h1 class="display-4 fw-bold" id="bpmValor">--</h1>
+                <h1 class="display-3 fw-bold" id="bpmValor">--</h1>
               </div>
               <div id="miniChartBpm"></div>
             </div>
-            <small>Promedio (Última hora): 62 BPM</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-12 mb-4">
+        <div class="card shadow-sm chart-container">
+          <div class="card-body">
+            <h6 class="text-white text-center">Frecuencia Cardíaca (BPM)</h6>
+            <div id="bpmChart"></div>
           </div>
         </div>
       </div>
@@ -127,7 +143,7 @@
       </div>
     </div>
   </div>
-  
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
