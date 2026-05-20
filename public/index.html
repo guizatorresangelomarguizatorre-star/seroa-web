@@ -74,9 +74,11 @@
     </div>
    </div>
 
-    <div class="row mt-3">
-      <div class="col-md-12 mb-3">
-        <div class="card metric-card shadow-sm p-3">
+ <div class="row mt-3 mb-5">
+      
+      <div class="col-lg-6 col-md-12 mb-4">
+        
+        <div class="card metric-card shadow-sm p-3 mb-3">
           <div class="card-body">
             <small class="text-white-50">Normal: 95-100%</small>
             <div class="d-flex align-items-center justify-content-between">
@@ -88,15 +90,40 @@
             </div>
           </div>
         </div>
-      </div>
-      <div class="col-md-12 mb-5">
+
         <div class="card shadow-sm chart-container">
           <div class="card-body">
             <h6 class="text-white text-center">Tendencia de Oxígeno (SpO2)</h6>
             <div id="spo2Chart"></div>
           </div>
         </div>
+
       </div>
+
+      <div class="col-lg-6 col-md-12 mb-4">
+        
+        <div class="card metric-card shadow-sm p-3 mb-3">
+          <div class="card-body">
+            <small class="text-white-50">Normal: 60-90 BPM</small>
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="mt-2"><i class="bi bi-heart-pulse-fill"></i> PR bpm</h6>
+                <h1 class="display-3 fw-bold" id="bpmValor">--</h1>
+              </div>
+              <div id="miniChartBpm"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm chart-container">
+          <div class="card-body">
+            <h6 class="text-white text-center">Frecuencia Cardíaca (BPM)</h6>
+            <div id="bpmChart"></div>
+          </div>
+        </div>
+
+      </div>
+
     </div>
 
     <div class="row mt-3 mb-5">
