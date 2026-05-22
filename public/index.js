@@ -28,7 +28,17 @@ const commonOptions = {
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
     dataLabels: { enabled: false },
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
-    xaxis: { type: 'datetime' } // <-- CLAVE: Asegúrate de que esto diga 'datetime'
+    xaxis: { 
+        type: 'datetime',
+        labels: { show: false }, // ELIMINAMOS la hora de la parte inferior
+        axisBorder: { show: false },
+        axisTicks: { show: false }
+    },
+    tooltip: {
+        x: {
+            format: 'HH:mm:ss' // REGRESAMOS la hora exacta al recuadro flotante
+        }
+    }
 };
 
 let chartSpo2, chartBpm;
@@ -45,7 +55,7 @@ if(document.querySelector("#bpmChart")) {
     chartBpm.render();
 }
 
-// === PARCHE DE SEGURIDAD: Limpiamos la memoria si tiene el formato viejo ===
+// === PARCHE DE SEGURIDAD PARA LIMPIAR MEMORIA VIEJA ===
 if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
     historialSpo2 = [];
     historialBpm = [];
@@ -53,7 +63,7 @@ if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
     localStorage.removeItem('seroaHistorialBpm');
 }
 
-// 4. EL MOTOR DE TIEMPO REAL CON MEMORIA INTELIGENTE
+// 4. EL MOTOR DE TIEMPO REAL
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
     
@@ -70,10 +80,11 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
         if (actualSpo2 === 0 || actualBpm === 0) {
             cartelEstado.style.display = 'block';
             textoEstado.innerText = "Por favor, coloca tu dispositivo Seroa en tu dedo para comenzar el monitoreo.";
+            
+            // Ponemos guiones, NO la palabra "Calculando"
             valorSpo2.innerText = "--";
             valorBpm.innerText = "--";
             
-            // Vaciamos la gráfica visualmente para que empiece limpia al poner el dedo de nuevo
             historialSpo2 = [];
             historialBpm = [];
             if(chartSpo2) chartSpo2.updateSeries([{ data: [] }]);
@@ -81,25 +92,17 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
             return; 
         } 
         
-        // === 2. MODO "RUIDO / CALIBRANDO" ===
-        if (actualSpo2 < 80 || actualBpm > 130) {
+        // === 2. MODO "CALIBRANDO" (Filtrando solo el -999 o basura irreal) ===
+        // Dejamos pasar todo valor posible (incluso tu 83%), solo bloqueamos errores de hardware
+        if (actualSpo2 < 50 || actualBpm > 250) {
             cartelEstado.style.display = 'block';
-            
-            // Si la pantalla dice "--" o "Calculando", significa que RECIÉN puso el dedo
-            if (valorSpo2.innerText === "--" || valorSpo2.innerText === "Calculando...") {
-                textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
-                valorSpo2.innerText = "Calculando...";
-                valorBpm.innerText = "Calculando...";
-            } else {
-                // Si ya había un dato válido, NO borramos los números para que puedas leerlos
-                // Solo cambiamos el mensaje de aviso
-                textoEstado.innerText = "Interferencia detectada. Mantén el dedo inmóvil...";
-            }
-            return; // No graficamos este "ruido" para no arruinar la curva
+            textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
+            // No tocamos los valores (valorSpo2.innerText) para que no diga "Calculando"
+            return; 
         }
 
         // === 3. MODO "MONITOREO ACTIVO" ===
-        // Si la señal es buena, quitamos carteles y actualizamos números y gráficas
+        // Si el valor es normal (ej. 83), quitamos el cartel y graficamos todo tal cual manda el ESP32
         cartelEstado.style.display = 'none';
 
         valorSpo2.innerText = actualSpo2;
