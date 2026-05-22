@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guía de Inicio - Seroa</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    body, html { height: 100%; margin: 0; background-color: #f8fbfb; }
+    .carousel-item { height: 100vh; transition: transform 0.6s ease-in-out; }
+    .guia-container { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 2rem; }
+    .icono-gigante { font-size: 6rem; color: #20c997; margin-bottom: 1.5rem; }
+    .carousel-indicators [data-bs-target] { background-color: #20c997; width: 12px; height: 12px; border-radius: 50%; margin: 0 8px; }
+    .btn-seroa { background-color: #20c997; color: white; font-weight: bold; padding: 12px 30px; border-radius: 50px; font-size: 1.2rem; border: none; transition: 0.3s; }
+    .btn-seroa:hover { background-color: #1aa179; color: white; transform: scale(1.05); }
+    .control-btn { background-color: rgba(32, 201, 151, 0.1); border-radius: 50%; width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; }
+  </style>
+</head>
+<body>
+
+<div id="carruselGuiaSeroa" class="carousel slide" data-bs-touch="true" data-bs-interval="false">
+  
+  <div class="carousel-indicators mb-5">
+    <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+    <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="1" aria-label="Slide 2"></button>
+    <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="2" aria-label="Slide 3"></button>
+    <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="3" aria-label="Slide 4"></button>
+  </div>
+
+  <div class="carousel-inner">
+    
+    <div class="carousel-item active">
+      <div class="guia-container">
+        <i class="bi bi-lungs-fill icono-gigante"></i>
+        <h1 class="fw-bold text-dark mb-3">Bienvenido a Seroa</h1>
+        <p class="fs-5 text-muted max-w-75">El sistema inteligente de monitoreo médico y dosificación de oxígeno. Desliza para descubrir cómo nuestra tecnología cuida de ti y de tus pacientes.</p>
+      </div>
+    </div>
+
+    <div class="carousel-item">
+      <div class="guia-container">
+        <i class="bi bi-activity icono-gigante" style="color: #0dcaf0;"></i>
+        <h1 class="fw-bold text-dark mb-3">Dashboard en Tiempo Real</h1>
+        <p class="fs-5 text-muted max-w-75">En la pestaña <strong>Inicio</strong>, podrás ver gráficas en vivo de la Saturación de Oxígeno (SpO2) y el Ritmo Cardíaco (BPM) capturados directamente desde nuestro hardware IoT.</p>
+      </div>
+    </div>
+
+    <div class="carousel-item">
+      <div class="guia-container">
+        <i class="bi bi-person-vcard icono-gigante" style="color: #ffc107;"></i>
+        <h1 class="fw-bold text-dark mb-3">Gestión Total del Paciente</h1>
+        <p class="fs-5 text-muted max-w-75">Utiliza la pestaña <strong>Pacientes</strong> para administrar expedientes, y <strong>Dosificación / Tanque</strong> para verificar los niveles de oxígeno y las activaciones automáticas de nuestras válvulas de seguridad.</p>
+      </div>
+    </div>
+
+    <div class="carousel-item">
+      <div class="guia-container">
+        <i class="bi bi-file-earmark-medical-fill icono-gigante" style="color: #198754;"></i>
+        <h1 class="fw-bold text-dark mb-3">Historial y Reportes PDF</h1>
+        <p class="fs-5 text-muted max-w-75 mb-5">En el <strong>Registro Diario</strong>, toda la información se guarda automáticamente cada hora. Podrás agregar notas médicas y descargar reportes completos en PDF con un solo clic.</p>
+        
+        <a href="login.html" class="btn btn-seroa shadow">Comenzar y Entrar al Sistema</a>
+      </div>
+    </div>
+
+  </div>
+
+  <button class="carousel-control-prev" type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide="prev">
+    <div class="control-btn"><i class="bi bi-chevron-left text-success fs-3"></i></div>
+    <span class="visually-hidden">Anterior</span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide="next">
+    <div class="control-btn"><i class="bi bi-chevron-right text-success fs-3"></i></div>
+    <span class="visually-hidden">Siguiente</span>
+  </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
