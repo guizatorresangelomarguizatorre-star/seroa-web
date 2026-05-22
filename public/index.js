@@ -28,7 +28,7 @@ const commonOptions = {
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
     dataLabels: { enabled: false },
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
-    xaxis: { range: 10 } // Muestra los últimos 10 saltos visualmente
+    xaxis: { type: 'datetime' } // <-- CLAVE: Asegúrate de que esto diga 'datetime'
 };
 
 let chartSpo2, chartBpm;
@@ -45,7 +45,15 @@ if(document.querySelector("#bpmChart")) {
     chartBpm.render();
 }
 
-// 4. EL MOTOR DE TIEMPO REAL CON MEMORIA
+// === PARCHE DE SEGURIDAD: Limpiamos la memoria si tiene el formato viejo ===
+if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
+    historialSpo2 = [];
+    historialBpm = [];
+    localStorage.removeItem('seroaHistorialSpo2');
+    localStorage.removeItem('seroaHistorialBpm');
+}
+
+// 4. EL MOTOR DE TIEMPO REAL CON MEMORIA INTELIGENTE
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
     
@@ -53,7 +61,6 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
         const actualSpo2 = datos.spo2;
         const actualBpm = datos.bpm;
         
-        // Elementos de la UI
         const cartelEstado = document.getElementById('estadoSensorOverlay');
         const textoEstado = document.getElementById('textoEstadoSensor');
         const valorSpo2 = document.getElementById('spo2Valor');
@@ -63,29 +70,36 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
         if (actualSpo2 === 0 || actualBpm === 0) {
             cartelEstado.style.display = 'block';
             textoEstado.innerText = "Por favor, coloca tu dispositivo Seroa en tu dedo para comenzar el monitoreo.";
-            
             valorSpo2.innerText = "--";
             valorBpm.innerText = "--";
             
-            // Hacemos un RETURN aquí para que el código de abajo no se ejecute
-            // ¡Esto evita que el tiempo avance y dibuje datos basura en la gráfica!
+            // Vaciamos la gráfica visualmente para que empiece limpia al poner el dedo de nuevo
+            historialSpo2 = [];
+            historialBpm = [];
+            if(chartSpo2) chartSpo2.updateSeries([{ data: [] }]);
+            if(chartBpm) chartBpm.updateSeries([{ data: [] }]);
             return; 
         } 
         
-        // === 2. MODO "CALIBRANDO" ===
-        // Si el ESP32 está mandando números crudos inestables (ej. SpO2 en 45 o 150 BPM)
-        if (actualSpo2 < 70 || actualBpm > 130) {
+        // === 2. MODO "RUIDO / CALIBRANDO" ===
+        if (actualSpo2 < 80 || actualBpm > 130) {
             cartelEstado.style.display = 'block';
-            textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
             
-            valorSpo2.innerText = "Calculando...";
-            valorBpm.innerText = "Calculando...";
-            
-            return; // Tampoco graficamos el ruido de calibración
+            // Si la pantalla dice "--" o "Calculando", significa que RECIÉN puso el dedo
+            if (valorSpo2.innerText === "--" || valorSpo2.innerText === "Calculando...") {
+                textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
+                valorSpo2.innerText = "Calculando...";
+                valorBpm.innerText = "Calculando...";
+            } else {
+                // Si ya había un dato válido, NO borramos los números para que puedas leerlos
+                // Solo cambiamos el mensaje de aviso
+                textoEstado.innerText = "Interferencia detectada. Mantén el dedo inmóvil...";
+            }
+            return; // No graficamos este "ruido" para no arruinar la curva
         }
 
         // === 3. MODO "MONITOREO ACTIVO" ===
-        // Si pasamos los filtros, ocultamos el cartel y graficamos normalmente
+        // Si la señal es buena, quitamos carteles y actualizamos números y gráficas
         cartelEstado.style.display = 'none';
 
         valorSpo2.innerText = actualSpo2;
