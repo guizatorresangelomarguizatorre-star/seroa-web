@@ -30,31 +30,17 @@ const commonOptions = {
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
     xaxis: { 
         type: 'datetime',
-        labels: { show: false }, 
+        labels: { 
+            show: false,
+            datetimeUTC: false // <--- ESTA ES LA CLAVE: Desactiva el horario global
+        }, 
         axisBorder: { show: false },
         axisTicks: { show: false }
     },
-    tooltip: { x: { format: 'HH:mm:ss' } }
+    tooltip: {
+        x: { format: 'HH:mm:ss' }
+    }
 };
-
-let chartSpo2, chartBpm;
-
-if(document.querySelector("#spo2Chart")) {
-    const spo2Options = { ...commonOptions, colors: ['#66bb6a'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "SpO2", data: historialSpo2 }], yaxis: { min: 80, max: 100 } };
-    chartSpo2 = new ApexCharts(document.querySelector("#spo2Chart"), spo2Options);
-    chartSpo2.render();
-}
-
-if(document.querySelector("#bpmChart")) {
-    const bpmOptions = { ...commonOptions, colors: ['#3b8b88'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "BPM", data: historialBpm }], yaxis: { min: 40, max: 150 } };
-    chartBpm = new ApexCharts(document.querySelector("#bpmChart"), bpmOptions);
-    chartBpm.render();
-}
-
-if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
-    historialSpo2 = []; historialBpm = [];
-    localStorage.removeItem('seroaHistorialSpo2'); localStorage.removeItem('seroaHistorialBpm');
-}
 
 // 4. EL MOTOR DE TIEMPO REAL
 database.ref('Seroa/Actual').on('value', (snapshot) => {
