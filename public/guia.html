@@ -12,8 +12,8 @@
         height: 100%; 
         margin: 0; 
         padding: 0; 
-        overflow: hidden; /* Evita barras de desplazamiento externas */
-        background-color: #000; /* Fondo negro por seguridad, aunque no debería verse */
+        overflow: hidden; 
+        background-color: #000; 
     }
     
     /* Contenedor principal del carrusel ocupando toda la ventana visual (Viewport) */
@@ -22,22 +22,17 @@
         width: 100vw;
     }
 
-    /* 2. EL CAMBIO MÁGICO PARA ESTIRAR LA IMAGEN */
+    /* 2. ESTIRAR LA IMAGEN */
     .img-guia {
-        width: 100vw;  /* Ocupa el 100% del ancho de la ventana */
-        height: 100vh; /* Ocupa el 100% del alto de la ventana */
-        
-        /* === IMPORTANTE ===
-           object-fit: fill; estira la imagen para llenar el contenedor
-           ignoring its aspect ratio. Esto elimina cualquier borde blanco. */
+        width: 100vw;  
+        height: 100vh; 
         object-fit: fill; 
-        
-        display: block; /* Quita espacios extra abajo */
+        display: block; 
     }
 
     /* Estilos de los indicadores (puntitos) */
     .carousel-indicators {
-        bottom: 20px; /* Ajuste para que no choquen con el botón */
+        bottom: 20px; 
     }
     .carousel-indicators [data-bs-target] { 
         background-color: #20c997; 
@@ -45,7 +40,7 @@
         height: 14px; 
         border-radius: 50%; 
         opacity: 0.6;
-        border: 2px solid white; /* Borde para que se vean sobre cualquier imagen */
+        border: 2px solid white; 
     }
     .carousel-indicators .active {
         opacity: 1;
@@ -55,12 +50,12 @@
     /* Botón final sobrepuesto de forma elegante */
     .btn-comenzar-container {
         position: absolute;
-        bottom: 8%; /* Posición desde abajo */
+        bottom: 8%; 
         width: 100%;
         display: flex;
         justify-content: center;
         z-index: 10;
-        padding: 0 20px; /* Padding para móviles */
+        padding: 0 20px; 
     }
 
     .btn-seroa { 
@@ -70,7 +65,7 @@
         padding: 18px 50px; 
         border-radius: 50px; 
         font-size: 1.4rem; 
-        border: 3px solid white; /* Borde blanco para resaltar */
+        border: 3px solid white; 
         transition: 0.3s;
         box-shadow: 0 6px 20px rgba(0,0,0,0.5);
         text-transform: uppercase;
@@ -86,7 +81,7 @@
 
     /* Controles laterales más visibles */
     .control-btn { 
-        background-color: rgba(0, 0, 0, 0.4); /* Fondo más oscuro */
+        background-color: rgba(0, 0, 0, 0.4); 
         border-radius: 50%; 
         width: 60px; 
         height: 60px; 
@@ -96,13 +91,13 @@
         border: 2px solid white;
     }
     .carousel-control-prev, .carousel-control-next {
-        width: 10%; /* Área de clic más grande */
+        width: 10%; 
     }
   </style>
 </head>
 <body>
 
-<div id="carruselGuiaSeroa" class="carousel slide carousel-fade" data-bs-touch="true" data-bs-interval="false">
+<div id="carruselGuiaSeroa" class="carousel slide" data-bs-touch="true" data-bs-interval="false">
   
   <div class="carousel-indicators mb-4">
     <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
