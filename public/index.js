@@ -30,11 +30,13 @@ const commonOptions = {
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
     xaxis: { 
         type: 'datetime',
-        labels: { show: false }, 
+        labels: { show: false }, // Sin horas estancadas abajo
         axisBorder: { show: false },
         axisTicks: { show: false }
     },
-    tooltip: { x: { format: 'HH:mm:ss' } }
+    tooltip: {
+        x: { format: 'HH:mm:ss' } // Hora en el recuadro flotante
+    }
 };
 
 let chartSpo2, chartBpm;
@@ -52,17 +54,21 @@ if(document.querySelector("#bpmChart")) {
 }
 
 if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
-    historialSpo2 = []; historialBpm = [];
-    localStorage.removeItem('seroaHistorialSpo2'); localStorage.removeItem('seroaHistorialBpm');
+    historialSpo2 = [];
+    historialBpm = [];
+    localStorage.removeItem('seroaHistorialSpo2');
+    localStorage.removeItem('seroaHistorialBpm');
 }
 
-// 4. EL MOTOR DE TIEMPO REAL
+// 4. EL MOTOR DE TIEMPO REAL CON MENSAJES INDEPENDIENTES
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
     
     if (datos) {
         const cartelEstado = document.getElementById('estadoSensorOverlay');
         const textoEstado = document.getElementById('textoEstadoSensor');
+        const valorSpo2 = document.getElementById('spo2Valor');
+        const valorBpm = document.getElementById('bpmValor');
         
         // Leemos el canal independiente de mensajes
         const estadoSensor = datos.estado; 
@@ -70,24 +76,34 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
         // === CONTROL DE MENSAJES SUPERIORES ===
         if (estadoSensor === "SIN_DEDO") {
             cartelEstado.style.display = 'block';
-            textoEstado.innerText = "Por favor, coloca tu dispositivo Seroa en tu dedo para comenzar el monitoreo.";
+            // Tu texto personalizado:
+            textoEstado.innerText = "Por favor coloca tu dedo, el sensor tardará unos segundos en realizar la calibración, en un instante te brindaremos tus datos.";
+            
+            valorSpo2.innerText = "--";
+            valorBpm.innerText = "--";
             return; // No avanzamos la gráfica
             
         } else if (estadoSensor === "CALIBRANDO") {
             cartelEstado.style.display = 'block';
             textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
+            
+            // Si ya tenías un dato, lo deja en pantalla. Si no, muestra "--"
+            if (valorSpo2.innerText === "--" || valorSpo2.innerText === "") {
+                valorSpo2.innerText = "--";
+                valorBpm.innerText = "--";
+            }
             return; // No avanzamos la gráfica
             
         } else if (estadoSensor === "ACTIVO") {
-            // Ocultamos el mensaje de arriba
+            // Señal perfecta, ocultamos el mensaje
             cartelEstado.style.display = 'none';
 
             // AQUÍ GRAFICAMOS NORMALMENTE (Sin alterar tu lógica)
             const actualSpo2 = datos.spo2;
             const actualBpm = datos.bpm;
 
-            document.getElementById('spo2Valor').innerText = actualSpo2;
-            document.getElementById('bpmValor').innerText = actualBpm;
+            valorSpo2.innerText = actualSpo2;
+            valorBpm.innerText = actualBpm;
 
             const ahora = new Date().getTime(); 
 
