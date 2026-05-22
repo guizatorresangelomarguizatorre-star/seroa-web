@@ -10,16 +10,18 @@ module.exports = (db) => {
 
         // Solo guardamos si los datos son reales
         if (spo2 > 0 && bpm > 0) {
-            let es_critico = "Normal";
+            
+            // === EL FIX: Usamos una escala numérica ===
+            let es_critico = 0; // 0 equivale a "Normal"
             
             // Lógica de triaje médico
             if (spo2 < 85 || bpm < 50 || bpm > 140) {
-                es_critico = "Peligro";
+                es_critico = 2; // 2 equivale a "Peligro"
             } else if (spo2 < 90 || bpm < 60 || bpm > 100) {
-                es_critico = "Precaucion";
+                es_critico = 1; // 1 equivale a "Precaucion"
             }
 
-            // Datos estáticos por ahora (puedes volverlos dinámicos después)
+            // Datos estáticos por ahora
             const id_paciente = 1;
             const id_dispositivo = 1;
 
