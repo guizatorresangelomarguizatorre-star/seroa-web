@@ -63,66 +63,57 @@ if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
     localStorage.removeItem('seroaHistorialBpm');
 }
 
-// 4. EL MOTOR DE TIEMPO REAL CON MENSAJES SUPERIORES
+// 4. EL MOTOR DE TIEMPO REAL
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
     
     if (datos) {
-        const actualSpo2 = datos.spo2;
-        const actualBpm = datos.bpm;
-        
         const cartelEstado = document.getElementById('estadoSensorOverlay');
         const textoEstado = document.getElementById('textoEstadoSensor');
-        const valorSpo2 = document.getElementById('spo2Valor');
-        const valorBpm = document.getElementById('bpmValor');
+        
+        // Leemos el canal independiente de mensajes
+        const estadoSensor = datos.estado; 
 
-        // === 1. MODO "SIN DEDO" ===
-        // Si el ESP32 manda 0, mostramos el cartel y borramos los números (sin poner "Calculando")
-        if (actualSpo2 === 0 || actualBpm === 0) {
+        // === CONTROL DE MENSAJES SUPERIORES ===
+        if (estadoSensor === "SIN_DEDO") {
             cartelEstado.style.display = 'block';
             textoEstado.innerText = "Por favor, coloca tu dispositivo Seroa en tu dedo para comenzar el monitoreo.";
+            return; // No avanzamos la gráfica
             
-            valorSpo2.innerText = "--";
-            valorBpm.innerText = "--";
-            return; // No graficamos el 0
-        } 
-        
-        // === 2. MODO "CALIBRANDO" ===
-        // Si el ESP32 manda datos pero están fuera del filtro seguro (SpO2 < 85 o BPM anormal)
-        if (actualSpo2 < 85 || actualBpm < 40 || actualBpm > 130) {
+        } else if (estadoSensor === "CALIBRANDO") {
             cartelEstado.style.display = 'block';
             textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
+            return; // No avanzamos la gráfica
             
-            // Si llega el famoso -999, mostramos "--". Si es un número como 83, lo mostramos para que lo leas.
-            valorSpo2.innerText = (actualSpo2 === -999) ? "--" : actualSpo2;
-            valorBpm.innerText = (actualSpo2 === -999) ? "--" : actualBpm;
-            return; // No graficamos la calibración
+        } else if (estadoSensor === "ACTIVO") {
+            // Ocultamos el mensaje de arriba
+            cartelEstado.style.display = 'none';
+
+            // AQUÍ GRAFICAMOS NORMALMENTE (Sin alterar tu lógica)
+            const actualSpo2 = datos.spo2;
+            const actualBpm = datos.bpm;
+
+            document.getElementById('spo2Valor').innerText = actualSpo2;
+            document.getElementById('bpmValor').innerText = actualBpm;
+
+            const ahora = new Date().getTime(); 
+
+            historialSpo2.push({ x: ahora, y: actualSpo2 });
+            historialBpm.push({ x: ahora, y: actualBpm });
+
+            if (historialSpo2.length > LIMITE_PUNTOS) {
+                historialSpo2.shift();
+                historialBpm.shift();
+            }
+
+            localStorage.setItem('seroaHistorialSpo2', JSON.stringify(historialSpo2));
+            localStorage.setItem('seroaHistorialBpm', JSON.stringify(historialBpm));
+
+            if(chartSpo2) chartSpo2.updateSeries([{ data: historialSpo2 }]);
+            if(chartBpm) chartBpm.updateSeries([{ data: historialBpm }]);
+            
+            const alerta = document.getElementById('alertaGlobalSeroa');
+            if (actualSpo2 < 90 && alerta) alerta.classList.remove('d-none');
         }
-
-        // === 3. MODO "MONITOREO ACTIVO" ===
-        // Datos limpios: Ocultamos el cartel y actualizamos valores y gráficas
-        cartelEstado.style.display = 'none';
-
-        valorSpo2.innerText = actualSpo2;
-        valorBpm.innerText = actualBpm;
-
-        const ahora = new Date().getTime(); 
-
-        historialSpo2.push({ x: ahora, y: actualSpo2 });
-        historialBpm.push({ x: ahora, y: actualBpm });
-
-        if (historialSpo2.length > LIMITE_PUNTOS) {
-            historialSpo2.shift();
-            historialBpm.shift();
-        }
-
-        localStorage.setItem('seroaHistorialSpo2', JSON.stringify(historialSpo2));
-        localStorage.setItem('seroaHistorialBpm', JSON.stringify(historialBpm));
-
-        if(chartSpo2) chartSpo2.updateSeries([{ data: historialSpo2 }]);
-        if(chartBpm) chartBpm.updateSeries([{ data: historialBpm }]);
-        
-        const alerta = document.getElementById('alertaGlobalSeroa');
-        if (actualSpo2 < 90 && alerta) alerta.classList.remove('d-none');
     }
 });
