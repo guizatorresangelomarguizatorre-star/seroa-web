@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 // === CONFIGURACIÓN DE CRIPTOGRAFÍA ===
 const ALGORITMO = 'aes-256-cbc';
-const LLAVE_SECRETA = process.env.ENCRYPTION_KEY || 'LlaveSecretaSeroaDe32Caracteres!'; 
+const LLAVE_SECRETA = process.env.ENCRYPTION_KEY || 'SeroaSistemaSeguro2026Jalisco!!!'; 
 
 // 1. Encriptación de Dos Vías (AES-CBC)
 function encriptar(texto) {

@@ -43,7 +43,8 @@ db.getConnection((err, connection) => {
 });
 
 // === RUTAS DEL SISTEMA ===
-
+const rutasBiometricos = require('./api_biometricos')(db);
+app.use('/api', rutasBiometricos);
 app.post('/api/registro', async (req, res) => {
     const { nombre, email, password } = req.body;
 
