@@ -30,18 +30,25 @@ const commonOptions = {
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
     xaxis: { 
         type: 'datetime',
-        labels: { 
-            show: false,
-            datetimeUTC: false // <--- ESTA ES LA CLAVE: Desactiva el horario global
-        }, 
+        labels: { show: false }, // Mantiene el eje inferior limpio
         axisBorder: { show: false },
         axisTicks: { show: false }
     },
     tooltip: {
-        x: { format: 'HH:mm:ss' }
+        x: {
+            // EL FIX: Formateamos la hora directamente con JavaScript nativo
+            formatter: function(val) {
+                if (!val) return "";
+                const fecha = new Date(val);
+                // Extraemos la hora exacta en formato 24h
+                const horas = fecha.getHours().toString().padStart(2, '0');
+                const minutos = fecha.getMinutes().toString().padStart(2, '0');
+                const segundos = fecha.getSeconds().toString().padStart(2, '0');
+                return `${horas}:${minutos}:${segundos}`;
+            }
+        }
     }
 };
-
 // 4. EL MOTOR DE TIEMPO REAL
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
