@@ -46,61 +46,68 @@ if(document.querySelector("#bpmChart")) {
 }
 
 // 4. EL MOTOR DE TIEMPO REAL CON MEMORIA
-// Nos quedamos escuchando el "Pizarrón" de Firebase
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
     
     if (datos) {
-        // Obtenemos los valores que mandó el ESP32
         const actualSpo2 = datos.spo2;
         const actualBpm = datos.bpm;
+        
+        // Elementos de la UI
+        const cartelEstado = document.getElementById('estadoSensorOverlay');
+        const textoEstado = document.getElementById('textoEstadoSensor');
+        const valorSpo2 = document.getElementById('spo2Valor');
+        const valorBpm = document.getElementById('bpmValor');
 
-        // 1. Actualizamos los números grandotes en el HTML
-        document.getElementById('spo2Valor').innerText = actualSpo2;
-        document.getElementById('bpmValor').innerText = actualBpm;
+        // === 1. MODO "SIN DEDO" ===
+        if (actualSpo2 === 0 || actualBpm === 0) {
+            cartelEstado.style.display = 'block';
+            textoEstado.innerText = "Por favor, coloca tu dispositivo Seroa en tu dedo para comenzar el monitoreo.";
+            
+            valorSpo2.innerText = "--";
+            valorBpm.innerText = "--";
+            
+            // Hacemos un RETURN aquí para que el código de abajo no se ejecute
+            // ¡Esto evita que el tiempo avance y dibuje datos basura en la gráfica!
+            return; 
+        } 
+        
+        // === 2. MODO "CALIBRANDO" ===
+        // Si el ESP32 está mandando números crudos inestables (ej. SpO2 en 45 o 150 BPM)
+        if (actualSpo2 < 70 || actualBpm > 130) {
+            cartelEstado.style.display = 'block';
+            textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
+            
+            valorSpo2.innerText = "Calculando...";
+            valorBpm.innerText = "Calculando...";
+            
+            return; // Tampoco graficamos el ruido de calibración
+        }
 
-        // 2. Generamos la hora exacta
-        const ahora = new Date();
-        const horaTexto = ahora.getHours() + ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() + ':' + (ahora.getSeconds() < 10 ? '0' : '') + ahora.getSeconds();
+        // === 3. MODO "MONITOREO ACTIVO" ===
+        // Si pasamos los filtros, ocultamos el cartel y graficamos normalmente
+        cartelEstado.style.display = 'none';
 
-        // 3. Metemos el dato nuevo al final de las listas
-        historialSpo2.push(actualSpo2);
-        historialBpm.push(actualBpm);
-        categoriasTiempo.push(horaTexto);
+        valorSpo2.innerText = actualSpo2;
+        valorBpm.innerText = actualBpm;
 
-        // 4. Si la lista ya tiene más de 15 puntos, borramos el más viejo
+        const ahora = new Date().getTime(); 
+
+        historialSpo2.push({ x: ahora, y: actualSpo2 });
+        historialBpm.push({ x: ahora, y: actualBpm });
+
         if (historialSpo2.length > LIMITE_PUNTOS) {
             historialSpo2.shift();
             historialBpm.shift();
-            categoriasTiempo.shift();
         }
 
-        // 5. ¡EL TRUCO DE LA MEMORIA! Guardamos las listas en el navegador
         localStorage.setItem('seroaHistorialSpo2', JSON.stringify(historialSpo2));
         localStorage.setItem('seroaHistorialBpm', JSON.stringify(historialBpm));
-        localStorage.setItem('seroaCategoriasTiempo', JSON.stringify(categoriasTiempo));
 
-        // 6. Refrescamos los dibujos de las gráficas de manera sincronizada
-        if (chartSpo2) {
-         chartSpo2.updateOptions({
-              xaxis: {
-                   categories: categoriasTiempo
-              }
-            });
-            chartSpo2.updateSeries([{
-              data: historialSpo2
-          }]);
-        }
-
-        if (chartBpm) {
-         chartBpm.updateOptions({
-                xaxis: {
-                  categories: categoriasTiempo
-             }
-            });
-            chartBpm.updateSeries([{
-               data: historialBpm
-         }]);
-        }
+        if(chartSpo2) chartSpo2.updateSeries([{ data: historialSpo2 }]);
+        if(chartBpm) chartBpm.updateSeries([{ data: historialBpm }]);
+        
+        const alerta = document.getElementById('alertaGlobalSeroa');
+        if (actualSpo2 < 90 && alerta) alerta.classList.remove('d-none');
     }
 });
