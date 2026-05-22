@@ -30,15 +30,11 @@ const commonOptions = {
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
     xaxis: { 
         type: 'datetime',
-        labels: { show: false }, // ELIMINAMOS la hora de la parte inferior
+        labels: { show: false }, 
         axisBorder: { show: false },
         axisTicks: { show: false }
     },
-    tooltip: {
-        x: {
-            format: 'HH:mm:ss' // REGRESAMOS la hora exacta al recuadro flotante
-        }
-    }
+    tooltip: { x: { format: 'HH:mm:ss' } }
 };
 
 let chartSpo2, chartBpm;
@@ -55,65 +51,64 @@ if(document.querySelector("#bpmChart")) {
     chartBpm.render();
 }
 
-// === PARCHE DE SEGURIDAD PARA LIMPIAR MEMORIA VIEJA ===
 if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
-    historialSpo2 = [];
-    historialBpm = [];
-    localStorage.removeItem('seroaHistorialSpo2');
-    localStorage.removeItem('seroaHistorialBpm');
+    historialSpo2 = []; historialBpm = [];
+    localStorage.removeItem('seroaHistorialSpo2'); localStorage.removeItem('seroaHistorialBpm');
 }
 
-// 4. EL MOTOR DE TIEMPO REAL
+// === 4. EL MOTOR DE TIEMPO REAL CON "WATCHDOG TIMER" ===
+
+let temporizadorSensor;
+const cartelEstado = document.getElementById('estadoSensorOverlay');
+const textoEstado = document.getElementById('textoEstadoSensor');
+
+// Esta función se activa sola si el ESP32 deja de mandar datos
+function mostrarAvisoCalibracion() {
+    cartelEstado.style.display = 'block';
+    // El texto exacto que solicitaste
+    textoEstado.innerText = "Por favor coloca tu dedo, el sensor tardará unos segundos en realizar la calibración, en un instante te brindaremos tus datos.";
+}
+
+// Al entrar a la página, mostramos el aviso por defecto
+mostrarAvisoCalibracion();
+
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
     
     if (datos) {
-        const cartelEstado = document.getElementById('estadoSensorOverlay');
-        const textoEstado = document.getElementById('textoEstadoSensor');
+        // 1. ¡LLEGÓ UN DATO! Detenemos el temporizador para que el cartel no aparezca
+        clearTimeout(temporizadorSensor);
         
-        // Leemos el canal independiente de mensajes
-        const estadoSensor = datos.estado; 
+        // 2. Ocultamos el cartel porque la señal es estable
+        cartelEstado.style.display = 'none';
 
-        // === CONTROL DE MENSAJES SUPERIORES ===
-        if (estadoSensor === "SIN_DEDO") {
-            cartelEstado.style.display = 'block';
-            textoEstado.innerText = "Por favor, coloca tu dispositivo Seroa en tu dedo para comenzar el monitoreo.";
-            return; // No avanzamos la gráfica
-            
-        } else if (estadoSensor === "CALIBRANDO") {
-            cartelEstado.style.display = 'block';
-            textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
-            return; // No avanzamos la gráfica
-            
-        } else if (estadoSensor === "ACTIVO") {
-            // Ocultamos el mensaje de arriba
-            cartelEstado.style.display = 'none';
+        // 3. Actualizamos los números en pantalla (tus datos reales y estables)
+        const actualSpo2 = datos.spo2;
+        const actualBpm = datos.bpm;
+        document.getElementById('spo2Valor').innerText = actualSpo2;
+        document.getElementById('bpmValor').innerText = actualBpm;
 
-            // AQUÍ GRAFICAMOS NORMALMENTE (Sin alterar tu lógica)
-            const actualSpo2 = datos.spo2;
-            const actualBpm = datos.bpm;
+        // 4. Actualizamos las gráficas limpiamente
+        const ahora = new Date().getTime(); 
+        historialSpo2.push({ x: ahora, y: actualSpo2 });
+        historialBpm.push({ x: ahora, y: actualBpm });
 
-            document.getElementById('spo2Valor').innerText = actualSpo2;
-            document.getElementById('bpmValor').innerText = actualBpm;
-
-            const ahora = new Date().getTime(); 
-
-            historialSpo2.push({ x: ahora, y: actualSpo2 });
-            historialBpm.push({ x: ahora, y: actualBpm });
-
-            if (historialSpo2.length > LIMITE_PUNTOS) {
-                historialSpo2.shift();
-                historialBpm.shift();
-            }
-
-            localStorage.setItem('seroaHistorialSpo2', JSON.stringify(historialSpo2));
-            localStorage.setItem('seroaHistorialBpm', JSON.stringify(historialBpm));
-
-            if(chartSpo2) chartSpo2.updateSeries([{ data: historialSpo2 }]);
-            if(chartBpm) chartBpm.updateSeries([{ data: historialBpm }]);
-            
-            const alerta = document.getElementById('alertaGlobalSeroa');
-            if (actualSpo2 < 90 && alerta) alerta.classList.remove('d-none');
+        if (historialSpo2.length > LIMITE_PUNTOS) {
+            historialSpo2.shift(); historialBpm.shift();
         }
+
+        localStorage.setItem('seroaHistorialSpo2', JSON.stringify(historialSpo2));
+        localStorage.setItem('seroaHistorialBpm', JSON.stringify(historialBpm));
+
+        if(chartSpo2) chartSpo2.updateSeries([{ data: historialSpo2 }]);
+        if(chartBpm) chartBpm.updateSeries([{ data: historialBpm }]);
+        
+        const alerta = document.getElementById('alertaGlobalSeroa');
+        if (actualSpo2 < 90 && alerta) alerta.classList.remove('d-none');
+
+        // 5. Reiniciamos el temporizador. 
+        // Si pasan 3 segundos y el ESP32 no manda nada (porque quitaste el dedo o se movió),
+        // la función mostrarAvisoCalibracion se ejecutará sola.
+        temporizadorSensor = setTimeout(mostrarAvisoCalibracion, 3000);
     }
 });
