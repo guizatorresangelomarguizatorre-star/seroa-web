@@ -63,7 +63,7 @@ if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
     localStorage.removeItem('seroaHistorialBpm');
 }
 
-// 4. EL MOTOR DE TIEMPO REAL
+// 4. EL MOTOR DE TIEMPO REAL CON MENSAJES SUPERIORES
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
     
@@ -77,32 +77,30 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
         const valorBpm = document.getElementById('bpmValor');
 
         // === 1. MODO "SIN DEDO" ===
+        // Si el ESP32 manda 0, mostramos el cartel y borramos los números (sin poner "Calculando")
         if (actualSpo2 === 0 || actualBpm === 0) {
             cartelEstado.style.display = 'block';
             textoEstado.innerText = "Por favor, coloca tu dispositivo Seroa en tu dedo para comenzar el monitoreo.";
             
-            // Ponemos guiones, NO la palabra "Calculando"
             valorSpo2.innerText = "--";
             valorBpm.innerText = "--";
-            
-            historialSpo2 = [];
-            historialBpm = [];
-            if(chartSpo2) chartSpo2.updateSeries([{ data: [] }]);
-            if(chartBpm) chartBpm.updateSeries([{ data: [] }]);
-            return; 
+            return; // No graficamos el 0
         } 
         
-        // === 2. MODO "CALIBRANDO" (Filtrando solo el -999 o basura irreal) ===
-        // Dejamos pasar todo valor posible (incluso tu 83%), solo bloqueamos errores de hardware
-        if (actualSpo2 < 50 || actualBpm > 250) {
+        // === 2. MODO "CALIBRANDO" ===
+        // Si el ESP32 manda datos pero están fuera del filtro seguro (SpO2 < 85 o BPM anormal)
+        if (actualSpo2 < 85 || actualBpm < 40 || actualBpm > 130) {
             cartelEstado.style.display = 'block';
             textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
-            // No tocamos los valores (valorSpo2.innerText) para que no diga "Calculando"
-            return; 
+            
+            // Si llega el famoso -999, mostramos "--". Si es un número como 83, lo mostramos para que lo leas.
+            valorSpo2.innerText = (actualSpo2 === -999) ? "--" : actualSpo2;
+            valorBpm.innerText = (actualSpo2 === -999) ? "--" : actualBpm;
+            return; // No graficamos la calibración
         }
 
         // === 3. MODO "MONITOREO ACTIVO" ===
-        // Si el valor es normal (ej. 83), quitamos el cartel y graficamos todo tal cual manda el ESP32
+        // Datos limpios: Ocultamos el cartel y actualizamos valores y gráficas
         cartelEstado.style.display = 'none';
 
         valorSpo2.innerText = actualSpo2;
