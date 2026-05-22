@@ -24,7 +24,7 @@ const LIMITE_PUNTOS = 15;
 
 // 3. CONFIGURACIÓN DE LAS GRÁFICAS
 const commonOptions = {
-    chart: { type: 'area', height: 250, toolbar: { show: false }, foreColor: '#555', animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } } },
+    chart: { type: 'area', height: 250, toolbar: { show: false }, foreColor: '#555', animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 500 } } },
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
     dataLabels: { enabled: false },
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
@@ -80,20 +80,27 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
         localStorage.setItem('seroaHistorialBpm', JSON.stringify(historialBpm));
         localStorage.setItem('seroaCategoriasTiempo', JSON.stringify(categoriasTiempo));
 
-        // 6. Refrescamos los dibujos de las gráficas
-        if(chartSpo2) {
-            chartSpo2.updateSeries([{ data: historialSpo2 }]);
-            chartSpo2.updateOptions({ xaxis: { categories: categoriasTiempo } });
+        // 6. Refrescamos los dibujos de las gráficas de manera sincronizada
+        if (chartSpo2) {
+         chartSpo2.updateOptions({
+              xaxis: {
+                   categories: categoriasTiempo
+              }
+            });
+            chartSpo2.updateSeries([{
+              data: historialSpo2
+          }]);
         }
-        if(chartBpm) {
-            chartBpm.updateSeries([{ data: historialBpm }]);
-            chartBpm.updateOptions({ xaxis: { categories: categoriasTiempo } });
-        }
-        
-        // 7. Disparador de Alerta Crítica Visual (Si baja de 90%)
-        const alertaGlobal = document.getElementById('alertaGlobalSeroa');
-        if (actualSpo2 < 90 && alertaGlobal && alertaGlobal.classList.contains('d-none')) {
-            alertaGlobal.classList.remove('d-none');
+
+        if (chartBpm) {
+         chartBpm.updateOptions({
+                xaxis: {
+                  categories: categoriasTiempo
+             }
+            });
+            chartBpm.updateSeries([{
+               data: historialBpm
+         }]);
         }
     }
 });
