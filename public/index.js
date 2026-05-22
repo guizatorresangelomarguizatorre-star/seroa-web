@@ -14,12 +14,20 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// 2. RECUPERAR LA MEMORIA (Buscamos si hay datos guardados de antes)
+// 2. RECUPERAR LA MEMORIA
 let historialSpo2 = JSON.parse(localStorage.getItem('seroaHistorialSpo2')) || [];
 let historialBpm = JSON.parse(localStorage.getItem('seroaHistorialBpm')) || [];
-let categoriasTiempo = JSON.parse(localStorage.getItem('seroaCategoriasTiempo')) || [];
 
-// Límite de puntos en la gráfica para que no se apelmace y se vea limpia
+// === PARCHE DE SEGURIDAD EXTREMO ===
+// Si la memoria guardó basura o un formato viejo, la borramos ANTES de crear la gráfica
+if (historialSpo2.length > 0 && (!Array.isArray(historialSpo2[0]) || historialSpo2[0].length !== 2)) {
+    console.log("Limpiando historial corrupto para revivir las gráficas...");
+    historialSpo2 = [];
+    historialBpm = [];
+    localStorage.removeItem('seroaHistorialSpo2');
+    localStorage.removeItem('seroaHistorialBpm');
+}
+
 const LIMITE_PUNTOS = 15;
 
 // 3. CONFIGURACIÓN DE LAS GRÁFICAS
@@ -30,17 +38,16 @@ const commonOptions = {
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
     xaxis: { 
         type: 'datetime',
-        labels: { show: false }, // Mantiene el eje inferior limpio
+        labels: { show: false }, // Oculta la hora atascada de abajo
         axisBorder: { show: false },
         axisTicks: { show: false }
     },
     tooltip: {
         x: {
-            // EL FIX: Formateamos la hora directamente con JavaScript nativo
+            // Formateamos la hora del tooltip usando el reloj nativo de tu PC
             formatter: function(val) {
                 if (!val) return "";
                 const fecha = new Date(val);
-                // Extraemos la hora exacta en formato 24h
                 const horas = fecha.getHours().toString().padStart(2, '0');
                 const minutos = fecha.getMinutes().toString().padStart(2, '0');
                 const segundos = fecha.getSeconds().toString().padStart(2, '0');
@@ -49,6 +56,21 @@ const commonOptions = {
         }
     }
 };
+
+let chartSpo2, chartBpm;
+
+// Inicializamos gráficas
+if(document.querySelector("#spo2Chart")) {
+    const spo2Options = { ...commonOptions, colors: ['#66bb6a'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "SpO2", data: historialSpo2 }], yaxis: { min: 80, max: 100 } };
+    chartSpo2 = new ApexCharts(document.querySelector("#spo2Chart"), spo2Options);
+    chartSpo2.render();
+}
+
+if(document.querySelector("#bpmChart")) {
+    const bpmOptions = { ...commonOptions, colors: ['#3b8b88'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "BPM", data: historialBpm }], yaxis: { min: 40, max: 150 } };
+    chartBpm = new ApexCharts(document.querySelector("#bpmChart"), bpmOptions);
+    chartBpm.render();
+}
 // 4. EL MOTOR DE TIEMPO REAL
 database.ref('Seroa/Actual').on('value', (snapshot) => {
     const datos = snapshot.val();
