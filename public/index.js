@@ -35,7 +35,17 @@ const commonOptions = {
         axisTicks: { show: false }
     },
     tooltip: {
-        x: { format: 'HH:mm:ss' } // Hora en el recuadro flotante
+        x: {
+            // Reemplazamos el 'format' por una función segura que toma tu hora local
+            formatter: function(val) {
+                if (!val) return "";
+                const fecha = new Date(val);
+                const horas = fecha.getHours().toString().padStart(2, '0');
+                const minutos = fecha.getMinutes().toString().padStart(2, '0');
+                const segundos = fecha.getSeconds().toString().padStart(2, '0');
+                return `${horas}:${minutos}:${segundos}`;
+            }
+        }
     }
 };
 
