@@ -6,36 +6,37 @@
     <title>Seroa - Acceso Médico</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
     <link rel="stylesheet" href="estilos.css">
     
     <style>
-        /* === FONDO APLICADO A LA FUERZA === */
+        /* === 1. EL FONDO (CORREGIDO) === */
         body {
             margin: 0;
             padding: 0;
             min-height: 100vh;
-            /* Asegúrate de que la ruta sea correcta. Si está en la carpeta img, usa 'img/background.png' */
-            background-image: url('background.png') !important; 
+            background-color: #e9ecef !important; /* Color de respaldo */
+            /* AQUÍ ESTÁ LA MAGIA: Aseguramos que busque en la carpeta img/ */
+            background-image: url('img/background.png') !important; 
             background-size: cover !important;
             background-position: center !important;
             background-repeat: no-repeat !important;
             background-attachment: fixed !important;
-            position: relative;
-            z-index: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* Capa oscura superpuesta para que la tarjeta resalte y el fondo no lastime la vista */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 45, 45, 0.4); /* Tono teal muy oscuro y semi-transparente */
-            z-index: -1;
+        /* Capa oscura superpuesta para que el texto siempre sea legible sin importar el fondo */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 35, 30, 0.35); /* Tono verdoso oscuro transparente */
+            z-index: 1;
         }
 
-        /* === CONTENEDOR PRINCIPAL === */
+        /* === 2. ESTRUCTURA Y ESTÉTICA DE LA TARJETA === */
         .login-wrapper {
-            background-color: transparent !important;
+            position: relative;
+            z-index: 2; /* Para que esté por encima de la capa oscura */
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -43,170 +44,212 @@
             padding: 2rem 1rem;
         }
 
-        /* === ESTÉTICA GLASSMORPHISM (Vidrio Esmerilado) === */
         .auth-card {
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            border-radius: 24px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+            background: rgba(255, 255, 255, 0.95) !important; /* Casi blanco puro pero deja pasar un poco el fondo */
+            backdrop-filter: blur(12px); /* Efecto de vidrio esmerilado */
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
             padding: 3rem 2.5rem;
             width: 100%;
-            max-width: 480px;
-            position: relative;
+            max-width: 440px;
         }
 
-        /* === ESTILIZACIÓN DE LOS INPUTS === */
+        /* === 3. ESTÉTICA DE LOS CAMPOS DE TEXTO (ADIÓS AZUL) === */
         .input-group {
-            background: rgba(255, 255, 255, 0.9);
+            background-color: #fff;
             border-radius: 12px;
-            overflow: hidden;
             border: 1px solid #ced4da;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            overflow: hidden;
         }
+        
+        .input-group-text {
+            background-color: transparent;
+            border: none;
+            color: #20c997; /* Verde Seroa */
+            padding-left: 1.2rem;
+        }
+        
+        .form-control {
+            border: none;
+            background-color: transparent;
+            padding: 0.9rem 1rem;
+            color: #495057;
+        }
+
+        .form-control:focus {
+            box-shadow: none;
+            background-color: transparent;
+        }
+
+        /* Efecto al hacer clic en el input */
         .input-group:focus-within {
             border-color: #20c997;
             box-shadow: 0 0 0 4px rgba(32, 201, 151, 0.15);
         }
-        .input-group-text {
-            background: transparent;
-            border: none;
-            color: #20c997;
-            padding-left: 1.2rem;
+
+        /* CORRECCIÓN: Evitar que Chrome pinte los inputs de azul claro al autocompletar */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+            -webkit-text-fill-color: #495057 !important;
+            transition: background-color 5000s ease-in-out 0s;
         }
-        .config-input {
-            background: transparent;
-            border: none;
-            padding: 0.8rem 1rem;
-        }
-        .config-input:focus {
-            box-shadow: none;
-            background: transparent;
-        }
+
         .btn-toggle-pass {
             border: none;
             background: transparent;
-            color: #6c757d;
+            color: #adb5bd;
+            padding-right: 1.2rem;
         }
+        
         .btn-toggle-pass:hover {
-            background: transparent;
             color: #20c997;
+            background: transparent;
         }
 
-        /* === BOTÓN PRINCIPAL SEROA === */
+        /* === 4. BOTONES Y ENLACES PREMIUM === */
         .btn-seroa {
-            background: linear-gradient(135deg, #20c997, #16a076);
+            background: linear-gradient(135deg, #20c997, #159b73);
             color: white;
             font-weight: 600;
             padding: 14px;
             border-radius: 12px;
             font-size: 1.1rem;
             border: none;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(32, 201, 151, 0.3);
+            letter-spacing: 0.5px;
         }
+        
         .btn-seroa:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(32, 201, 151, 0.4);
+            box-shadow: 0 6px 18px rgba(32, 201, 151, 0.45);
             color: white;
+        }
+
+        .form-section-title {
+            color: #2c3e50;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .link-seroa {
+            color: #159b73;
+            text-decoration: none;
+            font-weight: 700;
+            transition: color 0.3s;
+        }
+        .link-seroa:hover {
+            color: #0e6b4f;
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     
+    <div class="overlay"></div>
+
     <div class="login-wrapper">
         <div class="auth-card">
             
-            <div class="text-center mb-5 pb-2">
-                <div class="d-flex justify-content-center align-items-center mb-3">
-                    <img src="img/logo-icono.png" alt="Seroa Icono" height="85" class="me-3" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.1));">
-                    <img src="img/letras-seroa.png" alt="Seroa Letras" height="65">
+            <div class="text-center mb-4 pb-2">
+                <div class="d-flex justify-content-center align-items-center mb-2">
+                    <img src="img/logo-icono.png" alt="Seroa Icono" height="75" class="me-2" style="filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.08));">
+                    <img src="img/letras-seroa.png" alt="Seroa Letras" height="60">
                 </div>
-                <p class="text-muted fw-medium mb-0" style="font-size: 1rem; letter-spacing: 0.5px;">Panel de Monitoreo Inteligente</p>
-                <div class="mt-3" style="height: 3px; width: 50px; background: #20c997; margin: 0 auto; border-radius: 2px;"></div>
+                <p class="text-muted fw-medium mb-3" style="font-size: 0.95rem;">Panel de Monitoreo Inteligente</p>
+                <div style="height: 3px; width: 40px; background-color: #20c997; margin: 0 auto; border-radius: 5px;"></div>
             </div>
             
             <div id="login-section" class="form-section">
-                <h4 class="text-center mb-4 fw-bold text-dark">Acceso Médico</h4>
+                <h4 class="text-center mb-4 form-section-title">Acceso Médico</h4>
                 <form id="loginForm">
+                    
                     <div class="input-group mb-4">
                         <span class="input-group-text"><i class="bi bi-envelope-fill fs-5"></i></span>
-                        <input type="email" id="loginUser" class="form-control config-input" placeholder="Correo electrónico institucional" required>
+                        <input type="email" id="loginUser" class="form-control" placeholder="Correo electrónico institucional" required>
                     </div>
                     
-                    <div class="input-group mb-5">
+                    <div class="input-group mb-4">
                         <span class="input-group-text"><i class="bi bi-lock-fill fs-5"></i></span>
-                        <input type="password" id="loginPass" class="form-control config-input" placeholder="Contraseña de seguridad" required>
-                        <button class="btn btn-toggle-pass px-3" type="button" onclick="togglePassword('loginPass', this)">
+                        <input type="password" id="loginPass" class="form-control" placeholder="Contraseña de seguridad" required>
+                        <button class="btn btn-toggle-pass" type="button" onclick="togglePassword('loginPass', this)">
                             <i class="bi bi-eye-slash-fill fs-5"></i>
                         </button>
                     </div>
 
-                    <button type="submit" class="btn w-100 btn-seroa">Ingresar al Sistema</button>
+                    <button type="submit" class="btn w-100 btn-seroa mt-2">Ingresar al Sistema</button>
                 </form>
                 
                 <div class="text-center mt-4 pt-3 border-top">
                     <p class="text-muted mb-1" style="font-size: 0.95rem;">¿Personal médico nuevo?</p>
-                    <a href="#" onclick="toggleForm('register')" class="text-decoration-none fw-bold transition-transform" style="color: #16a076; font-size: 1.05rem;">Solicita tu registro aquí</a>
+                    <a href="#" onclick="toggleForm('register')" class="link-seroa" style="font-size: 1.05rem;">Solicita tu registro aquí</a>
                 </div>
             </div>
 
             <div id="register-section" class="form-section" style="display: none;">
-                <h4 class="text-center mb-4 fw-bold text-dark">Registro de Personal</h4>
+                <h4 class="text-center mb-4 form-section-title">Registro de Personal</h4>
                 <form id="registerForm">
+                    
                     <div class="input-group mb-3">
                         <span class="input-group-text"><i class="bi bi-person-badge-fill fs-5"></i></span>
-                        <input type="text" id="regNombre" class="form-control config-input" placeholder="Nombre completo" pattern="[a-zA-Z0-9 ]+" title="Solo letras, números y espacios" required>
+                        <input type="text" id="regNombre" class="form-control" placeholder="Nombre completo" pattern="[a-zA-Z0-9 ]+" title="Solo letras, números y espacios" required>
                     </div>
                     
                     <div class="input-group mb-3">
                         <span class="input-group-text"><i class="bi bi-envelope-check-fill fs-5"></i></span>
-                        <input type="email" id="regEmail" class="form-control config-input" placeholder="Correo electrónico" required>
+                        <input type="email" id="regEmail" class="form-control" placeholder="Correo electrónico" required>
                     </div>
                     
                     <div class="input-group mb-4">
                         <span class="input-group-text"><i class="bi bi-shield-lock-fill fs-5"></i></span>
-                        <input type="password" id="regPass" class="form-control config-input" placeholder="Contraseña segura" title="Debe contener letras y números, y no incluir secuencias (ej. 123 o 321)" required>
-                        <button class="btn btn-toggle-pass px-3" type="button" onclick="togglePassword('regPass', this)">
+                        <input type="password" id="regPass" class="form-control" placeholder="Contraseña segura" title="Debe contener letras y números, y no incluir secuencias (ej. 123 o 321)" required>
+                        <button class="btn btn-toggle-pass" type="button" onclick="togglePassword('regPass', this)">
                             <i class="bi bi-eye-slash-fill fs-5"></i>
                         </button>
                     </div>
                     
-                    <div class="mb-4 p-3 rounded-3" style="background: rgba(32, 201, 151, 0.08); border: 1px dashed rgba(32, 201, 151, 0.4);">
-                        <label id="captchaQuestion" class="fw-bold mb-2 d-block text-center" style="color: #16a076;">¿Cuánto es X + Y?</label>
-                        <input type="number" id="captchaAnswer" class="form-control text-center mx-auto shadow-sm" style="max-width: 150px; font-weight: bold; font-size: 1.1rem; border-radius: 8px; border: 1px solid #ced4da;" placeholder="Resultado" required>
+                    <div class="mb-4 p-3 text-center" style="background: rgba(32, 201, 151, 0.05); border: 1px dashed rgba(32, 201, 151, 0.4); border-radius: 12px;">
+                        <label id="captchaQuestion" class="fw-bold mb-2 d-block text-secondary">¿Cuánto es X + Y?</label>
+                        <input type="number" id="captchaAnswer" class="form-control text-center mx-auto shadow-sm" style="max-width: 140px; font-weight: bold; font-size: 1.2rem; border-color: #ced4da;" placeholder="Resultado" required>
                     </div>
 
-                    <button type="submit" class="btn w-100 btn-seroa">Crear Credenciales</button>
+                    <button type="submit" class="btn w-100 btn-seroa mt-1">Crear Credenciales</button>
                 </form>
                 
                 <div class="text-center mt-4 pt-3 border-top">
                     <p class="text-muted mb-1" style="font-size: 0.95rem;">¿Ya tienes tus accesos?</p>
-                    <a href="#" onclick="toggleForm('login')" class="text-decoration-none fw-bold transition-transform" style="color: #16a076; font-size: 1.05rem;">Inicia sesión de forma segura</a>
+                    <a href="#" onclick="toggleForm('login')" class="link-seroa" style="font-size: 1.05rem;">Inicia sesión de forma segura</a>
                 </div>
             </div>
 
             <div id="waiting-section" class="form-section" style="display: none;">
-                <h4 class="text-center mb-4 fw-bold" style="color: #e5a910;">Registro Exitoso</h4>
+                <h4 class="text-center mb-4 form-section-title text-warning">Registro Exitoso</h4>
                 
                 <div class="text-center my-4">
-                    <div class="spinner-border mb-4" role="status" style="width: 4rem; height: 4rem; color: #20c997; border-width: 5px;"></div>
+                    <div class="spinner-border mb-4" role="status" style="width: 3.5rem; height: 3.5rem; color: #20c997; border-width: 4px;"></div>
                     
-                    <p class="fw-bold text-dark fs-5 mb-2 px-2">
+                    <p class="fw-bold text-dark fs-5 mb-2 px-3">
                         Esperando confirmación
                     </p>
                     
-                    <p class="text-muted px-3" style="font-size: 0.95rem;">
-                        Hemos enviado un enlace a tu correo. Revisa tu bandeja de entrada o la carpeta de spam para activar tu cuenta.
+                    <p class="text-muted px-2" style="font-size: 0.95rem;">
+                        Por favor, revisa tu bandeja de entrada (y la carpeta de spam). 
                     </p>
                     
-                    <div class="p-3 mt-4 rounded-3 text-start shadow-sm" style="font-size: 0.85rem; background-color: #fff; border-left: 4px solid #16a076;">
-                        <strong class="text-dark"><i class="bi bi-shield-check me-1 text-success"></i> Nota de seguridad:</strong> No podrás acceder al panel de control hasta verificar tu identidad.
+                    <div class="p-3 mt-4 text-start shadow-sm" style="font-size: 0.85rem; background-color: #f8f9fa; border-left: 4px solid #159b73; border-radius: 6px;">
+                        <strong><i class="bi bi-shield-check text-success"></i> Nota de seguridad:</strong> No podrás acceder al panel de control hasta que actives tu cuenta desde el mensaje enviado.
                     </div>
                 </div>
 
-                <button type="button" class="btn w-100 mt-2" style="background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; font-weight: 600; padding: 12px; border-radius: 12px; transition: 0.2s;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'" onclick="toggleForm('login')">
-                    Regresar al inicio
+                <button type="button" class="btn w-100 mt-2 text-secondary fw-bold" style="background: #f1f3f5; border: 1px solid #dee2e6; padding: 12px; border-radius: 12px;" onclick="toggleForm('login')">
+                    Regresar al inicio de sesión
                 </button>
             </div>
 
@@ -217,6 +260,7 @@
     <script src="auth.js"></script>
     
     <script>
+        // Función para mostrar/ocultar contraseña
         function togglePassword(inputId, button) {
             const input = document.getElementById(inputId);
             const icon = button.querySelector('i');
@@ -225,9 +269,11 @@
                 input.type = "text";
                 icon.classList.remove('bi-eye-slash-fill');
                 icon.classList.add('bi-eye-fill');
+                icon.classList.add('text-success');
             } else {
                 input.type = "password";
                 icon.classList.remove('bi-eye-fill');
+                icon.classList.remove('text-success');
                 icon.classList.add('bi-eye-slash-fill');
             }
         }
