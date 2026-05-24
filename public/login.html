@@ -7,7 +7,44 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="estilos.css">
-</head>
+    
+    <style>
+        body {
+            /* Ruta a tu imagen de fondo */
+            background-image: url('img/background.png'); 
+            
+            /* Ajustes para que se vea perfecta en cualquier pantalla */
+            background-size: cover;          /* Estira la imagen para cubrir todo sin dejar huecos */
+            background-position: center;     /* Centra la imagen */
+            background-repeat: no-repeat;    /* Evita que se repita como mosaico */
+            background-attachment: fixed;    /* La mantiene fija si la pantalla es pequeña y hay scroll */
+            
+            /* Un color de respaldo por si la imagen tarda un segundo en cargar */
+            background-color: #e9f2f2; 
+        }
+
+        /* Aseguramos que el contenedor sea transparente para dejar ver el fondo */
+        .login-wrapper {
+            background-color: transparent !important;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        /* Le damos a la tarjeta un fondo sólido (o ligeramente translúcido) 
+           y una sombra suave para que flote elegantemente sobre tu imagen */
+        .auth-card {
+            background-color: rgba(255, 255, 255, 0.95); /* Blanco al 95% de opacidad */
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 450px;
+        }
+    </style>
+    </head>
 <body>
     
     <div class="login-wrapper">
@@ -78,31 +115,32 @@
                 </p>
             </div>
 
-        </div>
-        
-    <div id="waiting-section" class="form-section" style="display: none;">
-    <h4 class="text-center mb-4 form-section-title text-warning">Registro Exitoso</h4>
-    
-    <div class="text-center my-5">
-        <div class="spinner-border mb-4" role="status" style="width: 3.5rem; height: 3.5rem; color: #309b9f; border-width: 5px;"></div>
-        
-        <p class="fw-bold text-dark fs-5 mb-3 px-3">
-            Has realizado tu Registro, esperando la confirmacion por correo electronico
-        </p>
-        
-        <p class="text-muted px-2" style="font-size: 0.95rem;">
-            Por favor, revisa tu bandeja de entrada (y la carpeta de spam). 
-        </p>
-        
-        <div class="p-3 mt-4 rounded-3 text-start alert alert-info" style="font-size: 0.85rem; background-color: rgba(48, 155, 159, 0.05); border: 1px solid rgba(48, 155, 159, 0.15);">
-            <strong>Nota de seguridad:</strong> Esta pantalla no se quitará y no podrás acceder al panel de control hasta que actives tu cuenta desde el mensaje enviado.
+            <div id="waiting-section" class="form-section" style="display: none;">
+                <h4 class="text-center mb-4 form-section-title text-warning">Registro Exitoso</h4>
+                
+                <div class="text-center my-5">
+                    <div class="spinner-border mb-4" role="status" style="width: 3.5rem; height: 3.5rem; color: #309b9f; border-width: 5px;"></div>
+                    
+                    <p class="fw-bold text-dark fs-5 mb-3 px-3">
+                        Has realizado tu Registro, esperando la confirmacion por correo electronico
+                    </p>
+                    
+                    <p class="text-muted px-2" style="font-size: 0.95rem;">
+                        Por favor, revisa tu bandeja de entrada (y la carpeta de spam). 
+                    </p>
+                    
+                    <div class="p-3 mt-4 rounded-3 text-start alert alert-info" style="font-size: 0.85rem; background-color: rgba(48, 155, 159, 0.05); border: 1px solid rgba(48, 155, 159, 0.15);">
+                        <strong>Nota de seguridad:</strong> Esta pantalla no se quitará y no podrás acceder al panel de control hasta que actives tu cuenta desde el mensaje enviado.
+                    </div>
+                </div>
+
+                <button type="button" class="btn w-100 btn-outline-secondary" style="border-radius: 12px; padding: 0.8rem;" onclick="toggleForm('login')">
+                    Regresar al inicio de sesión
+                </button>
+            </div>
+
         </div>
     </div>
-
-    <button type="button" class="btn w-100 btn-outline-secondary" style="border-radius: 12px; padding: 0.8rem;" onclick="toggleForm('login')">
-        Regresar al inicio de sesión
-    </button>
-</div>
     
     <script src="utils.js"></script>
     <script src="auth.js"></script>
