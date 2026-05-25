@@ -19,17 +19,17 @@
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* === CONTENEDOR SPLIT SCREEN (Pantalla Dividida) === */
+        /* === CONTENEDOR SPLIT SCREEN === */
         .login-split-container {
             display: flex;
             min-height: 100vh;
             width: 100vw;
         }
 
-        /* === COLUMNA IZQUIERDA (VERDE INSTITUCIONAL) === */
+        /* === COLUMNA IZQUIERDA (Ajustada al 40% para dar más espacio al login) === */
         .login-sidebar {
-            width: 45%; /* Ocupa el 45% de la pantalla */
-            background: linear-gradient(135deg, #20c997, #159b73); /* Gradiente Verde Seroa */
+            width: 40%; 
+            background: linear-gradient(135deg, #20c997, #159b73);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -39,13 +39,12 @@
             overflow: hidden;
         }
 
-        /* Un pequeño toque de diseño: tu patrón maya de fondo transparente */
         .login-sidebar::before {
             content: '';
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background-image: url('img/patron-separador.png');
-            opacity: 0.1; /* Muy sutil */
+            opacity: 0.1;
             background-size: 300px;
             z-index: 0;
         }
@@ -55,40 +54,39 @@
             z-index: 2;
         }
 
+        /* Logo izquierdo más grande */
         .sidebar-logo {
-            height: 140px;
-            margin-bottom: 2rem;
+            height: 180px; 
+            margin-bottom: 2.5rem;
             filter: drop-shadow(0 8px 12px rgba(0,0,0,0.2));
         }
 
         .sidebar-title {
             font-weight: 800;
-            font-size: 2.8rem;
+            font-size: 3.2rem;
             margin-bottom: 1rem;
             letter-spacing: -1px;
             text-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
 
         .sidebar-text {
-            font-size: 1.15rem;
+            font-size: 1.3rem;
             opacity: 0.9;
             line-height: 1.6;
-            max-width: 400px;
+            max-width: 450px;
             margin: 0 auto;
         }
 
-        /* === COLUMNA DERECHA (FORMULARIO Y BACKGROUND) === */
+        /* === COLUMNA DERECHA (Ajustada al 60% para albergar la tarjeta gigante) === */
         .login-main {
-            width: 55%; /* Ocupa el 55% restante */
+            width: 60%; 
             position: relative;
-            /* Aquí movemos tu imagen de fondo para que solo cubra esta mitad */
             background-image: url('img/background.png'); 
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
         }
 
-        /* Capa oscura superpuesta solo en la mitad derecha */
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -106,15 +104,79 @@
             padding: 2rem;
         }
 
-        /* === DISEÑO RESPONSIVO === */
-        /* En celulares o tablets pequeñas, ocultamos la columna verde para ahorrar espacio */
+        /* ========================================================
+           MODIFICACIONES DE ESCALA (HACIENDO TODO MÁS GRANDE)
+           ======================================================== */
+        
+        /* 1. La tarjeta principal */
+        .auth-card {
+            max-width: 600px !important; /* Antes 440px, ahora mucho más ancha */
+            padding: 4rem 3.5rem !important; /* Más espacio interno */
+            border-radius: 28px !important; /* Bordes más suaves acorde al tamaño */
+        }
+
+        /* 2. Títulos del formulario */
+        .form-section-title {
+            font-size: 2.2rem !important;
+            margin-bottom: 2.5rem !important;
+        }
+
+        /* 3. Campos de texto (Inputs) y sus iconos */
+        .form-control {
+            font-size: 1.25rem !important; /* Texto de los inputs más grande */
+            padding: 1.2rem 1.5rem !important; /* Inputs mucho más altos */
+        }
+        
+        .input-group-text i, .btn-toggle-pass i {
+            font-size: 1.6rem !important; /* Iconos (correo, candado, ojito) más grandes */
+        }
+        
+        .input-group-text {
+            padding-left: 1.5rem !important;
+        }
+
+        .input-group {
+            border-radius: 16px !important;
+            margin-bottom: 2rem !important; /* Más separación entre inputs */
+        }
+
+        /* 4. Botón principal Seroa */
+        .btn-seroa {
+            font-size: 1.4rem !important;
+            padding: 1.2rem !important; /* Botón más alto y cliqueable */
+            border-radius: 16px !important;
+            margin-top: 1.5rem !important;
+        }
+
+        /* 5. Textos inferiores (Links y preguntas) */
+        .text-muted {
+            font-size: 1.15rem !important;
+        }
+        
+        .text-decoration-none, .link-seroa {
+            font-size: 1.25rem !important;
+        }
+
+        /* El recuadro del Captcha matemático */
+        .captcha-box {
+            padding: 1.5rem !important;
+            border-radius: 16px !important;
+        }
+        #captchaQuestion {
+            font-size: 1.3rem !important;
+            margin-bottom: 1rem !important;
+        }
+        #captchaAnswer {
+            font-size: 1.5rem !important;
+            max-width: 180px !important;
+            padding: 1rem !important;
+        }
+
+        /* Ocultar barra lateral en móviles */
         @media (max-width: 992px) {
-            .login-sidebar {
-                display: none;
-            }
-            .login-main {
-                width: 100%;
-            }
+            .login-sidebar { display: none; }
+            .login-main { width: 100%; }
+            .auth-card { padding: 3rem 2rem !important; max-width: 95% !important; }
         }
     </style>
 </head>
@@ -136,68 +198,68 @@
             <div class="login-wrapper-fixed">
                 <div class="auth-card">
                     
-                    <div class="text-center mb-4 pb-2">
-                        <img src="img/letras-seroa.png" alt="Seroa Letras" height="60" class="mb-2">
-                        <p class="text-muted fw-medium mb-3" style="font-size: 0.95rem;">Acceso al sistema</p>
-                        <div style="height: 3px; width: 40px; background-color: #20c997; margin: 0 auto; border-radius: 5px;"></div>
+                    <div class="text-center mb-5 pb-2">
+                        <img src="img/letras-seroa.png" alt="Seroa Letras" height="85" class="mb-3">
+                        <p class="text-muted fw-medium mb-3" style="font-size: 1.15rem;">Acceso seguro al sistema</p>
+                        <div style="height: 4px; width: 50px; background-color: #20c997; margin: 0 auto; border-radius: 5px;"></div>
                     </div>
                     
                     <div id="login-section" class="form-section">
                         <form id="loginForm">
-                            <div class="input-group mb-4">
-                                <span class="input-group-text"><i class="bi bi-envelope-fill fs-5"></i></span>
-                                <input type="email" id="loginUser" class="form-control config-input-icon" placeholder="Correo electrónico institucional" required>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                                <input type="email" id="loginUser" class="form-control" placeholder="Correo electrónico institucional" required>
                             </div>
                             
-                            <div class="input-group mb-4">
-                                <span class="input-group-text"><i class="bi bi-lock-fill fs-5"></i></span>
-                                <input type="password" id="loginPass" class="form-control config-input-pass" placeholder="Contraseña de seguridad" required>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                                <input type="password" id="loginPass" class="form-control" placeholder="Contraseña de seguridad" required>
                                 <button class="btn btn-toggle-pass" type="button" onclick="togglePassword('loginPass', this)">
-                                    <i class="bi bi-eye-slash-fill fs-5"></i>
+                                    <i class="bi bi-eye-slash-fill"></i>
                                 </button>
                             </div>
 
-                            <button type="submit" class="btn w-100 btn-seroa mt-2">Ingresar al Sistema</button>
+                            <button type="submit" class="btn w-100 btn-seroa">Ingresar al Sistema</button>
                         </form>
                         
-                        <div class="text-center mt-4 pt-3 border-top">
-                            <p class="text-muted mb-1" style="font-size: 0.95rem;">¿Personal médico nuevo?</p>
-                            <a href="#" onclick="toggleForm('register')" class="text-decoration-none fw-bold" style="color: #159b73; font-size: 1.05rem;">Solicita tu registro aquí</a>
+                        <div class="text-center mt-4 pt-4 border-top">
+                            <p class="text-muted mb-2">¿Personal médico nuevo?</p>
+                            <a href="#" onclick="toggleForm('register')" class="text-decoration-none fw-bold" style="color: #159b73;">Solicita tu registro aquí</a>
                         </div>
                     </div>
 
                     <div id="register-section" class="form-section" style="display: none;">
                         <h4 class="text-center mb-4 form-section-title">Registro de Personal</h4>
                         <form id="registerForm">
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="bi bi-person-badge-fill fs-5"></i></span>
-                                <input type="text" id="regNombre" class="form-control config-input-icon" placeholder="Nombre completo" pattern="[a-zA-Z0-9 ]+" title="Solo letras, números y espacios" required>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person-badge-fill"></i></span>
+                                <input type="text" id="regNombre" class="form-control" placeholder="Nombre completo" pattern="[a-zA-Z0-9 ]+" title="Solo letras, números y espacios" required>
                             </div>
                             
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="bi bi-envelope-check-fill fs-5"></i></span>
-                                <input type="email" id="regEmail" class="form-control config-input-icon" placeholder="Correo electrónico" required>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope-check-fill"></i></span>
+                                <input type="email" id="regEmail" class="form-control" placeholder="Correo electrónico" required>
                             </div>
                             
-                            <div class="input-group mb-4">
-                                <span class="input-group-text"><i class="bi bi-shield-lock-fill fs-5"></i></span>
-                                <input type="password" id="regPass" class="form-control config-input-pass" placeholder="Contraseña segura" title="Debe contener letras y números, y no incluir secuencias (ej. 123 o 321)" required>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-shield-lock-fill"></i></span>
+                                <input type="password" id="regPass" class="form-control" placeholder="Contraseña segura" title="Debe contener letras y números, y no incluir secuencias (ej. 123 o 321)" required>
                                 <button class="btn btn-toggle-pass" type="button" onclick="togglePassword('regPass', this)">
-                                    <i class="bi bi-eye-slash-fill fs-5"></i>
+                                    <i class="bi bi-eye-slash-fill"></i>
                                 </button>
                             </div>
                             
-                            <div class="mb-4 p-3 text-center captcha-box">
-                                <label id="captchaQuestion" class="fw-bold mb-2 d-block text-teal">¿Cuánto es X + Y?</label>
-                                <input type="number" id="captchaAnswer" class="form-control text-center mx-auto shadow-sm" style="max-width: 140px; font-weight: bold; font-size: 1.2rem;" placeholder="Resultado" required>
+                            <div class="mb-4 text-center captcha-box">
+                                <label id="captchaQuestion" class="fw-bold text-teal d-block">¿Cuánto es X + Y?</label>
+                                <input type="number" id="captchaAnswer" class="form-control text-center mx-auto shadow-sm" placeholder="Resultado" required>
                             </div>
 
-                            <button type="submit" class="btn w-100 btn-seroa mt-1">Crear Credenciales</button>
+                            <button type="submit" class="btn w-100 btn-seroa">Crear Credenciales</button>
                         </form>
                         
-                        <div class="text-center mt-4 pt-3 border-top">
-                            <p class="text-muted mb-1" style="font-size: 0.95rem;">¿Ya tienes tus accesos?</p>
-                            <a href="#" onclick="toggleForm('login')" class="text-decoration-none fw-bold" style="color: #159b73; font-size: 1.05rem;">Inicia sesión de forma segura</a>
+                        <div class="text-center mt-4 pt-4 border-top">
+                            <p class="text-muted mb-2">¿Ya tienes tus accesos?</p>
+                            <a href="#" onclick="toggleForm('login')" class="text-decoration-none fw-bold" style="color: #159b73;">Inicia sesión de forma segura</a>
                         </div>
                     </div>
 
@@ -205,20 +267,20 @@
                         <h4 class="text-center mb-4 form-section-title text-warning">Registro Exitoso</h4>
                         
                         <div class="text-center my-4">
-                            <div class="spinner-border mb-4" role="status" style="width: 3.5rem; height: 3.5rem; color: #20c997; border-width: 4px;"></div>
+                            <div class="spinner-border mb-4" role="status" style="width: 4rem; height: 4rem; color: #20c997; border-width: 5px;"></div>
                             
-                            <p class="fw-bold text-dark fs-5 mb-2 px-3">Esperando confirmación</p>
+                            <p class="fw-bold text-dark mb-3" style="font-size: 1.5rem;">Esperando confirmación</p>
                             
-                            <p class="text-muted px-2" style="font-size: 0.95rem;">
+                            <p class="text-muted px-2" style="font-size: 1.15rem;">
                                 Por favor, revisa tu bandeja de entrada (y la carpeta de spam). 
                             </p>
                             
-                            <div class="p-3 mt-4 text-start shadow-sm" style="font-size: 0.85rem; background-color: #f8f9fa; border-left: 4px solid #159b73; border-radius: 6px;">
-                                <strong><i class="bi bi-shield-check text-success"></i> Nota de seguridad:</strong> No podrás acceder al panel de control hasta que actives tu cuenta desde el mensaje enviado.
+                            <div class="p-4 mt-4 text-start shadow-sm" style="font-size: 1.1rem; background-color: #f8f9fa; border-left: 5px solid #159b73; border-radius: 8px;">
+                                <strong><i class="bi bi-shield-check text-success fs-4 me-2"></i> Nota de seguridad:</strong> No podrás acceder al panel de control hasta que actives tu cuenta desde el mensaje enviado.
                             </div>
                         </div>
 
-                        <button type="button" class="btn w-100 mt-2 text-secondary fw-bold" style="background: #f1f3f5; border: 1px solid #dee2e6; padding: 12px; border-radius: 12px;" onclick="toggleForm('login')">
+                        <button type="button" class="btn w-100 mt-3 text-secondary fw-bold" style="background: #f1f3f5; border: 1px solid #dee2e6; padding: 1.2rem; font-size: 1.2rem; border-radius: 16px;" onclick="toggleForm('login')">
                             Regresar al inicio de sesión
                         </button>
                     </div>
