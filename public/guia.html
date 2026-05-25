@@ -21,11 +21,11 @@
     }
 
     .img-guia {
-    width: 100%;       /* Cambiado de 100vw a 100% para ser más flexible */
-    height: 100vh; 
-    object-fit: contain; /* Mejor que 'fill' para guías visuales */
-    display: block; 
-}
+        width: 100vw;  
+        height: 100vh; 
+        object-fit: fill; 
+        display: block; 
+    }
 
     .carousel-indicators {
         bottom: 20px; 
@@ -104,31 +104,35 @@
     
     <div class="carousel-item active">
       <picture>
-    <source media="(max-width: 768px)" srcset="img/guia-movil-1.png">
-    <img src="img/guia-1.png" class="img-guia d-block w-100" alt="Bienvenida a Seroa">
-  </picture>
-  </div>
+        <source media="(max-width: 768px)" srcset="img/guia-movil-1.png">
+        <img src="img/guia-1.png" class="img-guia" alt="Bienvenida a Seroa">
+      </picture>
+    </div>
 
-    <div class="carousel-item active">
+    <div class="carousel-item">
       <picture>
-    <source media="(max-width: 768px)" srcset="img/guia-movil-2.png">
-    <img src="img/guia-2.png" class="img-guia d-block w-100" alt="Bienvenida a Seroa">
-  </picture>
-  </div>
+        <source media="(max-width: 768px)" srcset="img/guia-movil-2.png">
+        <img src="img/guia-2.png" class="img-guia" alt="Dashboard en tiempo real">
+      </picture>
+    </div>
 
-  <div class="carousel-item active">
+    <div class="carousel-item">
       <picture>
-    <source media="(max-width: 768px)" srcset="img/guia-movil-3.png">
-    <img src="img/guia-3.png" class="img-guia d-block w-100" alt="Bienvenida a Seroa">
-  </picture>
-  </div>
+        <source media="(max-width: 768px)" srcset="img/guia-movil-3.png">
+        <img src="img/guia-3.png" class="img-guia" alt="Gestión de pacientes">
+      </picture>
+    </div>
 
- <div class="carousel-item active">
+    <div class="carousel-item">
       <picture>
-    <source media="(max-width: 768px)" srcset="img/guia-movil-4.png">
-    <img src="img/guia-4.png" class="img-guia d-block w-100" alt="Bienvenida a Seroa">
-  </picture>
-  </div>
+        <source media="(max-width: 768px)" srcset="img/guia-movil-4.png">
+        <img src="img/guia-4.png" class="img-guia" alt="Reportes y Registro Diario">
+      </picture>
+      <div class="btn-comenzar-container">
+        <a href="login.html" class="btn btn-seroa">¡Empezar Ahora!</a>
+      </div>
+    </div>
+
   </div>
 
   <button class="carousel-control-prev" type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide="prev">
