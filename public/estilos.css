@@ -575,3 +575,34 @@ input:-webkit-autofill:active{
     font-weight: 700;
     letter-spacing: -0.5px;
 }
+/* Botón de Retroceso (Back) */
+.btn-back-header {
+    color: var(--color-seroa-dark);
+    background-color: rgba(0, 0, 0, 0.04);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 1.4rem;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.btn-back-header:hover {
+    background-color: var(--color-seroa-teal);
+    color: white;
+    transform: translateX(-4px); /* Deslizamiento sutil hacia la izquierda */
+    box-shadow: 0 4px 10px rgba(59, 139, 136, 0.2);
+}
+
+/* Ajuste móvil para el botón back */
+@media (max-width: 768px) {
+    .btn-back-header {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+    }
+}
