@@ -59,7 +59,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ==========================================
-// CARGA DINÁMICA DE CABECERA, SESIÓN Y NAVEGACIÓN
+// CARGA DINÁMICA DE CABECERA, MENÚ, SESIÓN Y NAVEGACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
     
@@ -75,13 +75,36 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    // 2. DISPARAR EL RELOJ (Para que llene la fecha en el header inyectado al instante)
+    // 2. INYECTAR MENÚ DINÁMICO
+    const contenedorMenu = document.getElementById('menu-container');
+    if (contenedorMenu) {
+        try {
+            const responseMenu = await fetch('menu.html');
+            const menuHtml = await responseMenu.text();
+            contenedorMenu.innerHTML = menuHtml;
+            
+            // LUEGO de inyectar el menú, ejecutamos la función de resaltado
+            resaltarMenuActivo();
+            
+        } catch (error) {
+            console.error("Error cargando el menú dinámico:", error);
+        }
+    } else {
+        // En caso de que el menú no sea dinámico en alguna pantalla, corremos la función igual
+        resaltarMenuActivo();
+    }
+
+    // 3. DISPARAR EL RELOJ (Para que llene la fecha en el header inyectado al instante)
     actualizarReloj();
 
-    // 3. VALIDAR SESIÓN DEL PACIENTE
+    // 4. VALIDAR SESIÓN DEL PACIENTE
     validarSesionUsuario();
+});
 
-    // 4. NAVEGACIÓN INTELIGENTE (Resalta el menú actual)
+// ==========================================
+// FUNCIÓN PARA REMARCAR EL MENÚ ACTUAL DE VERDE
+// ==========================================
+function resaltarMenuActivo() {
     let paginaActual = window.location.pathname.split("/").pop();
     
     if (paginaActual === "" || paginaActual === "/") {
@@ -91,14 +114,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     const enlacesNav = document.querySelectorAll(".navbar-nav .nav-link");
 
     enlacesNav.forEach(enlace => {
+        // Limpiamos estilos activos anteriores
+        enlace.classList.remove("active", "activo");
         enlace.parentElement.classList.remove("active-nav", "fw-bold");
+        
         const href = enlace.getAttribute("href");
         
+        // Si el href del botón coincide con el archivo actual en la barra de direcciones
         if (href === paginaActual) {
+            // Añadimos 'activo' (tu clase CSS que da el color verde y borde inferior)
+            enlace.classList.add("active", "activo");
             enlace.parentElement.classList.add("active-nav", "fw-bold");
         }
     });
-});
+}
 
 // ==========================================
 // FUNCIONES DE CONTROL DE ACCESO
