@@ -62,23 +62,31 @@
   </nav>
 
   <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-      <h5 class="text-success fw-bold">Hola <span id="nombreUsuarioPantalla">Usuario</span>, Bienvenido</h5>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <h5 class="text-success fw-bold mb-0">Hola <span id="nombreUsuarioPantalla">Usuario</span>, Bienvenido</h5>
       
-      <div class="d-flex align-items-center gap-2">
-      <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
-        <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte
-      </button>
-      <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
-        <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Angel Guiza</strong>
-      </span>
-    </div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
+          <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte
+        </button>
+        
+        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
+          <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Angel Guiza</strong>
+        </span>
+
+        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm d-flex align-items-center">
+          <span id="luz-conexion" class="rounded-circle me-2" style="width: 12px; height: 12px; background-color: #dc3545; box-shadow: 0 0 8px #dc3545; transition: all 0.3s ease;"></span>
+          <span id="texto-conexion">Dispositivo Seroa: Desconectado</span>
+        </span>
+      </div>
    </div>
-<div id="estadoSensorOverlay" class="alert alert-info text-center fw-bold shadow-sm mb-4" style="display: none; border-left: 5px solid #0dcaf0;">
+
+<div id="estadoSensorOverlay" class="alert alert-info text-center fw-bold shadow-sm mb-4 mt-4" style="display: none; border-left: 5px solid #0dcaf0;">
   <i class="bi bi-info-circle-fill me-2 fs-5"></i>
   <span id="textoEstadoSensor">Mensaje de estado</span>
 </div>
-<div class="row mt-3 mb-5">
+
+<div class="row mt-4 mb-5">
       
       <div class="col-lg-6 col-md-12 mb-4">
         
@@ -129,8 +137,7 @@
       </div>
 
     </div>
-
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  </div> <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -140,25 +147,19 @@
   
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // 1. Recuperamos el nombre que guardamos durante el Login
       const nombreGuardado = localStorage.getItem('nombrePaciente');
 
       if (nombreGuardado) {
-        // Extraemos solo el primer nombre para que el saludo se vea más limpio (Ej. "Angel" en lugar de "Angel Omar Guiza Torres")
         const primerNombre = nombreGuardado.split(' ')[0];
-        
-        // Inyectamos el nombre en el HTML
         document.getElementById('nombreUsuarioPantalla').textContent = primerNombre;
       } else {
-        // MEDIDA DE SEGURIDAD: Si no hay nombre guardado, significa que alguien intentó entrar a index.html sin iniciar sesión. Lo pateamos de vuelta al login.
         window.location.href = 'login.html';
       }
     });
 
-    // Función para destruir la sesión y salir
     function cerrarSesion() {
-      localStorage.removeItem('nombrePaciente'); // Borramos la memoria
-      window.location.href = 'login.html';       // Lo mandamos al login
+      localStorage.removeItem('nombrePaciente');
+      window.location.href = 'login.html';
     }
   </script>
   
