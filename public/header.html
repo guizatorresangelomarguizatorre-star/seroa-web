@@ -1,29 +1,28 @@
-<header class="topbar py-4 px-3 px-md-5 d-flex justify-content-between align-items-center bg-white">
-  <div class="logo d-flex align-items-center">
-    <img src="img/logo-icono.png" alt="Seroa Icono" class="logo-img me-3">
-    <div class="d-flex flex-column text-logo-container">
-      <img src="img/letras-seroa.png" alt="Seroa Letras" class="letras-img">  
-    </div>
-  </div>
-
-  <div class="text-end d-flex align-items-center justify-content-end gap-3 gap-md-4">
+<header class="topbar-modern px-3 px-md-5 d-flex justify-content-between align-items-center">
     
-    <a href="guia.html" class="text-success fw-bold text-decoration-none d-flex align-items-center me-2 hover-zoom" style="font-size: 1.1rem;">
-      <i class="bi bi-info-circle-fill me-2"></i> Guía Seroa
-    </a>
-    <div class="d-flex flex-column align-items-end justify-content-center">
-      <span id="fecha" class="date-text text-muted d-block fs-6 mb-1"></span>
-      <div class="d-flex align-items-center">
-        <i class="bi bi-person-circle text-teal me-2" style="font-size: 1.8rem;"></i>
-        <span class="fw-bold fs-5 text-dark" id="nombreUsuarioHeader">Usuario</span>
-      </div>
+    <div class="logo-wrapper d-flex align-items-center">
+        <img src="img/logo-icono.png" alt="Seroa Icono" class="logo-icon me-2">
+        <img src="img/letras-seroa.png" alt="Seroa Letras" class="logo-text">
     </div>
 
-    <div class="border-start border-2" style="height: 40px; opacity: 0.15;"></div>
-  
-    <a href="#" onclick="cerrarSesion()" title="Cerrar Sesión" class="text-decoration-none transition-transform d-flex flex-column align-items-center text-danger" style="cursor: pointer;">
-      <i class="bi bi-box-arrow-right mb-1" style="font-size: 2.2rem; line-height: 0.8;"></i>
-      <span class="fw-bold" style="font-size: 0.85rem;">Salir</span>
-    </a>
-  </div>
+    <div class="header-controls">
+        
+        <a href="guia.html" class="btn-guia-header" title="Ver Guía de Inicio">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <span>Guía Seroa</span>
+        </a>
+
+        <div class="user-profile-badge">
+            <div class="user-info-text me-2">
+                <div class="user-name" id="nombreUsuarioHeader">Usuario</div>
+                <div class="user-date" id="fecha"></div>
+            </div>
+            <i class="bi bi-person-circle avatar-icon"></i>
+        </div>
+      
+        <a href="#" onclick="cerrarSesion()" class="btn-logout-header" title="Cerrar Sesión Segura">
+            <i class="bi bi-box-arrow-right"></i>
+        </a>
+
+    </div>
 </header>
