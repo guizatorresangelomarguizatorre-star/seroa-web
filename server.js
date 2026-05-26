@@ -454,7 +454,11 @@ app.get('/api/invitado', (req, res) => {
         if (err || results.length === 0) {
             return res.status(404).json({ error: 'Acceso de invitado inválido o caducado.' });
         }
-        res.json(results[0]);
+        const paciente = results[0];
+        res.json({
+            ...paciente,
+            nombre: paciente.nombre ? desencriptar(paciente.nombre) : 'Paciente'
+        });
     });
 });
 

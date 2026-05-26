@@ -12,18 +12,31 @@ function clasificarLectura(spo2, bpm) {
 }
 
 function renderLectura(datos) {
-    const spO2 = document.getElementById('invitadoSpo2');
-    const bpm = document.getElementById('invitadoBpm');
-    const estado = document.getElementById('invitadoEstado');
-    const fecha = document.getElementById('invitadoFecha');
+    const spO2 = document.getElementById('spO2Valor');
+    const bpm = document.getElementById('bpmValor');
+    const valvula = document.getElementById('valvulaValor');
+    const evento = document.getElementById('eventoReciente');
+    const actualizacion = document.getElementById('actualizacionLabel');
 
-    if (!datos || !spO2 || !bpm || !estado || !fecha) return;
-    spO2.textContent = `${datos.spo2 || '--'}%`;
-    bpm.textContent = `${datos.bpm || '--'} bpm`;
-    const clase = clasificarLectura(datos.spo2 || 0, datos.bpm || 0);
-    estado.textContent = clase.nivel;
-    estado.className = `badge rounded-pill bg-${clase.color}`;
-    fecha.textContent = formatoFecha(new Date());
+    if (!datos) return;
+    
+    if (spO2) spO2.textContent = `${datos.spo2 || '--'}%`;
+    if (bpm) bpm.textContent = `${datos.bpm || '--'}`;
+    
+    if (valvula) {
+        const estado = datos.valvula_estado === 'Abierta' ? 'Abierta' : 'Cerrada';
+        const color = datos.valvula_estado === 'Abierta' ? 'success' : 'secondary';
+        valvula.textContent = estado;
+        valvula.className = `display-6 fw-bold text-${color}`;
+    }
+    
+    if (evento) {
+        evento.textContent = `SpO2: ${datos.spo2}% | Pulso: ${datos.bpm} bpm | ${formatoFecha(datos.timestamp || new Date())}`;
+    }
+    
+    if (actualizacion) {
+        actualizacion.textContent = formatoFecha(new Date());
+    }
 }
 
 function iniciarInvitado() {
@@ -32,26 +45,55 @@ function iniciarInvitado() {
     const tituloPaciente = document.getElementById('invitadoNombrePaciente');
 
     if (!acceso) {
-        document.body.innerHTML = '<div class="container py-5"><div class="alert alert-danger">Código de acceso faltante.</div></div>';
+        mostrarErrorInvitado('Código de acceso faltante.');
         return;
     }
 
     fetch(`/api/invitado?acceso=${encodeURIComponent(acceso)}`)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
         .then(info => {
             if (!info || info.error) {
-                document.body.innerHTML = `<div class="container py-5"><div class="alert alert-danger">${info.error || 'Acceso inválido.'}</div></div>`;
+                mostrarErrorInvitado(info.error || 'Acceso inválido.');
                 return;
             }
-            tituloPaciente.textContent = info.nombre;
+            
+            // Guardar datos del paciente en localStorage
+            localStorage.setItem('selectedPatientId', info.id_paciente);
+            localStorage.setItem('selectedPatientName', info.nombre);
+            localStorage.setItem('selectedPatientRole', 'Invitado');
+            localStorage.setItem('selectedPatientPeso', info.peso_kg || 'N/A');
+            localStorage.setItem('selectedPatientEdad', info.edad || 'N/A');
+            localStorage.setItem('selectedPatientSexo', info.sexo || 'N/A');
+            localStorage.setItem('selectedPatientPadecimiento', info.padecimiento || 'N/A');
+            localStorage.setItem('selectedPatientSpo2Min', info.rango_spo2_min || 'N/A');
+            localStorage.setItem('selectedPatientSpo2Max', info.rango_spo2_max || 'N/A');
+            
+            if (tituloPaciente) {
+                tituloPaciente.textContent = info.nombre;
+            }
+            
+            // Actualizar badge del paciente compartido
+            actualizarBadgePaciente();
+            
+            // Suscribirse a los datos de Firebase
             window.SeroaRealtime.subscribe((datos) => {
-                renderLectura(datos);
+                if (datos) renderLectura(datos);
             });
         })
         .catch(err => {
-            console.error(err);
-            document.body.innerHTML = '<div class="container py-5"><div class="alert alert-danger">No se pudo validar el acceso.</div></div>';
+            console.error('Error en iniciarInvitado:', err);
+            mostrarErrorInvitado('No se pudo validar el acceso.');
         });
+}
+
+function mostrarErrorInvitado(mensaje) {
+    const panelPrincipal = document.querySelector('.card');
+    if (panelPrincipal) {
+        panelPrincipal.innerHTML = `<div class="card-body py-5"><div class="alert alert-danger mx-auto" style="max-width: 500px;">${mensaje}</div></div>`;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', iniciarInvitado);
