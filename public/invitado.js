@@ -50,29 +50,32 @@ function iniciarInvitado() {
     }
 
     fetch(`/api/invitado?acceso=${encodeURIComponent(acceso)}`)
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-        })
-        .then(info => {
-            if (!info || info.error) {
-                mostrarErrorInvitado(info.error || 'Acceso inválido.');
+        .then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data })))
+        .then(({ status, ok, data }) => {
+            if (!ok) {
+                console.error(`Error ${status}:`, data);
+                mostrarErrorInvitado(data.error || `Error HTTP ${status}`);
+                return;
+            }
+            
+            if (!data || data.error) {
+                mostrarErrorInvitado(data.error || 'Acceso inválido.');
                 return;
             }
             
             // Guardar datos del paciente en localStorage
-            localStorage.setItem('selectedPatientId', info.id_paciente);
-            localStorage.setItem('selectedPatientName', info.nombre);
+            localStorage.setItem('selectedPatientId', data.id_paciente);
+            localStorage.setItem('selectedPatientName', data.nombre);
             localStorage.setItem('selectedPatientRole', 'Invitado');
-            localStorage.setItem('selectedPatientPeso', info.peso_kg || 'N/A');
-            localStorage.setItem('selectedPatientEdad', info.edad || 'N/A');
-            localStorage.setItem('selectedPatientSexo', info.sexo || 'N/A');
-            localStorage.setItem('selectedPatientPadecimiento', info.padecimiento || 'N/A');
-            localStorage.setItem('selectedPatientSpo2Min', info.rango_spo2_min || 'N/A');
-            localStorage.setItem('selectedPatientSpo2Max', info.rango_spo2_max || 'N/A');
+            localStorage.setItem('selectedPatientPeso', data.peso_kg || 'N/A');
+            localStorage.setItem('selectedPatientEdad', data.edad || 'N/A');
+            localStorage.setItem('selectedPatientSexo', data.sexo || 'N/A');
+            localStorage.setItem('selectedPatientPadecimiento', data.padecimiento || 'N/A');
+            localStorage.setItem('selectedPatientSpo2Min', data.rango_spo2_min || 'N/A');
+            localStorage.setItem('selectedPatientSpo2Max', data.rango_spo2_max || 'N/A');
             
             if (tituloPaciente) {
-                tituloPaciente.textContent = info.nombre;
+                tituloPaciente.textContent = data.nombre;
             }
             
             // Actualizar badge del paciente compartido
@@ -85,7 +88,7 @@ function iniciarInvitado() {
         })
         .catch(err => {
             console.error('Error en iniciarInvitado:', err);
-            mostrarErrorInvitado('No se pudo validar el acceso.');
+            mostrarErrorInvitado('No se pudo conectar con el servidor.');
         });
 }
 

@@ -242,23 +242,34 @@ async function generarLinkInvitadoConfig() {
     }
 
     try {
+        console.log(`[generarLinkInvitadoConfig] Enviando: pacienteId=${pacienteId}, userId=${userId}`);
+        
         const response = await fetch('/api/pacientes/compartir', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id_paciente: pacienteId, id_usuario: parseInt(userId, 10) })
         });
+        
         const data = await response.json();
+        console.log(`[generarLinkInvitadoConfig] Respuesta:`, data, `status: ${response.status}`);
+        
         if (!response.ok) {
-            throw new Error(data.error || 'No se pudo generar el código de invitación.');
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        if (!data.id_acceso) {
+            throw new Error('No se recibió el ID de acceso del servidor.');
         }
 
         const url = `${window.location.origin}/invitado.html?acceso=${data.id_acceso}`;
+        console.log(`[generarLinkInvitadoConfig] URL generada: ${url}`);
+        
         if (sharePatientName) sharePatientName.textContent = nombrePaciente;
         if (shareLinkInput) shareLinkInput.value = url;
         if (shareQr) shareQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(url)}`;
         modal.show();
     } catch (error) {
-        console.error(error);
+        console.error('[generarLinkInvitadoConfig] Error:', error);
         alert(error.message || 'Error generando invitación.');
     }
 }

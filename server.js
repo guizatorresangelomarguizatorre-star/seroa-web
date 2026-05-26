@@ -283,6 +283,7 @@ app.put('/api/pacientes/:id', (req, res) => {
 
 app.post('/api/pacientes/compartir', (req, res) => {
     const { id_paciente, id_usuario } = req.body;
+    console.log(`[/api/pacientes/compartir] Generando invitación: paciente=${id_paciente}, usuario=${id_usuario}`);
 
     if (!id_paciente || !id_usuario) {
         return res.status(400).json({ error: 'ID de paciente y usuario son requeridos.' });
@@ -290,22 +291,33 @@ app.post('/api/pacientes/compartir', (req, res) => {
 
     const queryAcceso = 'SELECT tipo_permiso FROM acceso_pacientes WHERE id_usuario = ? AND id_paciente = ?';
     db.query(queryAcceso, [id_usuario, id_paciente], (err, accesoResult) => {
-        if (err || accesoResult.length === 0) {
+        if (err) {
+            console.error('[/api/pacientes/compartir] Error de DB:', err);
+            return res.status(500).json({ error: 'Error en la base de datos.' });
+        }
+        
+        if (accesoResult.length === 0) {
+            console.log(`[/api/pacientes/compartir] Usuario ${id_usuario} no tiene acceso a paciente ${id_paciente}`);
             return res.status(403).json({ error: 'No puedes compartir este paciente porque no tienes acceso.' });
         }
 
         const permiso = accesoResult[0].tipo_permiso;
         if (!['Administrador', 'Doctor'].includes(permiso)) {
+            console.log(`[/api/pacientes/compartir] Usuario tiene permiso "${permiso}", se requiere Admin o Doctor`);
             return res.status(403).json({ error: 'Solo Administrador o Doctor pueden generar un enlace de invitado.' });
         }
 
         const insertCompartido = `INSERT INTO acceso_pacientes (id_usuario, id_paciente, tipo_permiso, fecha_asignacion) VALUES (0, ?, 'Invitado', NOW())`;
         db.query(insertCompartido, [id_paciente], (shareErr, shareResult) => {
             if (shareErr) {
-                console.error('Error MySQL al crear acceso invitado:', shareErr);
+                console.error('[/api/pacientes/compartir] Error MySQL:', shareErr);
                 return res.status(500).json({ error: 'No se pudo crear el acceso de invitado.' });
             }
-            res.json({ mensaje: 'Enlace de invitado generado.', id_acceso: shareResult.insertId });
+            
+            const nuevoId = shareResult.insertId;
+            console.log(`[/api/pacientes/compartir] Acceso invitado creado con ID: ${nuevoId}`);
+            
+            res.json({ mensaje: 'Enlace de invitado generado.', id_acceso: nuevoId });
         });
     });
 });
@@ -439,25 +451,64 @@ app.delete('/api/accesos/:id', (req, res) => {
     });
 });
 
+app.get('/api/debug/acceso/:id', (req, res) => {
+    const id_acceso = req.params.id;
+    const query = `SELECT * FROM acceso_pacientes WHERE id_acceso = ?`;
+    db.query(query, [id_acceso], (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(results.length > 0 ? results[0] : { error: 'No encontrado' });
+    });
+});
+
 app.get('/api/invitado', (req, res) => {
     const id_acceso = req.query.acceso;
+    console.log(`[/api/invitado] Buscando acceso: ${id_acceso}`);
+    
     if (!id_acceso) {
         return res.status(400).json({ error: 'Código de acceso requerido.' });
     }
 
-    const query = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max,
-                          a.tipo_permiso, a.id_acceso
-                   FROM acceso_pacientes a
-                   JOIN pacientes p ON p.id_paciente = a.id_paciente
-                   WHERE a.id_acceso = ? AND a.tipo_permiso = 'Invitado'`;
-    db.query(query, [id_acceso], (err, results) => {
-        if (err || results.length === 0) {
-            return res.status(404).json({ error: 'Acceso de invitado inválido o caducado.' });
+    // Primero verificar que el acceso existe y es de tipo 'Invitado'
+    const checkQuery = `SELECT a.id_acceso, a.tipo_permiso, a.id_paciente FROM acceso_pacientes a WHERE a.id_acceso = ?`;
+    db.query(checkQuery, [id_acceso], (checkErr, checkResults) => {
+        if (checkErr) {
+            console.error('[/api/invitado] Error verificando acceso:', checkErr);
+            return res.status(500).json({ error: 'Error en la base de datos.' });
         }
-        const paciente = results[0];
-        res.json({
-            ...paciente,
-            nombre: paciente.nombre ? desencriptar(paciente.nombre) : 'Paciente'
+        
+        if (checkResults.length === 0) {
+            console.log(`[/api/invitado] Acceso ${id_acceso} no existe`);
+            return res.status(404).json({ error: 'Código de acceso inválido.' });
+        }
+        
+        const acceso = checkResults[0];
+        console.log(`[/api/invitado] Acceso encontrado: tipo="${acceso.tipo_permiso}", id_paciente=${acceso.id_paciente}`);
+        
+        if (acceso.tipo_permiso !== 'Invitado') {
+            console.log(`[/api/invitado] Acceso ${id_acceso} no es de tipo Invitado, es ${acceso.tipo_permiso}`);
+            return res.status(403).json({ error: 'Este código de acceso no es válido para invitados.' });
+        }
+        
+        // Ahora traer datos del paciente
+        const pacienteQuery = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max
+                              FROM pacientes p WHERE p.id_paciente = ?`;
+        db.query(pacienteQuery, [acceso.id_paciente], (pacErr, pacResults) => {
+            if (pacErr || pacResults.length === 0) {
+                console.error('[/api/invitado] Error obteniendo paciente:', pacErr);
+                return res.status(404).json({ error: 'Paciente no encontrado.' });
+            }
+            
+            const paciente = pacResults[0];
+            console.log(`[/api/invitado] Retornando paciente: ${paciente.id_paciente}`);
+            
+            res.json({
+                id_acceso: acceso.id_acceso,
+                ...paciente,
+                nombre: paciente.nombre ? desencriptar(paciente.nombre) : 'Paciente',
+                tipo_permiso: 'Invitado'
+            });
         });
     });
 });
