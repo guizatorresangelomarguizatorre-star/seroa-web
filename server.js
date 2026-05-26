@@ -378,13 +378,23 @@ app.put('/api/accesos/:id', (req, res) => {
             return res.status(403).json({ error: 'Solo Administrador o Doctor pueden modificar accesos.' });
         }
 
-        const updateQuery = 'UPDATE acceso_pacientes SET tipo_permiso = ? WHERE id_acceso = ?';
-        db.query(updateQuery, [nuevo_permiso, id_acceso], (updateErr) => {
-            if (updateErr) {
-                console.error('Error MySQL al actualizar permiso de acceso:', updateErr);
-                return res.status(500).json({ error: 'No se pudo actualizar el permiso de acceso.' });
+        const queryObjetivo = 'SELECT id_usuario FROM acceso_pacientes WHERE id_acceso = ?';
+        db.query(queryObjetivo, [id_acceso], (targetErr, targetResult) => {
+            if (targetErr || targetResult.length === 0) {
+                return res.status(404).json({ error: 'Acceso objetivo no encontrado.' });
             }
-            res.json({ mensaje: 'Permiso actualizado con éxito.' });
+            if (String(targetResult[0].id_usuario) === String(id_usuario)) {
+                return res.status(403).json({ error: 'No puedes modificar tus propios permisos.' });
+            }
+
+            const updateQuery = 'UPDATE acceso_pacientes SET tipo_permiso = ? WHERE id_acceso = ?';
+            db.query(updateQuery, [nuevo_permiso, id_acceso], (updateErr) => {
+                if (updateErr) {
+                    console.error('Error MySQL al actualizar permiso de acceso:', updateErr);
+                    return res.status(500).json({ error: 'No se pudo actualizar el permiso de acceso.' });
+                }
+                res.json({ mensaje: 'Permiso actualizado con éxito.' });
+            });
         });
     });
 });
@@ -408,13 +418,23 @@ app.delete('/api/accesos/:id', (req, res) => {
             return res.status(403).json({ error: 'Solo Administrador o Doctor pueden revocar accesos.' });
         }
 
-        const deleteQuery = 'DELETE FROM acceso_pacientes WHERE id_acceso = ?';
-        db.query(deleteQuery, [id_acceso], (deleteErr) => {
-            if (deleteErr) {
-                console.error('Error MySQL al revocar acceso:', deleteErr);
-                return res.status(500).json({ error: 'No se pudo revocar el acceso.' });
+        const queryObjetivo = 'SELECT id_usuario FROM acceso_pacientes WHERE id_acceso = ?';
+        db.query(queryObjetivo, [id_acceso], (targetErr, targetResult) => {
+            if (targetErr || targetResult.length === 0) {
+                return res.status(404).json({ error: 'Acceso objetivo no encontrado.' });
             }
-            res.json({ mensaje: 'Acceso revocado correctamente.' });
+            if (String(targetResult[0].id_usuario) === String(id_usuario)) {
+                return res.status(403).json({ error: 'No puedes revocar tu propio acceso.' });
+            }
+
+            const deleteQuery = 'DELETE FROM acceso_pacientes WHERE id_acceso = ?';
+            db.query(deleteQuery, [id_acceso], (deleteErr) => {
+                if (deleteErr) {
+                    console.error('Error MySQL al revocar acceso:', deleteErr);
+                    return res.status(500).json({ error: 'No se pudo revocar el acceso.' });
+                }
+                res.json({ mensaje: 'Acceso revocado correctamente.' });
+            });
         });
     });
 });

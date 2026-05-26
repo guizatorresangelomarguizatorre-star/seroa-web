@@ -137,10 +137,11 @@ function formatDate(value) {
     return new Date(value).toLocaleString('es-MX');
 }
 
-function crearFilaAcceso(access, canEdit) {
+function crearFilaAcceso(access, canEdit, esPropio) {
     const permisoOpciones = ['Administrador', 'Doctor', 'Invitado'];
     const rolActual = access.tipo_permiso || 'Invitado';
-    const selectDisabled = canEdit ? '' : 'disabled';
+    const selectDisabled = (!canEdit || esPropio) ? 'disabled' : '';
+    const buttonDisabled = (!canEdit || esPropio) ? 'disabled' : '';
     const uid = access.id_acceso;
 
     return `
@@ -152,7 +153,7 @@ function crearFilaAcceso(access, canEdit) {
                     </div>
                     <div>
                         <div class="fw-bold mb-1">${access.usuario_nombre || 'Invitado'}</div>
-                        <small class="text-muted">${access.id_usuario === 0 ? 'Acceso invitado' : `Usuario #${access.id_usuario}`}</small>
+                        <small class="text-muted">${access.id_usuario === 0 ? 'Acceso invitado' : esPropio ? 'Tu propio acceso' : `Usuario #${access.id_usuario}`}</small>
                     </div>
                 </div>
             </td>
@@ -163,7 +164,7 @@ function crearFilaAcceso(access, canEdit) {
             </td>
             <td>${formatDate(access.fecha_asignacion)}</td>
             <td>
-                <button class="btn btn-sm btn-danger btn-revocar-acceso" data-acceso-id="${uid}" ${canEdit ? '' : 'disabled'}>
+                <button class="btn btn-sm btn-danger btn-revocar-acceso" data-acceso-id="${uid}" ${buttonDisabled}>
                     <i class="bi bi-trash3"></i>
                 </button>
             </td>
@@ -200,7 +201,10 @@ async function cargarAccesos() {
 
         const canEdit = ['Administrador', 'Doctor'].includes(role);
         if (tabla) {
-            tabla.innerHTML = data.length > 0 ? data.map(access => crearFilaAcceso(access, canEdit)).join('') : `<tr><td colspan="4" class="text-center text-muted py-4">No hay accesos registrados para este paciente.</td></tr>`;
+            tabla.innerHTML = data.length > 0 ? data.map(access => {
+                const esPropio = access.id_usuario && String(access.id_usuario) === String(userId);
+                return crearFilaAcceso(access, canEdit, esPropio);
+            }).join('') : `<tr><td colspan="4" class="text-center text-muted py-4">No hay accesos registrados para este paciente.</td></tr>`;
         }
 
         if (canEdit) {
