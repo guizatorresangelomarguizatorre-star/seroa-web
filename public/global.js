@@ -114,3 +114,162 @@ window.confirmarConexion = function() {
         luzConexion.style.backgroundColor = '#28a745'; // Verde
         luzConexion.style.boxShadow = '0 0 8px #28a745';
         textoConexion.innerText = 'Dispositivo Seroa: En Línea';
+    }
+
+    clearTimeout(temporizadorDesconexion);
+    temporizadorDesconexion = setTimeout(() => {
+        if (luzConexion && textoConexion) {
+            luzConexion.style.backgroundColor = '#dc3545'; // Rojo
+            luzConexion.style.boxShadow = '0 0 8px #dc3545';
+            textoConexion.innerText = 'Dispositivo Seroa: Desconectado';
+        }
+    }, 10000);
+};
+
+// ==========================================
+// FUNCIONES DE CONTROL DE ACCESO Y PACIENTE
+// ==========================================
+function validarSesionUsuario() {
+    const nombreGuardado = localStorage.getItem('nombrePaciente');
+    
+    if (nombreGuardado) {
+        const primerNombre = nombreGuardado.split(' ')[0];
+        
+        // Inyectamos nombre en cabecera
+        const elementoNombreHeader = document.getElementById('nombreUsuarioHeader');
+        if (elementoNombreHeader) elementoNombreHeader.textContent = primerNombre;
+        
+        // Inyectamos nombre en el saludo grande
+        const saludoPantalla = document.getElementById('nombreUsuarioPantalla');
+        if (saludoPantalla) saludoPantalla.textContent = primerNombre;
+
+        // Actualizamos el paciente seleccionado
+        actualizarBadgePaciente();
+    } else {
+        const paginaActual = window.location.pathname.split("/").pop();
+        if (paginaActual !== 'login.html') {
+            window.location.href = 'login.html';
+        }
+    }
+}
+
+function actualizarBadgePaciente() {
+    // Busca si hay un paciente seleccionado, si no, usa "Sin selección"
+    const pacienteSeleccionado = localStorage.getItem('pacienteActivoSeroa') || "Sin selección";
+    
+    // Busca todas las etiquetas <strong> dentro de los badges de paciente
+    const badgesPaciente = document.querySelectorAll('[data-paciente-actual] strong');
+    badgesPaciente.forEach(badge => {
+        badge.textContent = pacienteSeleccionado;
+    });
+}
+
+function cerrarSesion() {
+    localStorage.removeItem('nombrePaciente');
+    window.location.href = 'login.html';
+}
+
+// ==========================================
+// CARGA DINÁMICA DE MENÚ Y CABECERA
+// ==========================================
+async function inyectarComponentesDinamicos() {
+    // 1. HEADER
+    const contenedorHeader = document.getElementById('header-container');
+    if (contenedorHeader) {
+        try {
+            const response = await fetch('header.html');
+            if(response.ok) {
+                contenedorHeader.innerHTML = await response.text();
+            } else {
+                console.error("Seroa Error: header.html no encontrado.");
+            }
+        } catch (error) { console.error("Seroa Error fetch header:", error); }
+    }
+
+    // 2. MENÚ
+    const contenedorMenu = document.getElementById('menu-container');
+    if (contenedorMenu) {
+        try {
+            const responseMenu = await fetch('menu.html');
+            if(responseMenu.ok) {
+                contenedorMenu.innerHTML = await responseMenu.text();
+                resaltarMenuActivo();
+            } else {
+                console.error("Seroa Error: menu.html no encontrado.");
+            }
+        } catch (error) { console.error("Seroa Error fetch menú:", error); }
+    }
+    
+    // Validamos sesión de nuevo una vez que los elementos existen en el DOM
+    validarSesionUsuario();
+    actualizarReloj();
+}
+
+function resaltarMenuActivo() {
+    let paginaActual = window.location.pathname.split("/").pop();
+    if (paginaActual === "" || paginaActual === "/") paginaActual = "index.html";
+
+    const enlacesNav = document.querySelectorAll(".navbar-nav .nav-link");
+    enlacesNav.forEach(enlace => {
+        enlace.classList.remove("active", "activo");
+        enlace.parentElement.classList.remove("active-nav", "fw-bold");
+        
+        if (enlace.getAttribute("href") === paginaActual) {
+            enlace.classList.add("active", "activo");
+            enlace.parentElement.classList.add("active-nav", "fw-bold");
+        }
+    });
+}
+
+// ==========================================
+// MODO PRUEBA: SIMULACIÓN DE CONEXIÓN
+// ==========================================
+function iniciarModoPrueba() {
+    let contador = 0;
+    const intervalos = setInterval(() => {
+        contador++;
+        console.log(`Prueba ${contador}/4: Cambiando estado de conexión...`);
+
+        if (contador === 1) {
+            window.confirmarConexion(); 
+        } else if (contador === 2) {
+            const luz = document.getElementById('luz-conexion');
+            const txt = document.getElementById('texto-conexion');
+            if(luz && txt) {
+                luz.style.backgroundColor = '#dc3545';
+                luz.style.boxShadow = '0 0 8px #dc3545';
+                txt.innerText = 'Dispositivo Seroa: Desconectado';
+            }
+        } else if (contador === 3) {
+            window.confirmarConexion();
+        } else if (contador === 4) {
+            const luz = document.getElementById('luz-conexion');
+            const txt = document.getElementById('texto-conexion');
+            if(luz && txt) {
+                luz.style.backgroundColor = '#dc3545';
+                luz.style.boxShadow = '0 0 8px #dc3545';
+                txt.innerText = 'Dispositivo Seroa: Desconectado';
+            }
+            clearInterval(intervalos);
+        }
+    }, 10000); 
+}
+
+// ==========================================
+// INICIALIZADOR PRINCIPAL
+// ==========================================
+document.addEventListener("DOMContentLoaded", async () => {
+    // 1. Forzar color rojo por defecto al cargar
+    const luz = document.getElementById('luz-conexion');
+    const txt = document.getElementById('texto-conexion');
+    if(luz && txt) {
+        luz.style.backgroundColor = '#dc3545';
+        txt.innerText = 'Dispositivo Seroa: Desconectado';
+    }
+
+    // 2. Inyectar HTML Dinámico
+    await inyectarComponentesDinamicos();
+
+    // 3. Disparar Pruebas
+    iniciarModoPrueba();
+});
