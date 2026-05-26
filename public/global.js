@@ -109,12 +109,15 @@ function actualizarPacienteSeleccionado() {
     const pacienteActualBadge = document.getElementById('pacienteActualBadge');
     const pacienteActualLabels = document.querySelectorAll('[data-paciente-actual]');
 
+    const template = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${pacienteActual}</strong>`;
+
     if (pacienteActualBadge) {
-        pacienteActualBadge.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${pacienteActual}</strong>`;
+        pacienteActualBadge.innerHTML = template;
     }
 
     pacienteActualLabels.forEach(el => {
-        el.textContent = pacienteActual;
+        // Preserve the badge appearance by setting innerHTML to the same template
+        el.innerHTML = template;
     });
 }
 

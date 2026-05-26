@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedPatientRole = localStorage.getItem('selectedPatientRole');
 
     function actualizarPacienteActualUI() {
-        const nombre = selectedPatientName || userName || 'Sin selección';
+        const nombre = localStorage.getItem('selectedPatientName') || userName || 'Sin selección';
         const badgeText = nombre ? `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${nombre}</strong>` : 'Paciente Actual: <strong>Sin selección</strong>';
 
         if (pacienteActualBadge) pacienteActualBadge.innerHTML = badgeText;
@@ -193,7 +193,9 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('selectedPatientId', pacienteId);
         localStorage.setItem('selectedPatientName', decodeURIComponent(nombre));
         localStorage.setItem('selectedPatientRole', rol);
+        // Actualizamos el badge en esta página y en todas las otras pantallas
         actualizarPacienteActualUI();
+        if (typeof window.actualizarPacienteSeleccionado === 'function') window.actualizarPacienteSeleccionado();
         cargarPacientes();
     }
 
