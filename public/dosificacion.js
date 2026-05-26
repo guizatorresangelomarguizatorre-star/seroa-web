@@ -1,15 +1,4 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyD8GcNrjousLrlNSKXcNrjl0gjAYuXvTMQ",
-    authDomain: "seroa-e8606.firebaseapp.com",
-    databaseURL: "https://seroa-e8606-default-rtdb.firebaseio.com",
-    projectId: "seroa-e8606",
-    storageBucket: "seroa-e8606.firebasestorage.app",
-    messagingSenderId: "985506819702",
-    appId: "1:985506819702:web:407215da36321f9084b957"
-};
-
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+const database = window.database || firebase.database();
 
 function clasificarLectura(spo2, bpm) {
     if (spo2 < 85 || bpm < 50 || bpm > 140) return { nivel: 'Peligro', color: 'danger', mensaje: 'Activa alertas y válvula de emergencia.' };
@@ -106,14 +95,13 @@ function actualizarPanelLectura(data) {
 }
 
 function suscribirLecturas() {
-    database.ref('Seroa/Actual').on('value', (snapshot) => {
-        const datos = snapshot.val();
-        if (!datos) return;
+    window.SeroaRealtime.subscribe((datos) => {
+        if (!datos || datos.estado !== 'ACTIVO') return;
+        const spo2 = Number(datos.spo2);
+        const bpm = Number(datos.bpm);
+        if (!Number.isFinite(spo2) || !Number.isFinite(bpm) || spo2 <= 0 || bpm <= 0) return;
 
-        actualizarPanelLectura({
-            spo2: datos.spo2 || 0,
-            bpm: datos.bpm || 0
-        });
+        actualizarPanelLectura({ spo2, bpm });
     });
 }
 

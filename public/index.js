@@ -1,16 +1,5 @@
-// 1. CONFIGURACIÓN DE FIREBASE
-const firebaseConfig = {
-    apiKey: "AIzaSyD8GcNrjousLrlNSKXcNrjl0gjAYuXvTMQ",
-    authDomain: "seroa-e8606.firebaseapp.com",
-    databaseURL: "https://seroa-e8606-default-rtdb.firebaseio.com",
-    projectId: "seroa-e8606",
-    storageBucket: "seroa-e8606.firebasestorage.app",
-    messagingSenderId: "985506819702",
-    appId: "1:985506819702:web:407215da36321f9084b957"
-};
-
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+// 1. CONFIGURACIÓN DE FIREBASE CENTRALIZADA EN global.js
+const database = window.database || firebase.database();
 
 // 2. RECUPERAR LA MEMORIA
 let historialSpo2 = JSON.parse(localStorage.getItem('seroaHistorialSpo2')) || [];
@@ -88,9 +77,7 @@ if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
 }
 
 // 4. EL MOTOR DE TIEMPO REAL CON INDICADOR LED
-database.ref('Seroa/Actual').on('value', (snapshot) => {
-    const datos = snapshot.val();
-    
+window.SeroaRealtime.subscribe((datos) => {
     const cartelEstado = document.getElementById('estadoSensorOverlay'); 
     const textoEstado = document.getElementById('textoEstadoSensor'); 
     const valorSpo2 = document.getElementById('spo2Valor');
@@ -110,29 +97,24 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
     }
 
     if (datos) {
-        const estadoSensor = datos.estado; 
+        const estadoSensor = datos.estado;
+        const actualSpo2 = Number(datos.spo2);
+        const actualBpm = Number(datos.bpm);
+        const valoresValidos = Number.isFinite(actualSpo2) && Number.isFinite(actualBpm) && actualSpo2 > 0 && actualBpm > 0;
 
-        if (estadoSensor === "SIN_DEDO") {
+        if (estadoSensor === "SIN_DEDO" || !valoresValidos) {
             if (cartelEstado) cartelEstado.style.display = 'block';
             if (textoEstado) textoEstado.innerText = "Por favor coloca tu dedo, el sensor tardará unos segundos en realizar la calibración, en un instante te brindaremos tus datos.";
-            
             if (valorSpo2) valorSpo2.innerText = "--";
             if (valorBpm) valorBpm.innerText = "--";
-            
         } else if (estadoSensor === "CALIBRANDO") {
             if (cartelEstado) cartelEstado.style.display = 'block';
             if (textoEstado) textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
-            
-            if (valorSpo2 && (valorSpo2.innerText === "--" || valorSpo2.innerText === "")) {
-                valorSpo2.innerText = "--";
-                if (valorBpm) valorBpm.innerText = "--";
-            }
-            
+            if (valorSpo2) valorSpo2.innerText = "--";
+            if (valorBpm) valorBpm.innerText = "--";
         } else if (estadoSensor === "ACTIVO") {
             if (cartelEstado) cartelEstado.style.display = 'none';
 
-            const actualSpo2 = datos.spo2;
-            const actualBpm = datos.bpm;
             const pacienteId = localStorage.getItem('selectedPatientId');
             const pacienteNombre = localStorage.getItem('selectedPatientName') || 'Sin selección';
             const usuarioTurno = localStorage.getItem('nombrePaciente') || 'Sesión anónima';
@@ -172,8 +154,9 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
             };
 
             if (pacienteId) {
-                const registroRef = database.ref(`registros_biomedicos/${pacienteId}`).push();
-                registro.id_registro = registroRef.key;
+                const idRegistro = window.generarIdRegistro();
+                const registroRef = database.ref(`registros_biomedicos/${pacienteId}/${idRegistro}`);
+                registro.id_registro = idRegistro;
                 registroRef.set(registro).catch(error => console.error('Error guardando registro en Firebase:', error));
                 guardarRegistroBiometrico(registro);
             }

@@ -1,16 +1,5 @@
 // Registro diario de lecturas y estructura de datos biométricos
-const firebaseConfig = {
-    apiKey: "AIzaSyD8GcNrjousLrlNSKXcNrjl0gjAYuXvTMQ",
-    authDomain: "seroa-e8606.firebaseapp.com",
-    databaseURL: "https://seroa-e8606-default-rtdb.firebaseio.com",
-    projectId: "seroa-e8606",
-    storageBucket: "seroa-e8606.firebasestorage.app",
-    messagingSenderId: "985506819702",
-    appId: "1:985506819702:web:407215da36321f9084b957"
-};
-
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+const database = window.database || firebase.database();
 
 let latestRegistros = [];
 let latestRegistrosFiltered = [];
@@ -28,6 +17,12 @@ function clasificarLectura(spo2, bpm) {
 function formatoFecha(fecha) {
     const dt = new Date(fecha);
     return dt.toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function generarIdRegistro() {
+    const tiempo = Date.now().toString(36).toUpperCase();
+    const aleatorio = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `R-${tiempo}-${aleatorio}`;
 }
 
 function obtenerNotasGuardadas(idPaciente) {
@@ -107,11 +102,12 @@ function renderRegistrosFirebase(registros) {
 function suscribirRegistrosRTDB(idPaciente) {
     if (!idPaciente) return;
     const path = `registros_biomedicos/${idPaciente}`;
-    database.ref(path).limitToLast(50).on('value', snapshot => {
+    database.ref(path).limitToLast(200).on('value', snapshot => {
         const datos = snapshot.val();
         const registros = datos ? Object.values(datos).sort((a,b)=> new Date(b.fecha_hora) - new Date(a.fecha_hora)) : [];
         latestRegistros = registros;
         renderRegistrosFirebase(registros);
+        actualizarResumenDiario(registros);
     });
 }
 
@@ -159,8 +155,8 @@ async function guardarRegistroEstructurado(lectura) {
     const pacienteId = localStorage.getItem('selectedPatientId');
     if (!pacienteId) return console.warn('No hay paciente seleccionado. Registro no guardado.');
 
-    const ref = database.ref(`registros_biomedicos/${pacienteId}`).push();
-    const idRegistro = ref.key;
+    const idRegistro = generarIdRegistro();
+    const ref = database.ref(`registros_biomedicos/${pacienteId}/${idRegistro}`);
 
     const usuarioTurno = localStorage.getItem('nombrePaciente') || 'Usuario anónimo';
 
@@ -196,19 +192,46 @@ async function guardarRegistroEstructurado(lectura) {
 
 // Suscribir a lecturas en tiempo real (Seroa/Actual) y guardar cada entrada
 function suscribirLecturasRT(leerGuardar = true) {
-    database.ref('Seroa/Actual').on('value', (snapshot) => {
-        const datos = snapshot.val();
-        if (!datos) return;
+    window.SeroaRealtime.subscribe((datos) => {
+        if (!datos || datos.estado !== 'ACTIVO') return;
 
-        const spo2 = datos.spo2 || 0;
-        const bpm = datos.bpm || 0;
+        const spo2 = Number(datos.spo2);
+        const bpm = Number(datos.bpm);
+        if (!Number.isFinite(spo2) || !Number.isFinite(bpm) || spo2 <= 0 || bpm <= 0) return;
+
         const clas = clasificarLectura(spo2, bpm);
-
         const lectura = { spo2, bpm, nivel: clas.nivel, accion: clas.accion };
 
-        // Guardar estructurado
         if (leerGuardar) guardarRegistroEstructurado(lectura);
     });
+}
+
+function actualizarResumenDiario(registros) {
+    const hoy = new Date();
+    const registrosHoy = (registros || []).filter(r => r.fecha_hora && window.esHoy(r.fecha_hora));
+    const cardSpO2 = document.getElementById('valorPromedioSpO2');
+    const cardBpm = document.getElementById('valorPromedioBpm');
+    const cardValvula = document.getElementById('valorActivaciones');
+
+    if (!registrosHoy.length) {
+        if (cardSpO2) cardSpO2.textContent = '--';
+        if (cardBpm) cardBpm.textContent = '--';
+        if (cardValvula) cardValvula.textContent = '0 veces';
+        return;
+    }
+
+    const registrosValidos = registrosHoy.filter(r => Number.isFinite(Number(r.saturacion_oxigeno)) && Number.isFinite(Number(r.ritmo_cardiaco)));
+    const totalSpO2 = registrosValidos.reduce((sum, r) => sum + Number(r.saturacion_oxigeno), 0);
+    const totalBpm = registrosValidos.reduce((sum, r) => sum + Number(r.ritmo_cardiaco), 0);
+    const promedioSpO2 = registrosValidos.length ? Math.round(totalSpO2 / registrosValidos.length) : '--';
+    const promedioBpm = registrosValidos.length ? Math.round(totalBpm / registrosValidos.length) : '--';
+    const activaciones = registrosHoy.filter(r => {
+        return (r.accion_sistema || '').toString().toLowerCase().includes('válvula') || (r.nivel_alerta === 'Peligro') || (r.nivel === 'Peligro');
+    }).length;
+
+    if (cardSpO2) cardSpO2.textContent = promedioSpO2 === '--' ? '--' : `${promedioSpO2}%`;
+    if (cardBpm) cardBpm.textContent = promedioBpm === '--' ? '--' : `${promedioBpm} bpm`;
+    if (cardValvula) cardValvula.textContent = `${activaciones} ${activaciones === 1 ? 'vez' : 'veces'}`;
 }
 
 async function iniciarRegistroDiario() {
@@ -325,9 +348,9 @@ async function generarPDF() {
         startY: afterTableY + 8,
         head: [['Estado', 'SpO2', 'BPM', 'Significado']],
         body: [
-            ['🟢 Normal (Verde)', '90% a 100%', '60 a 100', 'Valores estables. Monitoreo silencioso.'],
-            ['🟠 Precaución (Naranja)', '85% a 89%', '50-59 o 101-140', 'Signos inestables. Atención y monitoreo continuo.'],
-            ['🔴 Peligro (Rojo)', '< 85%', '<50 o >140', 'Hipoxemia severa o crisis. Activar alertas y válvula.']
+            ['Normal', '90% a 100%', '60 a 100', 'Valores estables. Monitoreo silencioso.'],
+            ['Precaución', '85% a 89%', '50-59 o 101-140', 'Signos inestables. Atención y monitoreo continuo.'],
+            ['Peligro', '< 85%', '<50 o >140', 'Hipoxemia severa o crisis. Activar alertas y válvula.']
         ],
         styles: { fontSize: 10 }
     });

@@ -59,7 +59,10 @@
   <div class="container mt-4 mb-5">
     
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h4 class="text-success fw-bold mb-0" style="color: var(--color-seroa-teal) !important;">Registro Diario</h4>
+      <div>
+        <h4 class="text-success fw-bold mb-0" style="color: var(--color-seroa-teal) !important;">Registro Diario</h4>
+        <p class="text-muted small mb-0">Resumen de lecturas de hoy, filtrado de resultados y notas de cuidado.</p>
+      </div>
       <div class="d-flex align-items-center gap-2">
         <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
           <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte
@@ -70,27 +73,35 @@
       </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-body">
-        <h6 class="fw-bold text-teal mb-3"><i class="bi bi-pencil-square me-2"></i>Agregar Nota al Registro de Hoy</h6>
-        <form id="formNotas" class="row g-3">
-          <div class="col-md-3">
-            <label class="form-label small text-muted">Hora</label>
-            <input type="time" class="form-control" id="notaHora" required>
-          </div>
-          <div class="col-md-7">
-            <label class="form-label small text-muted">Observaciones del paciente</label>
-            <input type="text" class="form-control" id="notaTexto" placeholder="Ej: El paciente reportó fatiga después de comer..." required>
-          </div>
-          <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary bg-teal border-0 w-100"><i class="bi bi-send"></i> Guardar</button>
-          </div>
-        </form>
+    <div class="mb-3">
+      <h5 class="fw-semibold text-secondary">Resumen del Día</h5>
+      <p class="text-muted small mb-0">Promedios reales con datos del día actual, sin valores simulados.</p>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
+          <small class="text-muted d-block fw-bold">Promedio SpO2 (Hoy)</small>
+          <span id="valorPromedioSpO2" class="fs-3 fw-bold text-success">--</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
+          <small class="text-muted d-block fw-bold">Promedio BPM (Hoy)</small>
+          <span id="valorPromedioBpm" class="fs-3 fw-bold text-teal">--</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
+          <small class="text-muted d-block fw-bold">Activaciones de Válvula</small>
+          <span id="valorActivaciones" class="fs-3 fw-bold text-warning">0 veces</span>
+        </div>
       </div>
     </div>
 
     <div class="card mb-4 shadow-sm border-0">
       <div class="card-body">
+        <h5 class="fw-semibold text-secondary mb-3"><i class="bi bi-funnel-fill me-2"></i>Filtrar registros</h5>
         <div class="row g-3 align-items-end">
           <div class="col-md-3">
             <label class="form-label small text-muted">Fecha Inicio</label>
@@ -117,28 +128,27 @@
       </div>
     </div>
 
-    <div class="row g-3 mb-4">
-      <div class="col-md-4">
-        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
-          <small class="text-muted d-block fw-bold">Promedio SpO2 (Hoy)</small>
-          <span class="fs-3 fw-bold text-success">96%</span>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
-          <small class="text-muted d-block fw-bold">Promedio BPM (Hoy)</small>
-          <span class="fs-3 fw-bold text-teal">68 bpm</span>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
-          <small class="text-muted d-block fw-bold">Activaciones de Válvula</small>
-          <span class="fs-3 fw-bold text-warning">3 veces</span>
-        </div>
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body">
+        <h5 class="fw-semibold text-secondary mb-3"><i class="bi bi-journal-text me-2"></i>Notas del Cuidador</h5>
+        <form id="formNotas" class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Hora</label>
+            <input type="time" class="form-control" id="notaHora" required>
+          </div>
+          <div class="col-md-7">
+            <label class="form-label small text-muted">Observaciones del paciente</label>
+            <input type="text" class="form-control" id="notaTexto" placeholder="Ej: El paciente reportó fatiga después de comer..." required>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary bg-teal border-0 w-100"><i class="bi bi-send"></i> Guardar</button>
+          </div>
+        </form>
       </div>
     </div>
 
-    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-clock-history me-2"></i>Historial Detallado</h6>
+    <h5 class="fw-semibold text-secondary mb-3">Registro Diario</h5>
+    <p class="text-muted small mb-3">Historial de lecturas guardadas en la base de datos del día actual.</p>
     <div class="card shadow-sm border-0 mb-4">
       <div class="card-body p-0">
         <div class="table-responsive">

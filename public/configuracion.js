@@ -1,15 +1,4 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyD8GcNrjousLrlNSKXcNrjl0gjAYuXvTMQ",
-    authDomain: "seroa-e8606.firebaseapp.com",
-    databaseURL: "https://seroa-e8606-default-rtdb.firebaseio.com",
-    projectId: "seroa-e8606",
-    storageBucket: "seroa-e8606.firebasestorage.app",
-    messagingSenderId: "985506819702",
-    appId: "1:985506819702:web:407215da36321f9084b957"
-};
-
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+const database = window.database || firebase.database();
 
 async function cargarDispositivos() {
     const userId = localStorage.getItem('userId');
