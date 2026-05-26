@@ -432,21 +432,93 @@ app.get('/api/tanques', (req, res) => {
     });
 });
 
-app.post('/api/registros', (req, res) => {
-    const { id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora } = req.body;
+// Almacenamiento híbrido: acumuladores por paciente para lecturas normales (promediar por hora)
+const hourAggregates = {}; // { [id_paciente]: { hourLabel: 'YYYY-MM-DDTHH', sumSpo2, sumBpm, count } }
 
-    if (!id_registro || !id_paciente || saturacion_oxigeno === undefined || ritmo_cardiaco === undefined || !fecha_hora) {
-        return res.status(400).json({ error: 'Faltan datos obligatorios para guardar registro.' });
-    }
+function hourLabelForDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    return `${y}-${m}-${day}T${h}`;
+}
+
+function flushAggregateForPatient(id_paciente) {
+    const agg = hourAggregates[id_paciente];
+    if (!agg || agg.count === 0) return;
+
+    const avgSpo2 = Math.round(agg.sumSpo2 / agg.count);
+    const avgBpm = Math.round(agg.sumBpm / agg.count);
+    const id_registro = crypto.randomBytes(12).toString('hex');
+    const fecha_hora = new Date().toISOString();
 
     const query = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    db.query(query, [id_registro, id_paciente, id_dispositivo || null, saturacion_oxigeno, ritmo_cardiaco, es_critico ? 1 : 0, fecha_hora], (err) => {
-        if (err) {
-            console.error('Error MySQL al guardar registro biométrico:', err);
-            return res.status(500).json({ error: 'No se pudo guardar el registro biométrico.' });
-        }
-        res.json({ mensaje: 'Registro biométrico guardado.' });
+    db.query(query, [id_registro, id_paciente, null, avgSpo2, avgBpm, 0, fecha_hora], (err) => {
+        if (err) console.error('Error al guardar resumen horario en BD:', err);
+        else console.log(`Resumen horario guardado paciente ${id_paciente} -> SpO2 ${avgSpo2}, BPM ${avgBpm} (count ${agg.count})`);
     });
+
+    // reset
+    delete hourAggregates[id_paciente];
+}
+
+app.post('/api/registros', (req, res) => {
+    // Accept payloads from frontend (index.js) that include nivel_alerta or es_critico
+    const { id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora, nivel_alerta } = req.body;
+
+    if (!id_paciente || saturacion_oxigeno === undefined || ritmo_cardiaco === undefined) {
+        return res.status(400).json({ error: 'Faltan datos obligatorios para procesar el registro.' });
+    }
+
+    const spo2 = Number(saturacion_oxigeno);
+    const bpm = Number(ritmo_cardiaco);
+    const nivel = (nivel_alerta || (es_critico ? (es_critico === 2 ? 'Peligro' : 'Precaución') : 'Normal'));
+
+    // Determine severity — consider anomalous only Precaución o Peligro
+    const isAnomaly = nivel === 'Peligro' || nivel === 'Precaución';
+
+    if (isAnomaly) {
+        // Insert immediately as incident
+        const idr = id_registro || crypto.randomBytes(12).toString('hex');
+        const fecha = fecha_hora || new Date().toISOString();
+        const esCrit = (nivel === 'Peligro') ? 2 : (nivel === 'Precaución' ? 1 : 0);
+
+        const query = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        db.query(query, [idr, id_paciente, id_dispositivo || null, spo2, bpm, esCrit, fecha], (err) => {
+            if (err) {
+                console.error('Error MySQL al guardar incidente:', err);
+                return res.status(500).json({ error: 'No se pudo guardar el incidente.' });
+            }
+            // Reset aggregate for this patient (rompe el promediado)
+            if (hourAggregates[id_paciente]) delete hourAggregates[id_paciente];
+            return res.json({ mensaje: 'Incidente guardado inmediatamente.' });
+        });
+        return;
+    }
+
+    // Normal reading: accumulate per hour
+    const now = new Date(fecha_hora || Date.now());
+    const label = hourLabelForDate(now);
+    const agg = hourAggregates[id_paciente];
+
+    if (!agg) {
+        hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1 };
+        return res.json({ mensaje: 'Lectura normal acumulada.' });
+    }
+
+    if (agg.hourLabel !== label) {
+        // hour changed -> flush previous
+        flushAggregateForPatient(id_paciente);
+        // start new aggregate with current reading
+        hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1 };
+        return res.json({ mensaje: 'Lectura normal acumulada (nuevo intervalo horario, se flushó anterior).' });
+    }
+
+    // same hour -> accumulate
+    agg.sumSpo2 += spo2;
+    agg.sumBpm += bpm;
+    agg.count += 1;
+    return res.json({ mensaje: 'Lectura normal acumulada.' });
 });
 
 app.get('/api/registros', (req, res) => {
