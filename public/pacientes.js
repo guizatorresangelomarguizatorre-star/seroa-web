@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const estado = paciente.rango_spo2_min >= 90 ? 'Estable' : paciente.rango_spo2_min >= 80 ? 'Revisar' : 'Crítico';
         const estadoClass = paciente.rango_spo2_min >= 90 ? 'bg-success' : paciente.rango_spo2_min >= 80 ? 'bg-warning text-dark' : 'bg-danger';
         const initials = paciente.nombre.split(' ').slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('');
-        const esSeleccionado = selectedPatientId === String(paciente.id_paciente);
+        const esSeleccionado = (localStorage.getItem('selectedPatientId') || '') === String(paciente.id_paciente);
         const permisoBadge = paciente.tipo_permiso === 'Administrador' ? 'bg-teal text-white' : paciente.tipo_permiso === 'Doctor' ? 'bg-primary text-white' : 'bg-secondary text-white';
 
         return `
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <small class="text-muted">Rango SpO₂</small>
                             <p class="mb-3">${paciente.rango_spo2_min}% - ${paciente.rango_spo2_max}%</p>
                             <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn btn-sm btn-outline-teal rounded-pill flex-grow-1" data-action="select" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}">
+                                <button class="btn btn-sm btn-outline-teal rounded-pill flex-grow-1" data-action="select" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}" data-peso="${paciente.peso_kg}" data-edad="${paciente.edad}" data-sexo="${paciente.sexo}" data-padecimiento="${encodeURIComponent(paciente.padecimiento)}" data-spo2min="${paciente.rango_spo2_min}" data-spo2max="${paciente.rango_spo2_max}">
                                     ${esSeleccionado ? 'Seleccionado' : 'Seleccionar'}
                                 </button>
                                 ${paciente.tipo_permiso !== 'Invitado' ? `<button class="btn btn-sm btn-teal text-white rounded-pill flex-grow-1" data-action="share" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}">Compartir</button>` : ''}
@@ -189,13 +189,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function seleccionarPaciente(pacienteId, nombre, rol) {
+    function seleccionarPaciente(pacienteId, nombre, rol, detalles = {}) {
         localStorage.setItem('selectedPatientId', pacienteId);
         localStorage.setItem('selectedPatientName', decodeURIComponent(nombre));
         localStorage.setItem('selectedPatientRole', rol);
+
+        // Guardar detalles útiles del paciente para que otras pantallas los muestren fácilmente
+        if (detalles.peso) localStorage.setItem('selectedPatientPeso', detalles.peso);
+        if (detalles.edad) localStorage.setItem('selectedPatientEdad', detalles.edad);
+        if (detalles.sexo) localStorage.setItem('selectedPatientSexo', detalles.sexo);
+        if (detalles.padecimiento) localStorage.setItem('selectedPatientPadecimiento', decodeURIComponent(detalles.padecimiento));
+        if (detalles.spo2min) localStorage.setItem('selectedPatientSpo2Min', detalles.spo2min);
+        if (detalles.spo2max) localStorage.setItem('selectedPatientSpo2Max', detalles.spo2max);
+
+        // Mantener compatibilidad con la clave existente usada en global.js
+        localStorage.setItem('pacienteActivoSeroa', decodeURIComponent(nombre));
+
         // Actualizamos el badge en esta página y en todas las otras pantallas
         actualizarPacienteActualUI();
-        if (typeof window.actualizarPacienteSeleccionado === 'function') window.actualizarPacienteSeleccionado();
+        if (typeof window.actualizarBadgePaciente === 'function') window.actualizarBadgePaciente();
         cargarPacientes();
     }
 
@@ -236,7 +248,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const rol = button.dataset.role || 'Administrador';
 
         if (action === 'select') {
-            seleccionarPaciente(pacienteId, nombre, rol);
+            const detalles = {
+                peso: button.dataset.peso,
+                edad: button.dataset.edad,
+                sexo: button.dataset.sexo,
+                padecimiento: button.dataset.padecimiento,
+                spo2min: button.dataset.spo2min,
+                spo2max: button.dataset.spo2max
+            };
+            seleccionarPaciente(pacienteId, nombre, rol, detalles);
         }
 
         if (action === 'share') {

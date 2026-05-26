@@ -154,13 +154,19 @@ function validarSesionUsuario() {
 }
 
 function actualizarBadgePaciente() {
-    // Busca si hay un paciente seleccionado, si no, usa "Sin selección"
-    const pacienteSeleccionado = localStorage.getItem('pacienteActivoSeroa') || "Sin selección";
-    
-    // Busca todas las etiquetas <strong> dentro de los badges de paciente
-    const badgesPaciente = document.querySelectorAll('[data-paciente-actual] strong');
-    badgesPaciente.forEach(badge => {
-        badge.textContent = pacienteSeleccionado;
+    // Busca si hay un paciente seleccionado, priorizando la clave estándar usada en scripts
+    const pacienteSeleccionado = localStorage.getItem('selectedPatientName') || localStorage.getItem('pacienteActivoSeroa') || "Sin selección";
+
+    // Actualiza todos los badges que usan el atributo data-paciente-actual
+    const badgesPaciente = document.querySelectorAll('[data-paciente-actual]');
+    badgesPaciente.forEach(el => {
+        // si contiene un <strong>, remplazar su texto, si no, reemplazar innerHTML con formato
+        const strong = el.querySelector('strong');
+        if (strong) {
+            strong.textContent = pacienteSeleccionado;
+        } else {
+            el.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${pacienteSeleccionado}</strong>`;
+        }
     });
 }
 

@@ -7,8 +7,20 @@ let latestRegistrosFiltered = [];
 function clasificarLectura(spo2, bpm) {
     const spo2Num = Number(spo2);
     const bpmNum = Number(bpm);
-    const rojo = spo2Num < 85 || bpmNum < 50 || bpmNum > 140;
-    const naranja = (!rojo && ((spo2Num >= 85 && spo2Num <= 89) || (bpmNum >= 50 && bpmNum <= 59) || (bpmNum >= 101 && bpmNum <= 140)));
+    // Obtener umbrales según paciente seleccionado (si existen)
+    const pacienteMinStored = Number(localStorage.getItem('selectedPatientSpo2Min'));
+    const tienePacienteMin = Number.isFinite(pacienteMinStored) && pacienteMinStored > 0;
+
+    let dangerThreshold = 85;
+    let precautionThreshold = 90;
+    if (tienePacienteMin) {
+        precautionThreshold = pacienteMinStored;
+        dangerThreshold = Math.max(0, Math.round(pacienteMinStored - 5));
+    }
+
+    const rojo = (spo2Num < dangerThreshold) || bpmNum < 50 || bpmNum > 140;
+    const naranja = (!rojo && (spo2Num < precautionThreshold || (bpmNum >= 50 && bpmNum <= 59) || (bpmNum >= 101 && bpmNum <= 140)));
+
     if (rojo) return { nivel: 'Peligro', color: 'danger', accion: 'Válvula de oxígeno activada' };
     if (naranja) return { nivel: 'Precaución', color: 'warning', accion: 'Monitoreo continuo' };
     return { nivel: 'Normal', color: 'success', accion: 'Monitoreo continuo' };
@@ -238,12 +250,18 @@ async function iniciarRegistroDiario() {
     const userId = localStorage.getItem('userId');
     const pacienteId = localStorage.getItem('selectedPatientId');
     const pacienteNombre = localStorage.getItem('selectedPatientName') || 'Sin selección';
-    const pacienteBadge = document.getElementById('pacienteActualLabel');
+    // Buscamos el badge de paciente tanto por id como por data attribute global
+    const pacienteBadge = document.getElementById('pacienteActualLabel') || document.querySelector('[data-paciente-actual]');
     const titulo = document.getElementById('registroPacienteNombre');
     const btnDescargar = document.getElementById('btnDescargarPDF');
     const formNotas = document.getElementById('formNotas');
 
-    if (pacienteBadge) pacienteBadge.textContent = pacienteNombre;
+    if (pacienteBadge) {
+        // si contiene un <strong>, actualizar su texto; si no, escribir el HTML completo
+        const strong = pacienteBadge.querySelector ? pacienteBadge.querySelector('strong') : null;
+        if (strong) strong.textContent = pacienteNombre;
+        else pacienteBadge.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${pacienteNombre}</strong>`;
+    }
     if (titulo) titulo.textContent = pacienteNombre;
 
     if (btnDescargar) {
@@ -273,6 +291,15 @@ async function iniciarRegistroDiario() {
     suscribirLecturasRT(true);
     // Inicializar filtros de la UI
     initRegistroFilters();
+
+    // Resaltar títulos en la pestaña Registro Diario (color Verde Seroa)
+    try {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            body .container h5, body .container h4, body .container h3 { color: var(--color-seroa-teal) !important; font-weight: 700 !important; }
+        `;
+        document.head.appendChild(style);
+    } catch (e) { console.warn('No se pudo inyectar estilos de resaltado:', e); }
 }
 
 // ---------- Generar PDF de reporte médico ----------
@@ -308,6 +335,31 @@ async function generarPDF() {
     doc.text(`Paciente: ${paciente}`, 40, 110);
     doc.text(`Usuario en turno: ${usuario}`, 40, 130);
 
+    // Información adicional del paciente (si está disponible)
+    const pacienteEdad = localStorage.getItem('selectedPatientEdad');
+    const pacientePeso = localStorage.getItem('selectedPatientPeso');
+    const pacienteSexo = localStorage.getItem('selectedPatientSexo');
+    const pacientePadecimiento = localStorage.getItem('selectedPatientPadecimiento');
+    const pacienteSpo2Min = Number(localStorage.getItem('selectedPatientSpo2Min'));
+    const pacienteSpo2Max = Number(localStorage.getItem('selectedPatientSpo2Max'));
+
+    let infoY = 150;
+    doc.setFontSize(11);
+    if (pacienteEdad || pacientePeso || pacienteSexo || pacientePadecimiento) {
+        doc.text('Datos del Paciente:', 40, infoY);
+        infoY += 14;
+        if (pacienteEdad) doc.text(`Edad: ${pacienteEdad}`, 50, infoY);
+        if (pacientePeso) doc.text(`Peso: ${pacientePeso} kg`, 200, infoY);
+        infoY += 14;
+        if (pacienteSexo) doc.text(`Sexo: ${pacienteSexo}`, 50, infoY);
+        if (pacientePadecimiento) doc.text(`Padecimiento: ${pacientePadecimiento}`, 200, infoY);
+        infoY += 18;
+        if (Number.isFinite(pacienteSpo2Min) && Number.isFinite(pacienteSpo2Max)) {
+            doc.text(`Rango SpO2 configurado: ${pacienteSpo2Min}% - ${pacienteSpo2Max}%`, 50, infoY);
+            infoY += 18;
+        }
+    }
+
     // Tabla de registros recientes (usar los filtrados si el usuario aplicó filtros)
     const source = (latestRegistrosFiltered && latestRegistrosFiltered.length) ? latestRegistrosFiltered : latestRegistros;
     const rows = (source || []).slice(0, 500).map(r => [r.id_registro || '-', (new Date(r.fecha_hora)).toLocaleString('es-MX'), `${r.saturacion_oxigeno}%`, `${r.ritmo_cardiaco} bpm`, r.nivel_alerta || r.nivel || '-', r.accion_sistema || r.accion || '-', r.usuario_turno || '-']);
@@ -340,17 +392,24 @@ async function generarPDF() {
         console.warn('No fue posible incrustar las gráficas en el PDF:', e);
     }
 
-    // Tabla de umbrales críticos
+    // Tabla de umbrales críticos (adaptada al paciente si aplica)
     const afterTableY = doc.previousAutoTable ? doc.previousAutoTable.finalY + 20 : (doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 :  doc.internal.pageSize.height - 200);
     doc.setFontSize(11);
     doc.text('Tabla de Umbrales Críticos', 40, afterTableY);
+
+    const pacienteMin = Number.isFinite(pacienteSpo2Min) && pacienteSpo2Min > 0 ? pacienteSpo2Min : 90;
+    const peligroUmbral = Math.max(0, Math.round(pacienteMin - 5));
+    const normalTexto = `${pacienteMin}% a 100%`;
+    const precaucionTexto = `${peligroUmbral}% a ${Math.max(pacienteMin - 1, peligroUmbral)}%`;
+    const peligroTexto = `< ${peligroUmbral}%`;
+
     doc.autoTable({
         startY: afterTableY + 8,
         head: [['Estado', 'SpO2', 'BPM', 'Significado']],
         body: [
-            ['Normal', '90% a 100%', '60 a 100', 'Valores estables. Monitoreo silencioso.'],
-            ['Precaución', '85% a 89%', '50-59 o 101-140', 'Signos inestables. Atención y monitoreo continuo.'],
-            ['Peligro', '< 85%', '<50 o >140', 'Hipoxemia severa o crisis. Activar alertas y válvula.']
+            ['Normal', normalTexto, '60 a 100', 'Valores estables. Monitoreo silencioso.'],
+            ['Precaución', precaucionTexto, '50-59 o 101-140', 'Signos inestables. Atención y monitoreo continuo.'],
+            ['Peligro', peligroTexto, '<50 o >140', 'Hipoxemia severa o crisis. Activar alertas y válvula.']
         ],
         styles: { fontSize: 10 }
     });
