@@ -175,7 +175,8 @@ app.post('/api/login', (req, res) => {
 
         res.json({ 
             mensaje: "Inicio de sesión exitoso", 
-            nombre: desencriptar(usuario.nombre) 
+            nombre: desencriptar(usuario.nombre),
+            id: usuario.id
         });
     });
 });
@@ -189,7 +190,7 @@ app.get('/api/status-verificacion', (req, res) => {
     }
 
     const emailHashBuscado = generarHashBusqueda(email);
-    const query = 'SELECT verificado, nombre FROM usuarios WHERE email_hash = ?';
+    const query = 'SELECT id, verificado, nombre FROM usuarios WHERE email_hash = ?';
     
     db.query(query, [emailHashBuscado], (err, results) => {
         if (err || results.length === 0) {
@@ -199,8 +200,42 @@ app.get('/api/status-verificacion', (req, res) => {
         const usuario = results[0];
         res.json({
             verificado: usuario.verificado === 1 || usuario.verificado === true,
-            nombre: desencriptar(usuario.nombre)
+            nombre: desencriptar(usuario.nombre),
+            id: usuario.id
         });
+    });
+});
+
+app.post('/api/pacientes', (req, res) => {
+    const { nombre, peso_kg, edad, sexo, padecimiento, rango_spo2_min, rango_spo2_max, id_creador } = req.body;
+
+    if (!nombre || !peso_kg || !edad || !sexo || !padecimiento || rango_spo2_min === undefined || rango_spo2_max === undefined || !id_creador) {
+        return res.status(400).json({ error: 'Todos los campos son requeridos.' });
+    }
+
+    const query = `INSERT INTO pacientes (nombre, peso_kg, edad, sexo, padecimiento, rango_spo2_min, rango_spo2_max, id_creador) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    db.query(query, [nombre, peso_kg, edad, sexo, padecimiento, rango_spo2_min, rango_spo2_max, id_creador], (err, result) => {
+        if (err) {
+            console.error('Error MySQL al agregar paciente:', err);
+            return res.status(500).json({ error: 'Error interno al guardar el paciente.' });
+        }
+        res.json({ mensaje: 'Paciente agregado con éxito.', id_paciente: result.insertId });
+    });
+});
+
+app.get('/api/pacientes', (req, res) => {
+    const id_creador = req.query.id_creador;
+    if (!id_creador) {
+        return res.status(400).json({ error: 'ID de creador es requerido.' });
+    }
+
+    const query = `SELECT id_paciente, nombre, peso_kg, edad, sexo, padecimiento, rango_spo2_min, rango_spo2_max, id_creador FROM pacientes WHERE id_creador = ? ORDER BY id_paciente DESC`;
+    db.query(query, [id_creador], (err, results) => {
+        if (err) {
+            console.error('Error MySQL al cargar pacientes:', err);
+            return res.status(500).json({ error: 'Error interno al leer pacientes.' });
+        }
+        res.json(results);
     });
 });
 

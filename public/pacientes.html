@@ -65,7 +65,7 @@
       <i class="bi bi-person-plus-fill me-1"></i> Agregar
     </button>
     
-    <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
+    <span id="pacienteActualBadge" class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
       <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Angel Guiza</strong>
     </span>
   </div>
@@ -80,119 +80,76 @@
     </div>
   </div>
 
-  <div class="row g-4">
-    
-    <div class="col-md-6 col-lg-4">
-      <div class="card patient-card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <div class="d-flex align-items-center">
-              <div class="avatar-circle bg-teal text-white fw-bold me-3">AG</div>
-              <div>
-                <h6 class="mb-0 fw-bold text-dark">Angel Omar Guiza</h6>
-                <small class="text-muted">Exp: 22300125</small>
-              </div>
-            </div>
-            <span class="badge bg-success rounded-pill fw-normal">Estable</span>
-          </div>
-          
-          <div class="d-flex justify-content-between text-center mt-3 pt-3 border-top">
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">SpO2</small>
-              <span class="fw-bold text-success fs-5">99%</span>
-            </div>
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">BPM</small>
-              <span class="fw-bold text-success fs-5">60</span>
-            </div>
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">Tanque</small>
-              <span class="fw-bold text-info fs-5">85%</span>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
-          <a href="index.html" class="btn btn-outline-teal w-100 btn-sm rounded-pill">Monitorear</a>
+  <div class="row g-4" id="pacientesCardsContainer">
+    <div class="col-12">
+      <div class="card shadow-sm border-0 py-5">
+        <div class="card-body text-center text-muted">
+          <i class="bi bi-person-lines-fill fs-1 mb-3 text-teal"></i>
+          <h5 class="fw-bold">Aún no tienes pacientes registrados</h5>
+          <p class="mb-0">Haz clic en <strong>Agregar</strong> para registrar al primer paciente de tu sistema.</p>
         </div>
       </div>
     </div>
-
-    <div class="col-md-6 col-lg-4">
-      <div class="card patient-card shadow-sm border-0 h-100 border-warning-left">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <div class="d-flex align-items-center">
-              <div class="avatar-circle bg-teal text-white fw-bold me-3">AJ</div>
-              <div>
-                <h6 class="mb-0 fw-bold text-dark">Alieda Yeraldi De Jesus</h6>
-                <small class="text-muted">Exp: 22300117</small>
-              </div>
-            </div>
-            <span class="badge bg-warning text-dark rounded-pill fw-normal">Revisar</span>
-          </div>
-          
-          <div class="d-flex justify-content-between text-center mt-3 pt-3 border-top">
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">SpO2</small>
-              <span class="fw-bold text-warning fs-5">60%</span>
-            </div>
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">BPM</small>
-              <span class="fw-bold text-success fs-5">72</span>
-            </div>
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">Tanque</small>
-              <span class="fw-bold text-danger fs-5">15%</span>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
-          <a href="index.html" class="btn btn-outline-teal w-100 btn-sm rounded-pill">Monitorear</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-      <div class="card patient-card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <div class="d-flex align-items-center">
-              <div class="avatar-circle bg-teal text-white fw-bold me-3">VB</div>
-              <div>
-                <h6 class="mb-0 fw-bold text-dark">Vanessa Maria Bernal</h6>
-                <small class="text-muted">Exp: 22300175</small>
-              </div>
-            </div>
-            <span class="badge bg-success rounded-pill fw-normal">Estable</span>
-          </div>
-          
-          <div class="d-flex justify-content-between text-center mt-3 pt-3 border-top">
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">SpO2</small>
-              <span class="fw-bold text-success fs-5">97%</span>
-            </div>
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">BPM</small>
-              <span class="fw-bold text-success fs-5">68</span>
-            </div>
-            <div>
-              <small class="text-muted d-block" style="font-size: 0.75rem;">Tanque</small>
-              <span class="fw-bold text-info fs-5">50%</span>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
-          <a href="index.html" class="btn btn-outline-teal w-100 btn-sm rounded-pill">Monitorear</a>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
+
+<div class="modal fade" id="modalNuevoPaciente" tabindex="-1" aria-labelledby="modalNuevoPacienteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-sm">
+      <div class="modal-header bg-teal text-white border-0">
+        <h5 class="modal-title" id="modalNuevoPacienteLabel">Agregar nuevo paciente</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formNuevoPaciente">
+          <div id="mensajePaciente" class="alert alert-danger d-none" role="alert"></div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="pacienteNombre" class="form-label">Nombre completo</label>
+              <input type="text" class="form-control shadow-sm" id="pacienteNombre" placeholder="Ej. María Pérez" required>
+            </div>
+            <div class="col-md-6">
+              <label for="pacientePeso" class="form-label">Peso (Kg)</label>
+              <input type="number" step="0.1" min="1" class="form-control shadow-sm" id="pacientePeso" placeholder="60.5" required>
+            </div>
+            <div class="col-md-4">
+              <label for="pacienteEdad" class="form-label">Edad</label>
+              <input type="number" min="0" class="form-control shadow-sm" id="pacienteEdad" placeholder="45" required>
+            </div>
+            <div class="col-md-4">
+              <label for="pacienteSexo" class="form-label">Sexo</label>
+              <select class="form-select shadow-sm" id="pacienteSexo" required>
+                <option value="">Selecciona</option>
+                <option value="F">Femenino</option>
+                <option value="M">Masculino</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="pacientePadecimiento" class="form-label">Padecimiento</label>
+              <input type="text" class="form-control shadow-sm" id="pacientePadecimiento" placeholder="Ej. Asma crónico" required>
+            </div>
+            <div class="col-md-6">
+              <label for="pacienteSpo2Min" class="form-label">Rango SpO₂ mínimo</label>
+              <input type="number" min="50" max="100" class="form-control shadow-sm" id="pacienteSpo2Min" placeholder="85" required>
+            </div>
+            <div class="col-md-6">
+              <label for="pacienteSpo2Max" class="form-label">Rango SpO₂ máximo</label>
+              <input type="number" min="50" max="100" class="form-control shadow-sm" id="pacienteSpo2Max" placeholder="99" required>
+            </div>
+          </div>
+          <div class="mt-4 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary bg-teal border-0 rounded-pill px-4 shadow-sm">Guardar paciente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  
- <script src="global.js"></script>
-   
-  </script>
+<script src="global.js"></script>
+<script src="pacientes.js"></script>
  </body>
 </html>

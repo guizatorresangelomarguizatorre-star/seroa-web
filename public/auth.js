@@ -99,6 +99,7 @@ function iniciarMonitoreoVerificacion(email) {
                     
                     // Iniciamos su sesión automáticamente
                     localStorage.setItem('nombrePaciente', data.nombre);
+                    localStorage.setItem('userId', data.id);
                     window.location.href = 'index.html';
                 }
             }
@@ -129,11 +130,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         // Si el servidor nos dice que las credenciales son correctas...
         if (response.ok) {
             
-            // 1. Opcional pero recomendado: Guardamos el nombre del paciente en la memoria 
-            // del navegador para poder mostrarlo arriba a la derecha en el Dashboard
+            // Guardamos los datos de sesión para el usuario actual
             localStorage.setItem('nombrePaciente', data.nombre);
+            localStorage.setItem('userId', data.id);
             
-            // 2. ¡LA INSTRUCCIÓN CRÍTICA! Movemos al usuario al Dashboard
+            // Movemos al usuario al Dashboard
             window.location.href = 'index.html'; 
             
         } else {
