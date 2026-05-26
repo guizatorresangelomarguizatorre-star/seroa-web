@@ -208,19 +208,28 @@ function validarSesionUsuario() {
     if (nombreGuardado) {
         const primerNombre = nombreGuardado.split(' ')[0];
         
-        // Inyectamos el nombre en la cabecera dinámica
+        // 1. Inyectamos el nombre en la cabecera
         const elementoNombreHeader = document.getElementById('nombreUsuarioHeader');
-        if (elementoNombreHeader) {
-            elementoNombreHeader.textContent = primerNombre;
-        }
+        if (elementoNombreHeader) elementoNombreHeader.textContent = primerNombre;
         
-        // Inyectamos el nombre en el saludo grande de la página de inicio
+        // 2. Inyectamos el nombre en el saludo grande de la página de inicio
         const saludoPantalla = document.getElementById('nombreUsuarioPantalla');
-        if (saludoPantalla) {
-            saludoPantalla.textContent = primerNombre;
-        }
+        if (saludoPantalla) saludoPantalla.textContent = primerNombre;
+
+        // ========================================================
+        // NUEVO: ACTUALIZAR EL BADGE DE "PACIENTE ACTUAL" EN TODAS LAS PANTALLAS
+        // ========================================================
+        // Busca si hay un paciente seleccionado en la memoria, si no, dice "Sin selección"
+        const pacienteSeleccionado = localStorage.getItem('pacienteActivoSeroa') || "Sin selección";
+        
+        // Busca TODAS las etiquetas <strong> dentro de los badges de paciente en la pantalla actual
+        const badgesPaciente = document.querySelectorAll('[data-paciente-actual] strong');
+        
+        badgesPaciente.forEach(badge => {
+            badge.textContent = pacienteSeleccionado;
+        });
+
     } else {
-        // Prevención de bucle infinito: Solo redirige si NO estamos ya en el login
         const paginaActual = window.location.pathname.split("/").pop();
         if (paginaActual !== 'login.html') {
             window.location.href = 'login.html';
