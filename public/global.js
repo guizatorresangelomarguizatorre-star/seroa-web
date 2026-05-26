@@ -147,7 +147,7 @@ function validarSesionUsuario() {
         actualizarBadgePaciente();
     } else {
         const paginaActual = window.location.pathname.split("/").pop();
-        if (paginaActual !== 'login.html') {
+        if (paginaActual !== 'login.html' && paginaActual !== 'invitado.html') {
             window.location.href = 'login.html';
         }
     }

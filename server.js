@@ -312,8 +312,32 @@ app.post('/api/pacientes/compartir', (req, res) => {
 
 app.get('/api/accesos', (req, res) => {
     const id_usuario = req.query.id_usuario;
-    if (!id_usuario) {
-        return res.status(400).json({ error: 'ID de usuario requerido.' });
+    const id_paciente = req.query.id_paciente;
+    if (!id_usuario && !id_paciente) {
+        return res.status(400).json({ error: 'ID de usuario o ID de paciente requerido.' });
+    }
+
+    if (id_paciente) {
+        const query = `SELECT a.id_acceso, a.id_paciente, a.id_usuario, a.tipo_permiso, a.fecha_asignacion,
+                              p.nombre AS paciente_nombre,
+                              COALESCE(u.nombre, 'Invitado') AS usuario_nombre
+                       FROM acceso_pacientes a
+                       JOIN pacientes p ON p.id_paciente = a.id_paciente
+                       LEFT JOIN usuarios u ON u.id = a.id_usuario
+                       WHERE a.id_paciente = ?
+                       ORDER BY a.fecha_asignacion DESC`;
+        db.query(query, [id_paciente], (err, results) => {
+            if (err) {
+                console.error('Error MySQL al cargar accesos por paciente:', err);
+                return res.status(500).json({ error: 'Error interno al leer accesos.' });
+            }
+            const datos = results.map(row => ({
+                ...row,
+                usuario_nombre: row.id_usuario === 0 ? 'Invitado' : (row.usuario_nombre ? desencriptar(row.usuario_nombre) : 'Usuario desconocido')
+            }));
+            return res.json(datos);
+        });
+        return;
     }
 
     const query = `SELECT a.id_acceso, a.id_paciente, a.tipo_permiso, a.fecha_asignacion, p.nombre AS paciente_nombre
@@ -327,6 +351,71 @@ app.get('/api/accesos', (req, res) => {
             return res.status(500).json({ error: 'Error interno al leer accesos.' });
         }
         res.json(results);
+    });
+});
+
+app.put('/api/accesos/:id', (req, res) => {
+    const id_acceso = req.params.id;
+    const { id_usuario, id_paciente, nuevo_permiso } = req.body;
+
+    if (!id_usuario || !id_paciente || !nuevo_permiso) {
+        return res.status(400).json({ error: 'ID de usuario, ID de paciente y nuevo permiso son requeridos.' });
+    }
+
+    const permisoValido = ['Administrador', 'Doctor', 'Invitado'];
+    if (!permisoValido.includes(nuevo_permiso)) {
+        return res.status(400).json({ error: 'Permiso inválido.' });
+    }
+
+    const queryAcceso = 'SELECT tipo_permiso FROM acceso_pacientes WHERE id_usuario = ? AND id_paciente = ?';
+    db.query(queryAcceso, [id_usuario, id_paciente], (err, accesoResult) => {
+        if (err || accesoResult.length === 0) {
+            return res.status(403).json({ error: 'No tienes permiso para modificar accesos.' });
+        }
+
+        const permiso = accesoResult[0].tipo_permiso;
+        if (!['Administrador', 'Doctor'].includes(permiso)) {
+            return res.status(403).json({ error: 'Solo Administrador o Doctor pueden modificar accesos.' });
+        }
+
+        const updateQuery = 'UPDATE acceso_pacientes SET tipo_permiso = ? WHERE id_acceso = ?';
+        db.query(updateQuery, [nuevo_permiso, id_acceso], (updateErr) => {
+            if (updateErr) {
+                console.error('Error MySQL al actualizar permiso de acceso:', updateErr);
+                return res.status(500).json({ error: 'No se pudo actualizar el permiso de acceso.' });
+            }
+            res.json({ mensaje: 'Permiso actualizado con éxito.' });
+        });
+    });
+});
+
+app.delete('/api/accesos/:id', (req, res) => {
+    const id_acceso = req.params.id;
+    const { id_usuario, id_paciente } = req.query;
+
+    if (!id_usuario || !id_paciente) {
+        return res.status(400).json({ error: 'ID de usuario y ID de paciente son requeridos.' });
+    }
+
+    const queryAcceso = 'SELECT tipo_permiso FROM acceso_pacientes WHERE id_usuario = ? AND id_paciente = ?';
+    db.query(queryAcceso, [id_usuario, id_paciente], (err, accesoResult) => {
+        if (err || accesoResult.length === 0) {
+            return res.status(403).json({ error: 'No tienes permiso para revocar accesos.' });
+        }
+
+        const permiso = accesoResult[0].tipo_permiso;
+        if (!['Administrador', 'Doctor'].includes(permiso)) {
+            return res.status(403).json({ error: 'Solo Administrador o Doctor pueden revocar accesos.' });
+        }
+
+        const deleteQuery = 'DELETE FROM acceso_pacientes WHERE id_acceso = ?';
+        db.query(deleteQuery, [id_acceso], (deleteErr) => {
+            if (deleteErr) {
+                console.error('Error MySQL al revocar acceso:', deleteErr);
+                return res.status(500).json({ error: 'No se pudo revocar el acceso.' });
+            }
+            res.json({ mensaje: 'Acceso revocado correctamente.' });
+        });
     });
 });
 

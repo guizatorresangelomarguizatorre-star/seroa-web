@@ -133,32 +133,198 @@ function notificar(titulo, cuerpo) {
     });
 }
 
-function cargarAccesos() {
+function formatDate(value) {
+    return new Date(value).toLocaleString('es-MX');
+}
+
+function crearFilaAcceso(access, canEdit) {
+    const permisoOpciones = ['Administrador', 'Doctor', 'Invitado'];
+    const rolActual = access.tipo_permiso || 'Invitado';
+    const selectDisabled = canEdit ? '' : 'disabled';
+    const uid = access.id_acceso;
+
+    return `
+        <tr>
+            <td>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-circle bg-light text-secondary fw-bold" style="width: 42px; height: 42px; line-height: 42px; font-size: 1rem;">
+                        ${access.usuario_nombre ? access.usuario_nombre.split(' ').map(part => part.charAt(0).toUpperCase()).slice(0,2).join('') : 'IN'}
+                    </div>
+                    <div>
+                        <div class="fw-bold mb-1">${access.usuario_nombre || 'Invitado'}</div>
+                        <small class="text-muted">${access.id_usuario === 0 ? 'Acceso invitado' : `Usuario #${access.id_usuario}`}</small>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <select class="form-select form-select-sm" data-acceso-id="${uid}" ${selectDisabled}>
+                    ${permisoOpciones.map(op => `<option value="${op}" ${op === rolActual ? 'selected' : ''}>${op}</option>`).join('')}
+                </select>
+            </td>
+            <td>${formatDate(access.fecha_asignacion)}</td>
+            <td>
+                <button class="btn btn-sm btn-danger btn-revocar-acceso" data-acceso-id="${uid}" ${canEdit ? '' : 'disabled'}>
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+async function cargarAccesos() {
+    const pacienteId = localStorage.getItem('selectedPatientId');
     const userId = localStorage.getItem('userId');
-    if (!userId) return;
     const tabla = document.getElementById('tablaAccesos');
-    fetch(`/api/accesos?id_usuario=${userId}`)
-        .then(res => res.json())
-        .then(data => {
-            tabla.innerHTML = data.map(access => `
-                <tr>
-                    <td>${access.paciente_nombre}</td>
-                    <td>${access.tipo_permiso}</td>
-                    <td>${new Date(access.fecha_asignacion).toLocaleString('es-MX')}</td>
-                    <td>${access.id_acceso > 0 ? `<span class="badge bg-success">Compartido</span>` : '<span class="badge bg-secondary">Privado</span>'}</td>
-                </tr>
-            `).join('');
-        })
-        .catch(err => console.error(err));
+    const badge = document.getElementById('configRoleBadge');
+    const infoPaciente = document.getElementById('accesosSeleccionPaciente');
+    const role = localStorage.getItem('selectedPatientRole') || 'Invitado';
+
+    if (badge) {
+        badge.textContent = `Tu rol: ${role}`;
+    }
+    if (infoPaciente) {
+        infoPaciente.textContent = pacienteId ? `Accesos para el paciente seleccionado: ${localStorage.getItem('selectedPatientName') || 'Sin selección'}` : 'Selecciona un paciente para ver sus accesos.';
+    }
+
+    if (!pacienteId) {
+        if (tabla) tabla.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No hay paciente seleccionado.</td></tr>`;
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/accesos?id_paciente=${encodeURIComponent(pacienteId)}`);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'No se pudo cargar la lista de accesos.');
+        }
+
+        const canEdit = ['Administrador', 'Doctor'].includes(role);
+        if (tabla) {
+            tabla.innerHTML = data.length > 0 ? data.map(access => crearFilaAcceso(access, canEdit)).join('') : `<tr><td colspan="4" class="text-center text-muted py-4">No hay accesos registrados para este paciente.</td></tr>`;
+        }
+
+        if (canEdit) {
+            document.querySelectorAll('select[data-acceso-id]').forEach(select => {
+                select.addEventListener('change', async () => {
+                    const idAcceso = select.dataset.accesoId;
+                    const nuevoPermiso = select.value;
+                    await cambiarPermisoAcceso(idAcceso, nuevoPermiso);
+                });
+            });
+            document.querySelectorAll('button.btn-revocar-acceso').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const idAcceso = button.dataset.accesoId;
+                    await revocarAcceso(idAcceso);
+                });
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        if (tabla) tabla.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${error.message || 'Error al cargar accesos.'}</td></tr>`;
+    }
+}
+
+async function generarLinkInvitadoConfig() {
+    const pacienteId = localStorage.getItem('selectedPatientId');
+    const userId = localStorage.getItem('userId');
+    const nombrePaciente = localStorage.getItem('selectedPatientName') || 'Sin selección';
+    const sharePatientName = document.getElementById('shareConfigPatientName');
+    const shareLinkInput = document.getElementById('shareConfigLinkInput');
+    const shareQr = document.getElementById('shareConfigQrImage');
+    const modal = new bootstrap.Modal(document.getElementById('modalInvitacionConfig'));
+
+    if (!pacienteId || !userId) {
+        return alert('Selecciona un paciente y asegúrate de tener sesión iniciada para generar el enlace.');
+    }
+
+    try {
+        const response = await fetch('/api/pacientes/compartir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_paciente: pacienteId, id_usuario: parseInt(userId, 10) })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'No se pudo generar el código de invitación.');
+        }
+
+        const url = `${window.location.origin}/invitado.html?acceso=${data.id_acceso}`;
+        if (sharePatientName) sharePatientName.textContent = nombrePaciente;
+        if (shareLinkInput) shareLinkInput.value = url;
+        if (shareQr) shareQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(url)}`;
+        modal.show();
+    } catch (error) {
+        console.error(error);
+        alert(error.message || 'Error generando invitación.');
+    }
+}
+
+async function cambiarPermisoAcceso(idAcceso, nuevoPermiso) {
+    const pacienteId = localStorage.getItem('selectedPatientId');
+    const userId = localStorage.getItem('userId');
+    if (!pacienteId || !userId) return;
+
+    try {
+        const response = await fetch(`/api/accesos/${idAcceso}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_usuario: parseInt(userId, 10), id_paciente: parseInt(pacienteId, 10), nuevo_permiso: nuevoPermiso })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo actualizar el permiso.');
+        cargarAccesos();
+    } catch (error) {
+        console.error(error);
+        alert(error.message || 'Error actualizando el permiso.');
+    }
+}
+
+async function revocarAcceso(idAcceso) {
+    const pacienteId = localStorage.getItem('selectedPatientId');
+    const userId = localStorage.getItem('userId');
+    if (!pacienteId || !userId) return;
+
+    if (!confirm('¿Estás seguro de revocar este acceso?')) return;
+
+    try {
+        const response = await fetch(`/api/accesos/${idAcceso}?id_usuario=${encodeURIComponent(userId)}&id_paciente=${encodeURIComponent(pacienteId)}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo revocar el acceso.');
+        cargarAccesos();
+    } catch (error) {
+        console.error(error);
+        alert(error.message || 'Error revocando el acceso.');
+    }
 }
 
 async function cargarPacienteDatos() {
     const patientId = localStorage.getItem('selectedPatientId');
-    const nombre = localStorage.getItem('selectedPatientName');
+    const nombre = localStorage.getItem('selectedPatientName') || 'Sin selección';
     const rol = localStorage.getItem('selectedPatientRole') || 'Invitado';
+    const peso = localStorage.getItem('selectedPatientPeso') || 'N/A';
+    const edad = localStorage.getItem('selectedPatientEdad') || 'N/A';
+    const sexo = localStorage.getItem('selectedPatientSexo') || 'N/A';
+    const padecimiento = localStorage.getItem('selectedPatientPadecimiento') || 'N/A';
+    const spo2min = localStorage.getItem('selectedPatientSpo2Min') || 'N/A';
+    const spo2max = localStorage.getItem('selectedPatientSpo2Max') || 'N/A';
 
-    document.getElementById('datosPacienteNombre').value = nombre || '';
-    document.getElementById('datosPacienteRol').textContent = rol;
+    const nombreInput = document.getElementById('datosPacienteNombre');
+    const rolLabel = document.getElementById('datosPacienteRol');
+    const detallePaciente = document.getElementById('datosPacienteDetalles');
+
+    if (nombreInput) nombreInput.value = nombre;
+    if (rolLabel) rolLabel.textContent = rol;
+    if (detallePaciente) {
+        detallePaciente.innerHTML = `
+            <p class="mb-1"><strong>Edad:</strong> ${edad}</p>
+            <p class="mb-1"><strong>Peso:</strong> ${peso} kg</p>
+            <p class="mb-1"><strong>Sexo:</strong> ${sexo}</p>
+            <p class="mb-1"><strong>Padecimiento:</strong> ${padecimiento}</p>
+            <p class="mb-0"><strong>Rango SpO2:</strong> ${spo2min}% - ${spo2max}%</p>
+        `;
+    }
 }
 
 function bluetoothAgregarDispositivo() {
@@ -181,10 +347,11 @@ function iniciarConfiguracion() {
     document.getElementById('formConfigDispositivo')?.addEventListener('submit', actualizarDispositivo);
     document.getElementById('btnPermitirNotificaciones')?.addEventListener('click', solicitarPermisoNotificaciones);
     document.getElementById('btnDetectarBluetooth')?.addEventListener('click', bluetoothAgregarDispositivo);
+    document.getElementById('btnGenerarInvitacionConfig')?.addEventListener('click', generarLinkInvitadoConfig);
     cargarDispositivos();
     cargarPreferenciasNotificaciones();
-    cargarAccesos();
     cargarPacienteDatos();
+    cargarAccesos();
 }
 
 document.addEventListener('DOMContentLoaded', iniciarConfiguracion);
