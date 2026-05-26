@@ -1,24 +1,36 @@
 document.addEventListener('DOMContentLoaded', () => {
     const pacienteActualBadge = document.getElementById('pacienteActualBadge');
+    const pacienteActualLabel = document.getElementById('pacienteActualLabel');
     const userId = localStorage.getItem('userId');
     const userName = localStorage.getItem('nombrePaciente');
-
-    if (pacienteActualBadge && userName) {
-        pacienteActualBadge.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${userName}</strong>`;
-    }
-
     const formNuevoPaciente = document.getElementById('formNuevoPaciente');
     const mensajePaciente = document.getElementById('mensajePaciente');
     const pacientesCardsContainer = document.getElementById('pacientesCardsContainer');
+    const modalCompartir = new bootstrap.Modal(document.getElementById('modalSharePaciente'));
+    const qrShareImage = document.getElementById('shareQrImage');
+    const shareLinkInput = document.getElementById('shareLinkInput');
+    const sharePatientName = document.getElementById('sharePatientName');
 
-    async function mostrarMensaje(texto, tipo = 'danger') {
+    const selectedPatientId = localStorage.getItem('selectedPatientId');
+    const selectedPatientName = localStorage.getItem('selectedPatientName');
+    const selectedPatientRole = localStorage.getItem('selectedPatientRole');
+
+    function actualizarPacienteActualUI() {
+        const nombre = selectedPatientName || userName || 'Sin selección';
+        const badgeText = nombre ? `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${nombre}</strong>` : 'Paciente Actual: <strong>Sin selección</strong>';
+
+        if (pacienteActualBadge) pacienteActualBadge.innerHTML = badgeText;
+        if (pacienteActualLabel) pacienteActualLabel.textContent = nombre;
+    }
+
+    function mostrarMensaje(texto, tipo = 'danger') {
         if (!mensajePaciente) return;
         mensajePaciente.className = `alert alert-${tipo}`;
         mensajePaciente.textContent = texto;
         mensajePaciente.classList.remove('d-none');
     }
 
-    async function ocultarMensaje() {
+    function ocultarMensaje() {
         if (!mensajePaciente) return;
         mensajePaciente.classList.add('d-none');
     }
@@ -27,11 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const estado = paciente.rango_spo2_min >= 90 ? 'Estable' : paciente.rango_spo2_min >= 80 ? 'Revisar' : 'Crítico';
         const estadoClass = paciente.rango_spo2_min >= 90 ? 'bg-success' : paciente.rango_spo2_min >= 80 ? 'bg-warning text-dark' : 'bg-danger';
         const initials = paciente.nombre.split(' ').slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('');
+        const esSeleccionado = selectedPatientId === String(paciente.id_paciente);
+        const permisoBadge = paciente.tipo_permiso === 'Administrador' ? 'bg-teal text-white' : paciente.tipo_permiso === 'Doctor' ? 'bg-primary text-white' : 'bg-secondary text-white';
 
         return `
             <div class="col-md-6 col-lg-4">
-                <div class="card patient-card shadow-sm border-0 h-100">
-                    <div class="card-body">
+                <div class="card patient-card shadow-sm border-0 h-100 ${esSeleccionado ? 'border-success' : ''}">
+                    <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div class="d-flex align-items-center">
                                 <div class="avatar-circle bg-teal text-white fw-bold me-3">${initials}</div>
@@ -42,29 +56,35 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <span class="badge rounded-pill fw-normal ${estadoClass}">${estado}</span>
                         </div>
-                        <div class="row text-center mt-3 pt-3 border-top">
-                            <div class="col-4">
-                                <small class="text-muted d-block" style="font-size: 0.75rem;">Peso</small>
-                                <span class="fw-bold text-dark">${paciente.peso_kg} kg</span>
-                            </div>
-                            <div class="col-4">
-                                <small class="text-muted d-block" style="font-size: 0.75rem;">Edad</small>
-                                <span class="fw-bold text-dark">${paciente.edad}</span>
-                            </div>
-                            <div class="col-4">
-                                <small class="text-muted d-block" style="font-size: 0.75rem;">Sexo</small>
-                                <span class="fw-bold text-dark">${paciente.sexo}</span>
+                        <div class="mb-3">
+                            <span class="badge ${permisoBadge} rounded-pill mb-2">${paciente.tipo_permiso}</span>
+                            <div class="d-flex justify-content-between text-center mt-3 pt-3 border-top">
+                                <div>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">Peso</small>
+                                    <span class="fw-bold text-dark">${paciente.peso_kg} kg</span>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">Edad</small>
+                                    <span class="fw-bold text-dark">${paciente.edad}</span>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">Sexo</small>
+                                    <span class="fw-bold text-dark">${paciente.sexo}</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="mt-3">
+                        <div class="mt-auto">
                             <small class="text-muted">Padecimiento</small>
                             <p class="mb-2">${paciente.padecimiento}</p>
                             <small class="text-muted">Rango SpO₂</small>
-                            <p class="mb-0">${paciente.rango_spo2_min}% - ${paciente.rango_spo2_max}%</p>
+                            <p class="mb-3">${paciente.rango_spo2_min}% - ${paciente.rango_spo2_max}%</p>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-sm btn-outline-teal rounded-pill flex-grow-1" data-action="select" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}">
+                                    ${esSeleccionado ? 'Seleccionado' : 'Seleccionar'}
+                                </button>
+                                ${paciente.tipo_permiso !== 'Invitado' ? `<button class="btn btn-sm btn-teal text-white rounded-pill flex-grow-1" data-action="share" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}">Compartir</button>` : ''}
+                            </div>
                         </div>
-                    </div>
-                    <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
-                        <button type="button" class="btn btn-outline-teal w-100 btn-sm rounded-pill" disabled>Monitorear</button>
                     </div>
                 </div>
             </div>
@@ -99,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const response = await fetch(`/api/pacientes?id_creador=${encodeURIComponent(userId)}`);
+            const response = await fetch(`/api/pacientes?id_usuario=${encodeURIComponent(userId)}`);
             const data = await response.json();
 
             if (!response.ok) {
@@ -159,11 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
             await cargarPacientes();
             ocultarMensaje();
             formNuevoPaciente.reset();
-
             const modalEl = document.getElementById('modalNuevoPaciente');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
-
             alert('Paciente guardado satisfactoriamente.');
         } catch (error) {
             mostrarMensaje('Error de conexión al guardar el paciente.');
@@ -171,9 +189,67 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function seleccionarPaciente(pacienteId, nombre, rol) {
+        localStorage.setItem('selectedPatientId', pacienteId);
+        localStorage.setItem('selectedPatientName', decodeURIComponent(nombre));
+        localStorage.setItem('selectedPatientRole', rol);
+        actualizarPacienteActualUI();
+        cargarPacientes();
+    }
+
+    async function generarLinkInvitado(pacienteId, nombre) {
+        if (!userId) return mostrarMensaje('No se encontró el ID de usuario. Vuelve a iniciar sesión.');
+
+        try {
+            const response = await fetch('/api/pacientes/compartir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_paciente: pacienteId, id_usuario: parseInt(userId, 10) })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                mostrarMensaje(data.error || 'No se pudo generar el enlace de invitado.');
+                return;
+            }
+
+            const url = `${window.location.origin}/invitado.html?acceso=${data.id_acceso}`;
+            shareLinkInput.value = url;
+            qrShareImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+            sharePatientName.textContent = decodeURIComponent(nombre);
+            modalCompartir.show();
+        } catch (error) {
+            mostrarMensaje('Error de conexión al generar el enlace.');
+            console.error(error);
+        }
+    }
+
+    pacientesCardsContainer?.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+
+        const action = button.dataset.action;
+        const pacienteId = button.dataset.id;
+        const nombre = button.dataset.name;
+        const rol = button.dataset.role || 'Administrador';
+
+        if (action === 'select') {
+            seleccionarPaciente(pacienteId, nombre, rol);
+        }
+
+        if (action === 'share') {
+            generarLinkInvitado(pacienteId, nombre);
+        }
+    });
+
+    shareLinkInput?.addEventListener('click', () => {
+        shareLinkInput.select();
+    });
+
     if (formNuevoPaciente) {
         formNuevoPaciente.addEventListener('submit', guardarPaciente);
     }
 
+    actualizarPacienteActualUI();
     cargarPacientes();
 });

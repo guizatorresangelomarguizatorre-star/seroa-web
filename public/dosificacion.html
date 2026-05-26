@@ -59,11 +59,10 @@
   <div class="container mt-4 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4 class="text-teal fw-bold">Control de Dosificación</h4>
-      <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
-        <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Angel Guiza</strong>
+      <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
+        <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Sin selección</strong>
       </span>
     </div>
-
     <div class="row g-4">
       
       <div class="col-md-12 col-lg-4 order-lg-2">
@@ -101,7 +100,7 @@
                     <i class="bi bi-arrow-left-right mx-2 text-muted"></i>
                     <span class="badge bg-secondary fs-6">98%</span>
                   </div>
-                  <button class="btn btn-link text-teal btn-sm mt-2 text-decoration-none">
+                  <button id="btnAjustarRango" class="btn btn-link text-teal btn-sm mt-2 text-decoration-none rol-editar">
                     <i class="bi bi-pencil-square"></i> Ajustar rango
                   </button>
                 </div>
@@ -136,9 +135,15 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-   <script src="global.js"></script>
-
-
+  <script src="global.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const role = localStorage.getItem('selectedPatientRole') || 'Invitado';
+      if (role === 'Invitado') {
+        document.querySelectorAll('.rol-editar').forEach(el => el.classList.add('d-none'));
+      }
+    });
   </script>
+  <script src="dosificacion.js"></script>
 </body>
 </html>

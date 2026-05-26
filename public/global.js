@@ -99,7 +99,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 4. VALIDAR SESIÓN DEL PACIENTE
     validarSesionUsuario();
+
+    // 5. Actualizar el paciente seleccionado en todas las páginas
+    actualizarPacienteSeleccionado();
 });
+
+function actualizarPacienteSeleccionado() {
+    const pacienteActual = localStorage.getItem('selectedPatientName') || 'Sin selección';
+    const pacienteActualBadge = document.getElementById('pacienteActualBadge');
+    const pacienteActualLabels = document.querySelectorAll('[data-paciente-actual]');
+
+    if (pacienteActualBadge) {
+        pacienteActualBadge.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${pacienteActual}</strong>`;
+    }
+
+    pacienteActualLabels.forEach(el => {
+        el.textContent = pacienteActual;
+    });
+}
 
 // ==========================================
 // FUNCIÓN PARA REMARCAR EL MENÚ ACTUAL DE VERDE

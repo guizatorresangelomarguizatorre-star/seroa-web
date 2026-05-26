@@ -19,6 +19,24 @@ let categoriasTiempo = JSON.parse(localStorage.getItem('seroaCategoriasTiempo'))
 
 const LIMITE_PUNTOS = 15;
 
+function clasificarLectura(spo2, bpm) {
+    if (spo2 < 85 || bpm < 50 || bpm > 140) return { nivel: 'Peligro', color: 'danger', accion: 'Válvula de oxígeno activada' };
+    if ((spo2 >= 85 && spo2 <= 89) || (bpm >= 50 && bpm <= 59) || (bpm >= 101 && bpm <= 140)) return { nivel: 'Precaución', color: 'warning', accion: 'Monitoreo continuo' };
+    return { nivel: 'Normal', color: 'success', accion: 'Monitoreo continuo' };
+}
+
+async function guardarRegistroBiometrico(registro) {
+    try {
+        await fetch('/api/registros', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(registro)
+        });
+    } catch (error) {
+        console.error('Error guardando registro biométrico en el servidor:', error);
+    }
+}
+
 // === VARIABLE PARA EL TEMPORIZADOR ===
 let temporizadorDesconexion;
 
@@ -115,11 +133,15 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
 
             const actualSpo2 = datos.spo2;
             const actualBpm = datos.bpm;
+            const pacienteId = localStorage.getItem('selectedPatientId');
+            const pacienteNombre = localStorage.getItem('selectedPatientName') || 'Sin selección';
+            const usuarioTurno = localStorage.getItem('nombrePaciente') || 'Sesión anónima';
 
             if (valorSpo2) valorSpo2.innerText = actualSpo2;
             if (valorBpm) valorBpm.innerText = actualBpm;
 
-            const ahora = new Date().getTime(); 
+            const ahora = new Date().getTime();
+            const fechaHora = new Date().toISOString();
 
             historialSpo2.push({ x: ahora, y: actualSpo2 });
             historialBpm.push({ x: ahora, y: actualBpm });
@@ -134,7 +156,28 @@ database.ref('Seroa/Actual').on('value', (snapshot) => {
 
             if(chartSpo2) chartSpo2.updateSeries([{ data: historialSpo2 }]);
             if(chartBpm) chartBpm.updateSeries([{ data: historialBpm }]);
-            
+
+            const lectura = clasificarLectura(actualSpo2, actualBpm);
+            const registro = {
+                id_paciente: pacienteId ? parseInt(pacienteId, 10) : null,
+                id_dispositivo: datos.dispositivoId || null,
+                saturacion_oxigeno: actualSpo2,
+                ritmo_cardiaco: actualBpm,
+                es_critico: lectura.color === 'danger' ? 1 : 0,
+                fecha_hora: fechaHora,
+                nivel_alerta: lectura.nivel,
+                accion_sistema: lectura.accion,
+                usuario_turno: usuarioTurno,
+                paciente: pacienteNombre
+            };
+
+            if (pacienteId) {
+                const registroRef = database.ref(`registros_biomedicos/${pacienteId}`).push();
+                registro.id_registro = registroRef.key;
+                registroRef.set(registro).catch(error => console.error('Error guardando registro en Firebase:', error));
+                guardarRegistroBiometrico(registro);
+            }
+
             const alerta = document.getElementById('alertaGlobalSeroa');
             if (actualSpo2 < 90 && alerta) alerta.classList.remove('d-none');
         }

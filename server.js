@@ -219,21 +219,251 @@ app.post('/api/pacientes', (req, res) => {
             console.error('Error MySQL al agregar paciente:', err);
             return res.status(500).json({ error: 'Error interno al guardar el paciente.' });
         }
-        res.json({ mensaje: 'Paciente agregado con éxito.', id_paciente: result.insertId });
+        const id_paciente = result.insertId;
+        const accesoQuery = `INSERT INTO acceso_pacientes (id_usuario, id_paciente, tipo_permiso, fecha_asignacion) VALUES (?, ?, 'Administrador', NOW())`;
+        db.query(accesoQuery, [id_creador, id_paciente], (accesoErr) => {
+            if (accesoErr) {
+                console.error('Error MySQL al crear acceso paciente:', accesoErr);
+                return res.status(500).json({ error: 'Paciente guardado, pero no se pudo crear el acceso compartido.' });
+            }
+            res.json({ mensaje: 'Paciente agregado con éxito.', id_paciente });
+        });
     });
 });
 
 app.get('/api/pacientes', (req, res) => {
-    const id_creador = req.query.id_creador;
-    if (!id_creador) {
-        return res.status(400).json({ error: 'ID de creador es requerido.' });
+    const id_usuario = req.query.id_usuario;
+    if (!id_usuario) {
+        return res.status(400).json({ error: 'ID del usuario es requerido.' });
     }
 
-    const query = `SELECT id_paciente, nombre, peso_kg, edad, sexo, padecimiento, rango_spo2_min, rango_spo2_max, id_creador FROM pacientes WHERE id_creador = ? ORDER BY id_paciente DESC`;
-    db.query(query, [id_creador], (err, results) => {
+    const query = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max, p.id_creador, a.tipo_permiso, a.id_acceso
+                   FROM pacientes p
+                   JOIN acceso_pacientes a ON a.id_paciente = p.id_paciente
+                   WHERE a.id_usuario = ?
+                   ORDER BY p.id_paciente DESC`;
+    db.query(query, [id_usuario], (err, results) => {
         if (err) {
             console.error('Error MySQL al cargar pacientes:', err);
             return res.status(500).json({ error: 'Error interno al leer pacientes.' });
+        }
+        res.json(results);
+    });
+});
+
+app.put('/api/pacientes/:id', (req, res) => {
+    const id_paciente = req.params.id;
+    const { nombre, peso_kg, edad, sexo, padecimiento, rango_spo2_min, rango_spo2_max, id_usuario } = req.body;
+
+    if (!id_usuario) {
+        return res.status(400).json({ error: 'ID de usuario requerido.' });
+    }
+
+    const accesoQuery = 'SELECT tipo_permiso FROM acceso_pacientes WHERE id_usuario = ? AND id_paciente = ?';
+    db.query(accesoQuery, [id_usuario, id_paciente], (accesoErr, accesoResult) => {
+        if (accesoErr || accesoResult.length === 0) {
+            return res.status(403).json({ error: 'No tienes permiso para editar este paciente.' });
+        }
+
+        const permiso = accesoResult[0].tipo_permiso;
+        if (!['Administrador', 'Doctor'].includes(permiso)) {
+            return res.status(403).json({ error: 'Solo Administrador o Doctor pueden editar los datos.' });
+        }
+
+        const updateQuery = `UPDATE pacientes SET nombre = ?, peso_kg = ?, edad = ?, sexo = ?, padecimiento = ?, rango_spo2_min = ?, rango_spo2_max = ? WHERE id_paciente = ?`;
+        db.query(updateQuery, [nombre, peso_kg, edad, sexo, padecimiento, rango_spo2_min, rango_spo2_max, id_paciente], (err) => {
+            if (err) {
+                console.error('Error MySQL al actualizar paciente:', err);
+                return res.status(500).json({ error: 'No se pudo actualizar el paciente.' });
+            }
+            res.json({ mensaje: 'Paciente actualizado correctamente.' });
+        });
+    });
+});
+
+app.post('/api/pacientes/compartir', (req, res) => {
+    const { id_paciente, id_usuario } = req.body;
+
+    if (!id_paciente || !id_usuario) {
+        return res.status(400).json({ error: 'ID de paciente y usuario son requeridos.' });
+    }
+
+    const queryAcceso = 'SELECT tipo_permiso FROM acceso_pacientes WHERE id_usuario = ? AND id_paciente = ?';
+    db.query(queryAcceso, [id_usuario, id_paciente], (err, accesoResult) => {
+        if (err || accesoResult.length === 0) {
+            return res.status(403).json({ error: 'No puedes compartir este paciente porque no tienes acceso.' });
+        }
+
+        const permiso = accesoResult[0].tipo_permiso;
+        if (!['Administrador', 'Doctor'].includes(permiso)) {
+            return res.status(403).json({ error: 'Solo Administrador o Doctor pueden generar un enlace de invitado.' });
+        }
+
+        const insertCompartido = `INSERT INTO acceso_pacientes (id_usuario, id_paciente, tipo_permiso, fecha_asignacion) VALUES (0, ?, 'Invitado', NOW())`;
+        db.query(insertCompartido, [id_paciente], (shareErr, shareResult) => {
+            if (shareErr) {
+                console.error('Error MySQL al crear acceso invitado:', shareErr);
+                return res.status(500).json({ error: 'No se pudo crear el acceso de invitado.' });
+            }
+            res.json({ mensaje: 'Enlace de invitado generado.', id_acceso: shareResult.insertId });
+        });
+    });
+});
+
+app.get('/api/accesos', (req, res) => {
+    const id_usuario = req.query.id_usuario;
+    if (!id_usuario) {
+        return res.status(400).json({ error: 'ID de usuario requerido.' });
+    }
+
+    const query = `SELECT a.id_acceso, a.id_paciente, a.tipo_permiso, a.fecha_asignacion, p.nombre AS paciente_nombre
+                   FROM acceso_pacientes a
+                   JOIN pacientes p ON p.id_paciente = a.id_paciente
+                   WHERE a.id_usuario = ?
+                   ORDER BY a.fecha_asignacion DESC`;
+    db.query(query, [id_usuario], (err, results) => {
+        if (err) {
+            console.error('Error MySQL al cargar accesos:', err);
+            return res.status(500).json({ error: 'Error interno al leer accesos.' });
+        }
+        res.json(results);
+    });
+});
+
+app.get('/api/invitado', (req, res) => {
+    const id_acceso = req.query.acceso;
+    if (!id_acceso) {
+        return res.status(400).json({ error: 'Código de acceso requerido.' });
+    }
+
+    const query = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max,
+                          a.tipo_permiso, a.id_acceso
+                   FROM acceso_pacientes a
+                   JOIN pacientes p ON p.id_paciente = a.id_paciente
+                   WHERE a.id_acceso = ? AND a.tipo_permiso = 'Invitado'`;
+    db.query(query, [id_acceso], (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(404).json({ error: 'Acceso de invitado inválido o caducado.' });
+        }
+        res.json(results[0]);
+    });
+});
+
+app.post('/api/dispositivos', (req, res) => {
+    const { ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, id_usuario } = req.body;
+
+    if (!ssid_wifi || !password_wifi || !id_usuario) {
+        return res.status(400).json({ error: 'SSID, contraseña y usuario son requeridos.' });
+    }
+
+    const query = `INSERT INTO dispositivos_seroa (ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, fecha_registro) VALUES (?, ?, ?, ?, NOW())`;
+    db.query(query, [ssid_wifi, password_wifi, estado_paro_emergencia || 'Desactivado', usuario_paro_emergencia || null], (err, result) => {
+        if (err) {
+            console.error('Error MySQL al agregar dispositivo:', err);
+            return res.status(500).json({ error: 'No se pudo registrar el dispositivo.' });
+        }
+        res.json({ mensaje: 'Dispositivo registrado con éxito.', id_dispositivo: result.insertId });
+    });
+});
+
+app.get('/api/dispositivos', (req, res) => {
+    const id_usuario = req.query.id_usuario;
+    if (!id_usuario) {
+        return res.status(400).json({ error: 'ID de usuario requerido.' });
+    }
+
+    const query = `SELECT id_dispositivo, ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, fecha_registro FROM dispositivos_seroa ORDER BY id_dispositivo DESC`;
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error MySQL al cargar dispositivos:', err);
+            return res.status(500).json({ error: 'Error interno al leer dispositivos.' });
+        }
+        res.json(results);
+    });
+});
+
+app.post('/api/dispositivos/:id/configurar', (req, res) => {
+    const id_dispositivo = req.params.id;
+    const { ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia } = req.body;
+
+    const query = `UPDATE dispositivos_seroa SET ssid_wifi = ?, password_wifi = ?, estado_paro_emergencia = ?, usuario_paro_emergencia = ? WHERE id_dispositivo = ?`;
+    db.query(query, [ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, id_dispositivo], (err) => {
+        if (err) {
+            console.error('Error MySQL al actualizar dispositivo:', err);
+            return res.status(500).json({ error: 'No se pudo actualizar el dispositivo.' });
+        }
+        res.json({ mensaje: 'Configuración de dispositivo guardada.' });
+    });
+});
+
+app.post('/api/tanques', (req, res) => {
+    const { id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
+    if (!id_dispositivo || presion_actual === undefined || porcentaje === undefined || tiempo_restante_minutos === undefined) {
+        return res.status(400).json({ error: 'ID de dispositivo, presión, porcentaje y tiempo restante son requeridos.' });
+    }
+
+    const query = `INSERT INTO tanques (id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion) VALUES (?, ?, ?, ?, ?)`;
+    db.query(query, [id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion || new Date()], (err, result) => {
+        if (err) {
+            console.error('Error MySQL al agregar tanque:', err);
+            return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
+        }
+        res.json({ mensaje: 'Tanque registrado con éxito.', id_tanque: result.insertId });
+    });
+});
+
+app.get('/api/tanques', (req, res) => {
+    const { id_dispositivo, id_paciente } = req.query;
+    let query = 'SELECT * FROM tanques';
+    const params = [];
+
+    if (id_dispositivo) {
+        query += ' WHERE id_dispositivo = ?';
+        params.push(id_dispositivo);
+    }
+
+    query += ' ORDER BY id_tanque DESC LIMIT 10';
+    db.query(query, params, (err, results) => {
+        if (err) {
+            console.error('Error MySQL al cargar tanques:', err);
+            return res.status(500).json({ error: 'Error interno al leer tanques.' });
+        }
+        res.json(results);
+    });
+});
+
+app.post('/api/registros', (req, res) => {
+    const { id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora } = req.body;
+
+    if (!id_registro || !id_paciente || saturacion_oxigeno === undefined || ritmo_cardiaco === undefined || !fecha_hora) {
+        return res.status(400).json({ error: 'Faltan datos obligatorios para guardar registro.' });
+    }
+
+    const query = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    db.query(query, [id_registro, id_paciente, id_dispositivo || null, saturacion_oxigeno, ritmo_cardiaco, es_critico ? 1 : 0, fecha_hora], (err) => {
+        if (err) {
+            console.error('Error MySQL al guardar registro biométrico:', err);
+            return res.status(500).json({ error: 'No se pudo guardar el registro biométrico.' });
+        }
+        res.json({ mensaje: 'Registro biométrico guardado.' });
+    });
+});
+
+app.get('/api/registros', (req, res) => {
+    const id_paciente = req.query.id_paciente;
+    if (!id_paciente) {
+        return res.status(400).json({ error: 'ID de paciente requerido.' });
+    }
+
+    const query = `SELECT id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora
+                   FROM registros_biomedicos
+                   WHERE id_paciente = ?
+                   ORDER BY fecha_hora DESC
+                   LIMIT 50`;
+    db.query(query, [id_paciente], (err, results) => {
+        if (err) {
+            console.error('Error MySQL al cargar registros:', err);
+            return res.status(500).json({ error: 'Error interno al leer registros biométricos.' });
         }
         res.json(results);
     });

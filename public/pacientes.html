@@ -148,6 +148,34 @@
   </div>
 </div>
 
+<div class="modal fade" id="modalSharePaciente" tabindex="-1" aria-labelledby="modalSharePacienteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-sm">
+      <div class="modal-header bg-teal text-white border-0">
+        <h5 class="modal-title" id="modalSharePacienteLabel">Compartir monitoreo de paciente</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">Genera un enlace y un código QR para permitir que otra persona vea el panel de datos biométricos en tiempo real.</p>
+        <div class="mb-4">
+          <label class="form-label fw-bold">Paciente compartido</label>
+          <div id="sharePatientName" class="form-control bg-light border-0">Sin paciente seleccionado</div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-bold">Enlace de invitado</label>
+          <input id="shareLinkInput" type="text" class="form-control shadow-sm" readonly>
+        </div>
+        <div class="text-center">
+          <img id="shareQrImage" src="" alt="QR de invitado" class="img-fluid" style="max-width: 260px;">
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="global.js"></script>
 <script src="pacientes.js"></script>

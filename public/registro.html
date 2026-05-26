@@ -64,8 +64,8 @@
         <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
           <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte
         </button>
-        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm">
-          <i class="bi bi-person-fill text-teal me-1"></i> Paciente: <strong>Angel Guiza</strong>
+        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
+          <i class="bi bi-person-fill text-teal me-1"></i> Paciente: <strong>Sin selección</strong>
         </span>
       </div>
     </div>
@@ -111,80 +111,37 @@
     </div>
 
     <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-clock-history me-2"></i>Historial Detallado</h6>
-    
-    <div class="accordion shadow-sm" id="acordeonDias">
-      
-      <div class="accordion-item border-0 mb-2 rounded overflow-hidden">
-        <h2 class="accordion-header">
-          <button class="accordion-button bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#diaLunes">
-            Lunes, 09 de Marzo
-          </button>
-        </h2>
-        <div id="diaLunes" class="accordion-collapse collapse show" data-bs-parent="#acordeonDias">
-          <div class="accordion-body bg-white p-0">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0 small">
-                <thead class="table-light">
-                  <tr>
-                    <th class="ps-3">Hora</th>
-                    <th>SpO2 Promedio</th>
-                    <th>BPM</th>
-                    <th>Estado Válvula</th>
-                    <th>Notas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="ps-3 fw-bold text-secondary">08:00 - 09:00</td>
-                    <td class="text-success fw-bold">98%</td>
-                    <td>65</td>
-                    <td><span class="badge bg-light text-muted border">Cerrada</span></td>
-                    <td>Despertó estable.</td>
-                  </tr>
-                  <tr>
-                    <td class="ps-3 fw-bold text-secondary">14:00 - 15:00</td>
-                    <td class="text-warning fw-bold">91%</td>
-                    <td>75</td>
-                    <td><span class="badge bg-teal text-white">Abierta (10 min)</span></td>
-                    <td>Agitación post-comida.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Fecha y Hora</th>
+                <th>SpO2</th>
+                <th>BPM</th>
+                <th>Nivel de Alerta</th>
+                <th>Acción del Sistema</th>
+                <th>Usuario</th>
+              </tr>
+            </thead>
+            <tbody id="tablaRegistros">
+              <tr><td colspan="6" class="text-center text-muted py-4">Cargando registros biométricos...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
+    </div>
 
-      <div class="accordion-item border-0 mb-2 rounded overflow-hidden">
-        <h2 class="accordion-header">
-          <button class="accordion-button collapsed bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#diaMartes">
-            Martes, 10 de Marzo
-          </button>
-        </h2>
-        <div id="diaMartes" class="accordion-collapse collapse" data-bs-parent="#acordeonDias">
-          <div class="accordion-body bg-white p-3 text-center text-muted">
-            No hay registros  para este día. Promedios dentro del rango seguro.
-          </div>
-        </div>
-      </div>
+    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-journal-text me-2"></i>Notas del Cuidador</h6>
+    <div id="listaNotasDiarias"></div>
 
-      <div class="accordion-item border-0 mb-2 rounded overflow-hidden">
-        <h2 class="accordion-header">
-          <button class="accordion-button collapsed bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#diaMiercoles">
-            Miércoles, 11 de Marzo (Hoy)
-          </button>
-        </h2>
-        <div id="diaMiercoles" class="accordion-collapse collapse" data-bs-parent="#acordeonDias">
-          <div class="accordion-body bg-white p-3 text-center text-muted">
-            Los datos se están recolectando actualmente...
-          </div>
-        </div>
-      </div>
-
-    </div> </div> <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
- <script src="global.js"></script>
-
-  </script>
+  </div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="global.js"></script>
+<script src="registro.js"></script>
 </body>
 </html>
