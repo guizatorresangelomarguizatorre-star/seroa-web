@@ -174,7 +174,15 @@ window.confirmarConexion = function() {
 // ==========================================
 function validarSesionUsuario() {
     const nombreGuardado = localStorage.getItem('nombrePaciente');
-    
+    const userId = localStorage.getItem('userId');
+    const paginaActual = window.location.pathname.split("/").pop();
+
+    // Si el usuario ya está autenticado, no debe quedarse en la vista de invitado
+    if (userId && paginaActual === 'invitado.html') {
+        window.location.href = 'index.html';
+        return;
+    }
+
     if (nombreGuardado) {
         const primerNombre = nombreGuardado.split(' ')[0];
         
@@ -197,20 +205,56 @@ function validarSesionUsuario() {
 }
 
 function actualizarBadgePaciente() {
-    // Busca si hay un paciente seleccionado, priorizando la clave estándar usada en scripts
-    const pacienteSeleccionado = localStorage.getItem('selectedPatientName') || localStorage.getItem('pacienteActivoSeroa') || "Sin selección";
+    // Busca si hay un paciente seleccionado y su rol
+    const pacienteNombre = localStorage.getItem('selectedPatientName') || localStorage.getItem('pacienteActivoSeroa') || "Sin selección";
+    const pacienteRol = localStorage.getItem('selectedPatientRole') || '---';
+    const display = `${pacienteNombre} | ${pacienteRol}`;
 
     // Actualiza todos los badges que usan el atributo data-paciente-actual
     const badgesPaciente = document.querySelectorAll('[data-paciente-actual]');
     badgesPaciente.forEach(el => {
-        // si contiene un <strong>, remplazar su texto, si no, reemplazar innerHTML con formato
         const strong = el.querySelector('strong');
         if (strong) {
-            strong.textContent = pacienteSeleccionado;
+            strong.textContent = display;
         } else {
-            el.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${pacienteSeleccionado}</strong>`;
+            el.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${display}</strong>`;
         }
     });
+
+    // Aplicar restricciones UI según rol
+    try { aplicarRestriccionesDeRol(); } catch (e) { console.error('Error aplicando restricciones de rol:', e); }
+}
+
+// Oculta o deshabilita controles sensibles cuando el rol es 'Invitado'
+function aplicarRestriccionesDeRol() {
+    try {
+        const rol = localStorage.getItem('selectedPatientRole') || 'Invitado';
+        const ocultarSelectors = [
+            '.rol-editar',       // botones de edición y ajustes
+            '.btn-activar-valvula',
+            '.btn-guardar-config',
+            '.btn-eliminar-acceso',
+            '.rol-admin-only',
+            '[data-protect-role]'
+        ];
+
+        if (rol === 'Invitado') {
+            ocultarSelectors.forEach(sel => {
+                document.querySelectorAll(sel).forEach(el => {
+                    try { el.classList.add('d-none'); } catch(e) { try { el.style.display = 'none'; } catch(_){} }
+                });
+            });
+        } else {
+            // Restaurar visibilidad para roles elevados
+            ocultarSelectors.forEach(sel => {
+                document.querySelectorAll(sel).forEach(el => {
+                    try { el.classList.remove('d-none'); el.style.display = ''; } catch(e) {}
+                });
+            });
+        }
+    } catch (err) {
+        console.error('aplicarRestriccionesDeRol error:', err);
+    }
 }
 
 function cerrarSesion() {

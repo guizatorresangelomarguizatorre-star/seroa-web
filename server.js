@@ -158,7 +158,7 @@ app.get('/api/verificar-correo', (req, res) => {
 
 // LOGIN
 app.post('/api/login', (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, bindAccessId } = req.body;
     const emailHashBuscado = generarHashBusqueda(email);
 
     db.query("SELECT * FROM usuarios WHERE email_hash = ?", [emailHashBuscado], async (err, results) => {
@@ -180,6 +180,17 @@ app.post('/api/login', (req, res) => {
         } catch (decryptErr) {
             console.error('[/api/login] Error desencriptando nombre:', decryptErr);
             nombreDesencriptado = usuario.nombre || 'Usuario';
+        }
+
+        // Si el cliente solicitó que el acceso invitado se vincule a este usuario, intentarlo
+        if (bindAccessId) {
+            try {
+                const updateQuery = 'UPDATE acceso_pacientes SET id_usuario = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
+                db.query(updateQuery, [usuario.id, bindAccessId], (updErr, updRes) => {
+                    if (updErr) console.error('Error vinculando acceso invitado en /api/login:', updErr);
+                    else if (updRes.affectedRows > 0) console.log(`/api/login: Acceso ${bindAccessId} vinculado al usuario ${usuario.id}`);
+                });
+            } catch (e) { console.error('Excepción al vincular acceso en login:', e); }
         }
 
         res.json({ 
@@ -522,6 +533,19 @@ app.get('/api/invitado', (req, res) => {
             return res.status(403).json({ error: 'Este código de acceso no es válido para invitados.' });
         }
         
+        // Si el cliente es un usuario autenticado y nos pasa userId, intentar vincular el acceso 'Invitado' al usuario real
+        const guestBindUserId = req.query.userId ? Number(req.query.userId) : null;
+        const guestBindUserName = req.query.userName || null;
+        if (guestBindUserId && guestBindUserId > 0) {
+            try {
+                const bindQuery = 'UPDATE acceso_pacientes SET id_usuario = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
+                db.query(bindQuery, [guestBindUserId, id_acceso], (bindErr, bindRes) => {
+                    if (bindErr) console.error('[/api/invitado] Error vinculando invitado a usuario:', bindErr);
+                    else if (bindRes.affectedRows > 0) console.log(`[/api/invitado] Acceso ${id_acceso} vinculado al usuario ${guestBindUserId}`);
+                });
+            } catch (bindEx) { console.error('[/api/invitado] Excepción vinculando invitado:', bindEx); }
+        }
+
         // Ahora traer datos del paciente
         const pacienteQuery = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max
                               FROM pacientes p WHERE p.id_paciente = ?`;

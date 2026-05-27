@@ -49,7 +49,10 @@ function iniciarInvitado() {
         return;
     }
 
-    fetch(`/api/invitado?acceso=${encodeURIComponent(acceso)}`)
+    // Si el visitante está autenticado en esta sesión, enviar userId para permitir el vínculo de acceso
+    const userId = localStorage.getItem('userId');
+    const userParam = userId ? `&userId=${encodeURIComponent(userId)}` : '';
+    fetch(`/api/invitado?acceso=${encodeURIComponent(acceso)}${userParam}`)
         .then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data })))
         .then(({ status, ok, data }) => {
             if (!ok) {
