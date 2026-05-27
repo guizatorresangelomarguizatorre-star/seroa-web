@@ -63,6 +63,17 @@ function iniciarInvitado() {
                 return;
             }
             
+            // Si el servidor indica que el acceso fue elevado, pedir login al usuario
+            if (data.requireLogin) {
+                try {
+                    alert(data.message || 'Acceso elevado: por favor inicia sesión.');
+                } catch (e) {
+                    console.warn('No se pudo mostrar alerta amigable:', e);
+                }
+                window.location.href = 'login.html';
+                return;
+            }
+
             // Guardar datos del paciente en localStorage
             localStorage.setItem('selectedPatientId', data.id_paciente);
             localStorage.setItem('selectedPatientName', data.nombre);
@@ -81,10 +92,23 @@ function iniciarInvitado() {
             // Actualizar badge del paciente compartido
             actualizarBadgePaciente();
             
-            // Suscribirse a los datos de Firebase
-            window.SeroaRealtime.subscribe((datos) => {
-                if (datos) renderLectura(datos);
-            });
+            // Suscribirse únicamente a la ruta privada del paciente en Firebase
+            try {
+                const idPaciente = data.id_paciente;
+                if (idPaciente) {
+                    const ref = database.ref(`Seroa/Pacientes/${idPaciente}/Actual`);
+                    ref.on('value', snapshot => {
+                        try {
+                            const datos = snapshot.val() || null;
+                            if (datos) renderLectura(datos);
+                        } catch (e) {
+                            console.error('Error procesando snapshot invitado:', e);
+                        }
+                    });
+                }
+            } catch (susErr) {
+                console.error('Error suscribiendo a Firebase en invitado:', susErr);
+            }
         })
         .catch(err => {
             console.error('Error en iniciarInvitado:', err);

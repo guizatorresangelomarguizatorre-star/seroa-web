@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const mysql = require('mysql2'); 
 const crypto = require('crypto'); 
 const dns = require('dns');
+const https = require('https');
 
 // Mantenemos esto por si MySQL en Railway lo necesita
 dns.setDefaultResultOrder('ipv4first'); 
@@ -514,6 +515,10 @@ app.get('/api/invitado', (req, res) => {
         
         if (acceso.tipo_permiso !== 'Invitado') {
             console.log(`[/api/invitado] Acceso ${id_acceso} no es de tipo Invitado, es ${acceso.tipo_permiso}`);
+            // Si el acceso fue elevado a Admin/Doctor, indicar al cliente que debe iniciar sesión
+            if (['Administrador', 'Doctor'].includes(acceso.tipo_permiso)) {
+                return res.status(200).json({ requireLogin: true, message: 'Este acceso ha sido elevado. Por favor, inicia sesión.' });
+            }
             return res.status(403).json({ error: 'Este código de acceso no es válido para invitados.' });
         }
         
@@ -661,6 +666,46 @@ function flushAggregateForPatient(id_paciente) {
     delete hourAggregates[id_paciente];
 }
 
+// --- Escribir en Firebase Realtime DB (ruta privada por paciente)
+const FIREBASE_DB = 'https://seroa-e8606-default-rtdb.firebaseio.com';
+function writeRealtimePaciente(id_paciente, payload) {
+    return new Promise((resolve, reject) => {
+        if (!id_paciente) return resolve();
+        try {
+            const dataStr = JSON.stringify(payload || {});
+            const path = `/Seroa/Pacientes/${encodeURIComponent(id_paciente)}/Actual.json`;
+            const url = new URL(FIREBASE_DB + path);
+
+            const options = {
+                hostname: url.hostname,
+                path: url.pathname + (url.search || ''),
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(dataStr)
+                }
+            };
+
+            const req = https.request(options, (res) => {
+                let body = '';
+                res.on('data', chunk => body += chunk);
+                res.on('end', () => resolve(body));
+            });
+
+            req.on('error', (err) => {
+                console.error('Error escribiendo Realtime Firebase:', err);
+                reject(err);
+            });
+
+            req.write(dataStr);
+            req.end();
+        } catch (err) {
+            console.error('Error preparando escritura a Firebase Realtime:', err);
+            resolve();
+        }
+    });
+}
+
 app.post('/api/registros', (req, res) => {
     // Accept payloads from frontend (index.js) that include nivel_alerta or es_critico
     const { id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora, nivel_alerta } = req.body;
@@ -690,6 +735,19 @@ app.post('/api/registros', (req, res) => {
             }
             // Reset aggregate for this patient (rompe el promediado)
             if (hourAggregates[id_paciente]) delete hourAggregates[id_paciente];
+            // También publicar lectura en Realtime DB bajo ruta privada del paciente
+            try {
+                const payload = {
+                    spo2: spo2,
+                    bpm: bpm,
+                    nivel: nivel,
+                    es_critico: esCrit,
+                    timestamp: fecha,
+                    estado: 'ACTIVO'
+                };
+                writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error (incidente):', e));
+            } catch (wErr) { console.error('Error publicando incidente a Realtime:', wErr); }
+
             return res.json({ mensaje: 'Incidente guardado inmediatamente.' });
         });
         return;
@@ -702,6 +760,10 @@ app.post('/api/registros', (req, res) => {
 
     if (!agg) {
         hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1 };
+        try {
+            const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
+            writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error (nuevo agg):', e));
+        } catch (wErr) { console.error('Error publicando lectura normal a Realtime:', wErr); }
         return res.json({ mensaje: 'Lectura normal acumulada.' });
     }
 
@@ -710,6 +772,10 @@ app.post('/api/registros', (req, res) => {
         flushAggregateForPatient(id_paciente);
         // start new aggregate with current reading
         hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1 };
+        try {
+            const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
+            writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error (nuevo intervalo):', e));
+        } catch (wErr) { console.error('Error publicando lectura normal a Realtime:', wErr); }
         return res.json({ mensaje: 'Lectura normal acumulada (nuevo intervalo horario, se flushó anterior).' });
     }
 
@@ -717,6 +783,10 @@ app.post('/api/registros', (req, res) => {
     agg.sumSpo2 += spo2;
     agg.sumBpm += bpm;
     agg.count += 1;
+    try {
+        const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
+        writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error (acumulada):', e));
+    } catch (wErr) { console.error('Error publicando lectura normal a Realtime:', wErr); }
     return res.json({ mensaje: 'Lectura normal acumulada.' });
 });
 

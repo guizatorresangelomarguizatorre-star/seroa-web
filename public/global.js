@@ -35,6 +35,8 @@ window.SeroaRealtime = {
     currentData: null,
     isConnected: false,
     callbacks: [],
+    currentRef: null,
+    currentPath: null,
     subscribe(callback) {
         if (typeof callback !== 'function') return;
         this.callbacks.push(callback);
@@ -47,9 +49,50 @@ window.SeroaRealtime = {
     }
 };
 
-window.database.ref('Seroa/Actual').on('value', snapshot => {
-    const datos = snapshot.val() || null;
-    window.SeroaRealtime.notify(datos);
+// Attach a dynamic listener per-patient based on localStorage.selectedPatientId
+window.SeroaRealtime.attachListener = function() {
+    try {
+        const id = localStorage.getItem('selectedPatientId');
+        if (!id) {
+            if (this.currentRef) {
+                try { this.currentRef.off(); } catch(e) { /* ignore */ }
+                this.currentRef = null;
+                this.currentPath = null;
+            }
+            this.notify(null);
+            return;
+        }
+
+        const path = `Seroa/Pacientes/${id}/Actual`;
+        if (this.currentPath === path) return; // already attached
+
+        if (this.currentRef) {
+            try { this.currentRef.off(); } catch(e) { /* ignore */ }
+            this.currentRef = null;
+        }
+
+        this.currentPath = path;
+        this.currentRef = window.database.ref(path);
+        this.currentRef.on('value', snapshot => {
+            try {
+                const datos = snapshot.val() || null;
+                this.notify(datos);
+            } catch (e) {
+                console.error('Error procesando snapshot Realtime:', e);
+                this.notify(null);
+            }
+        });
+    } catch (err) {
+        console.error('Error SeroaRealtime.attachListener:', err);
+        this.notify(null);
+    }
+};
+
+// Listen for storage changes (other tabs) to reattach listener when patient changes
+window.addEventListener('storage', (e) => {
+    if (e.key === 'selectedPatientId') {
+        window.SeroaRealtime.attachListener();
+    }
 });
 
 // --- RELOJ UNIVERSAL MULTI-PANTALLA ---
@@ -276,6 +319,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 2. Inyectar HTML Dinámico
     await inyectarComponentesDinamicos();
 
-    // 3. Disparar Pruebas
+    // 3. Configurar listener dinámico de Realtime según paciente seleccionado
+    try { window.SeroaRealtime.attachListener(); } catch (e) { console.error('Error iniciando listener Realtime:', e); }
+
+    // 4. Disparar Pruebas
     iniciarModoPrueba();
 });
