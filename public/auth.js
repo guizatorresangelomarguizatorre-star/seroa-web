@@ -1,6 +1,17 @@
 let captchaCorrectAnswer;
 let verificacionInterval; // Variable para controlar el reloj que pregunta a la BD
 
+// Capturar código de acceso (invitación) desde URL o localStorage
+function captureAccessCode() {
+    const params = new URLSearchParams(window.location.search);
+    const urlAcceso = params.get('acceso');
+    if (urlAcceso) {
+        localStorage.setItem('pendingAccessId', urlAcceso);
+        return urlAcceso;
+    }
+    return localStorage.getItem('pendingAccessId') || null;
+}
+
 function generateCaptcha() {
     const n1 = Math.floor(Math.random() * 10) + 1;
     const n2 = Math.floor(Math.random() * 10) + 1;
@@ -55,6 +66,12 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         password: pass
     };
 
+    // Adjuntar código de acceso (invitación) si existe
+    const accessId = captureAccessCode();
+    if (accessId) {
+        data.id_acceso = accessId;
+    }
+
     try {
         const res = await fetch('/api/registro', {
             method: 'POST',
@@ -68,6 +85,9 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
             document.getElementById('register-section').style.display = 'none';
             document.getElementById('waiting-section').style.display = 'block';
             document.getElementById('registerForm').reset();
+            
+            // Limpiar el código de acceso pendiente ya que fue procesado
+            localStorage.removeItem('pendingAccessId');
             
             // Arrancamos el monitoreo silencioso
             iniciarMonitoreoVerificacion(emailIngresado);
@@ -116,13 +136,20 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     // Capturamos los datos de tus inputs (usando los IDs de tu HTML)
     const email = document.getElementById('loginUser').value;
     const password = document.getElementById('loginPass').value;
+    const loginBody = { email, password };
+
+    // Adjuntar código de acceso (invitación) si existe
+    const accessId = captureAccessCode();
+    if (accessId) {
+        loginBody.id_acceso = accessId;
+    }
 
     try {
         // Hacemos la llamada a nuestro servidor
         const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify(loginBody)
         });
 
         const data = await response.json();
@@ -133,6 +160,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             // Guardamos los datos de sesión para el usuario actual
             localStorage.setItem('nombrePaciente', data.nombre);
             localStorage.setItem('userId', data.id);
+            
+            // Limpiar el código de acceso pendiente ya que fue procesado
+            localStorage.removeItem('pendingAccessId');
             
             // Movemos al usuario al Dashboard
             window.location.href = 'index.html'; 
@@ -150,3 +180,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
 // Inicializar la primera vez
 generateCaptcha();
+// Capturar código de acceso desde URL al cargar la página
+window.addEventListener('DOMContentLoaded', () => {
+    captureAccessCode();
+});

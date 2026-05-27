@@ -48,7 +48,7 @@ db.getConnection((err, connection) => {
 const rutasBiometricos = require('./api_biometricos')(db);
 app.use('/api', rutasBiometricos);
 app.post('/api/registro', async (req, res) => {
-    const { nombre, email, password } = req.body;
+    const { nombre, email, password, id_acceso } = req.body;
 
     try {
         // 1. BLINDAJE
@@ -71,6 +71,19 @@ app.post('/api/registro', async (req, res) => {
                 }
                 return res.status(500).json({ error: 'Error al registrar en la base de datos.' });
             }
+
+            // Si nos pasaron id_acceso en el body, intentamos vincular la invitación al nuevo usuario
+            try {
+                const nuevoUsuarioId = result.insertId;
+                if (id_acceso) {
+                    const nombrePlano = nombre || '';
+                    const bindQuery = 'UPDATE acceso_pacientes SET id_usuario = ?, usuario_nombre = ? WHERE id_acceso = ?';
+                    db.query(bindQuery, [nuevoUsuarioId, nombrePlano, id_acceso], (bindErr, bindRes) => {
+                        if (bindErr) console.error('Error vinculando acceso en registro:', bindErr);
+                        else if (bindRes.affectedRows > 0) console.log(`/api/registro: Acceso ${id_acceso} vinculado al usuario ${nuevoUsuarioId}`);
+                    });
+                }
+            } catch (bindEx) { console.error('Excepción vinculando acceso en registro:', bindEx); }
 
             // 4. Diseñamos el enlace
             const urlVerificacion = `https://seroa-web-production.up.railway.app/api/verificar-correo?token=${tokenVerificacion}`;
@@ -158,7 +171,8 @@ app.get('/api/verificar-correo', (req, res) => {
 
 // LOGIN
 app.post('/api/login', (req, res) => {
-    const { email, password, bindAccessId } = req.body;
+    const { email, password, bindAccessId, id_acceso } = req.body;
+    const bindId = bindAccessId || id_acceso || null;
     const emailHashBuscado = generarHashBusqueda(email);
 
     db.query("SELECT * FROM usuarios WHERE email_hash = ?", [emailHashBuscado], async (err, results) => {
@@ -183,12 +197,13 @@ app.post('/api/login', (req, res) => {
         }
 
         // Si el cliente solicitó que el acceso invitado se vincule a este usuario, intentarlo
-        if (bindAccessId) {
+        if (bindId) {
             try {
-                const updateQuery = 'UPDATE acceso_pacientes SET id_usuario = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
-                db.query(updateQuery, [usuario.id, bindAccessId], (updErr, updRes) => {
+                const updateQuery = 'UPDATE acceso_pacientes SET id_usuario = ?, usuario_nombre = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
+                const nombrePlano = nombreDesencriptado || '';
+                db.query(updateQuery, [usuario.id, nombrePlano, bindId], (updErr, updRes) => {
                     if (updErr) console.error('Error vinculando acceso invitado en /api/login:', updErr);
-                    else if (updRes.affectedRows > 0) console.log(`/api/login: Acceso ${bindAccessId} vinculado al usuario ${usuario.id}`);
+                    else if (updRes.affectedRows > 0) console.log(`/api/login: Acceso ${bindId} vinculado al usuario ${usuario.id}`);
                 });
             } catch (e) { console.error('Excepción al vincular acceso en login:', e); }
         }
@@ -264,7 +279,8 @@ app.get('/api/pacientes', (req, res) => {
         return res.status(400).json({ error: 'ID del usuario es requerido.' });
     }
 
-    const query = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max, p.id_creador, a.tipo_permiso, a.id_acceso
+    // Traer todos los pacientes vinculados al usuario, sin filtrar por tipo de permiso
+    const query = `SELECT p.*, a.tipo_permiso, a.id_acceso
                    FROM pacientes p
                    JOIN acceso_pacientes a ON a.id_paciente = p.id_paciente
                    WHERE a.id_usuario = ?

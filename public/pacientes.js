@@ -17,10 +17,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function actualizarPacienteActualUI() {
         const nombre = localStorage.getItem('selectedPatientName') || userName || 'Sin selección';
-        const badgeText = nombre ? `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${nombre}</strong>` : 'Paciente Actual: <strong>Sin selección</strong>';
+        const rol = localStorage.getItem('selectedPatientRole') || '---';
+        const display = `${nombre} | ${rol}`;
+        const badgeText = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${display}</strong>`;
 
         if (pacienteActualBadge) pacienteActualBadge.innerHTML = badgeText;
-        if (pacienteActualLabel) pacienteActualLabel.textContent = nombre;
+        if (pacienteActualLabel) pacienteActualLabel.textContent = display;
     }
 
     function mostrarMensaje(texto, tipo = 'danger') {
