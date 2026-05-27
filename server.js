@@ -173,9 +173,17 @@ app.post('/api/login', (req, res) => {
         const esValida = await bcrypt.compare(password, usuario.password);
         if (!esValida) return res.status(401).json({ error: "Credenciales inválidas" });
 
+        let nombreDesencriptado = 'Usuario';
+        try {
+            nombreDesencriptado = usuario.nombre ? desencriptar(usuario.nombre) : 'Usuario';
+        } catch (decryptErr) {
+            console.error('[/api/login] Error desencriptando nombre:', decryptErr);
+            nombreDesencriptado = usuario.nombre || 'Usuario';
+        }
+
         res.json({ 
             mensaje: "Inicio de sesión exitoso", 
-            nombre: desencriptar(usuario.nombre),
+            nombre: nombreDesencriptado,
             id: usuario.id
         });
     });
@@ -198,9 +206,16 @@ app.get('/api/status-verificacion', (req, res) => {
         }
 
         const usuario = results[0];
+        let nombreDesencriptado = 'Usuario';
+        try {
+            nombreDesencriptado = usuario.nombre ? desencriptar(usuario.nombre) : 'Usuario';
+        } catch (decryptErr) {
+            console.error('[/api/status-verificacion] Error desencriptando nombre:', decryptErr);
+            nombreDesencriptado = usuario.nombre || 'Usuario';
+        }
         res.json({
             verificado: usuario.verificado === 1 || usuario.verificado === true,
-            nombre: desencriptar(usuario.nombre),
+            nombre: nombreDesencriptado,
             id: usuario.id
         });
     });
@@ -343,10 +358,21 @@ app.get('/api/accesos', (req, res) => {
                 console.error('Error MySQL al cargar accesos por paciente:', err);
                 return res.status(500).json({ error: 'Error interno al leer accesos.' });
             }
-            const datos = results.map(row => ({
-                ...row,
-                usuario_nombre: row.id_usuario === 0 ? 'Invitado' : (row.usuario_nombre ? desencriptar(row.usuario_nombre) : 'Usuario desconocido')
-            }));
+            const datos = results.map(row => {
+                let usuarioNombre = row.id_usuario === 0 ? 'Invitado' : (row.usuario_nombre ? row.usuario_nombre : 'Usuario desconocido');
+                if (row.id_usuario !== 0 && row.usuario_nombre) {
+                    try {
+                        usuarioNombre = desencriptar(row.usuario_nombre);
+                    } catch (decryptErr) {
+                        console.error('[/api/accesos] Error desencriptando usuario_nombre:', decryptErr);
+                        usuarioNombre = row.usuario_nombre;
+                    }
+                }
+                return {
+                    ...row,
+                    usuario_nombre: usuarioNombre
+                };
+            });
             return res.json(datos);
         });
         return;
@@ -503,10 +529,19 @@ app.get('/api/invitado', (req, res) => {
             const paciente = pacResults[0];
             console.log(`[/api/invitado] Retornando paciente: ${paciente.id_paciente}`);
             
+            // Usar try/catch para desencriptar de forma segura
+            let nombreDesencriptado = 'Paciente';
+            try {
+                nombreDesencriptado = paciente.nombre ? desencriptar(paciente.nombre) : 'Paciente';
+            } catch (decryptErr) {
+                console.error('[/api/invitado] Error desencriptando nombre:', decryptErr);
+                nombreDesencriptado = paciente.nombre || 'Paciente';
+            }
+            
             res.json({
                 id_acceso: acceso.id_acceso,
                 ...paciente,
-                nombre: paciente.nombre ? desencriptar(paciente.nombre) : 'Paciente',
+                nombre: nombreDesencriptado,
                 tipo_permiso: 'Invitado'
             });
         });
