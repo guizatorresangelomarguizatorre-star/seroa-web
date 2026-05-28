@@ -49,6 +49,9 @@ function iniciarInvitado() {
         return;
     }
 
+    // Guardar el código de invitación pendiente para poder procesarlo incluso si redirigimos a login
+    localStorage.setItem('pendingAccessId', acceso);
+
     // Si el visitante está autenticado en esta sesión, enviar userId y nombre para permitir el vínculo de acceso
     const userId = localStorage.getItem('userId');
     const userName = localStorage.getItem('nombrePaciente');
@@ -74,7 +77,7 @@ function iniciarInvitado() {
                 } catch (e) {
                     console.warn('No se pudo mostrar alerta amigable:', e);
                 }
-                window.location.href = 'login.html';
+                window.location.href = `login.html?acceso=${encodeURIComponent(acceso)}`;
                 return;
             }
 
