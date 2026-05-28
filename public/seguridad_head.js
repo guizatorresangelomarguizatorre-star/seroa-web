@@ -11,7 +11,3 @@ if (params.has('acceso')) {
 if (!tieneSesion && !['login.html', 'guia.html', 'invitado.html'].includes(paginaActual)) {
     window.location.href = 'guia.html';
 }
-
-if (tieneSesion && paginaActual === 'invitado.html') {
-    window.location.href = 'index.html';
-}

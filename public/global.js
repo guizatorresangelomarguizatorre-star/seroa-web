@@ -167,12 +167,6 @@ function validarSesionUsuario() {
     const userId = localStorage.getItem('userId');
     const paginaActual = window.location.pathname.split("/").pop();
 
-    // Si el usuario ya está autenticado, no debe quedarse en la vista de invitado
-    if (userId && paginaActual === 'invitado.html') {
-        window.location.href = 'index.html';
-        return;
-    }
-
     if (nombreGuardado) {
         const primerNombre = nombreGuardado.split(' ')[0];
         
@@ -216,17 +210,58 @@ function actualizarBadgePaciente() {
 }
 
 // Oculta o deshabilita controles sensibles cuando el rol es 'Invitado'
+window.mostrarToast = function(mensaje, tipo = 'success', duracion = 3000) {
+    try {
+        const body = document.body || document.documentElement;
+        if (!body) return;
+
+        let container = document.getElementById('seroaToastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'seroaToastContainer';
+            container.style.position = 'fixed';
+            container.style.top = '1rem';
+            container.style.right = '1rem';
+            container.style.zIndex = '1085';
+            container.style.minWidth = '280px';
+            body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        const toastClass = tipo === 'danger' ? 'bg-danger text-white' : tipo === 'warning' ? 'bg-warning text-dark' : 'bg-success text-white';
+        toast.className = `toast align-items-center border-0 ${toastClass}`;
+        toast.role = 'alert';
+        toast.ariaLive = 'assertive';
+        toast.ariaAtomic = 'true';
+        toast.style.minWidth = '280px';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${mensaje}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </div>
+        `;
+
+        container.appendChild(toast);
+        const bootToast = new bootstrap.Toast(toast, { delay: duracion });
+        bootToast.show();
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    } catch (err) {
+        console.error('mostrarToast error:', err);
+    }
+};
+
 function aplicarRestriccionesDeRol() {
     try {
         const rol = localStorage.getItem('selectedPatientRole') || 'Invitado';
         const ocultarSelectors = [
-            '.rol-editar',       // botones de edición y ajustes
+            '.rol-editar',
             '.btn-activar-valvula',
             '.btn-guardar-config',
             '.btn-eliminar-acceso',
             '.rol-admin-only',
             '[data-protect-role]'
         ];
+        const paginasRestringidas = ['dosificacion.html', 'registro.html', 'tanque.html', 'configuracion.html'];
 
         if (rol === 'Invitado') {
             ocultarSelectors.forEach(sel => {
@@ -234,11 +269,37 @@ function aplicarRestriccionesDeRol() {
                     try { el.classList.add('d-none'); } catch(e) { try { el.style.display = 'none'; } catch(_){} }
                 });
             });
+
+            paginasRestringidas.forEach(href => {
+                document.querySelectorAll(`.navbar-nav .nav-link[href="${href}"]`).forEach(el => {
+                    const item = el.closest('li');
+                    if (item) {
+                        item.classList.add('d-none');
+                    } else {
+                        el.classList.add('d-none');
+                    }
+                });
+            });
+
+            const paginaActual = window.location.pathname.split('/').pop();
+            if (paginasRestringidas.includes(paginaActual)) {
+                window.location.href = 'pacientes.html';
+            }
         } else {
-            // Restaurar visibilidad para roles elevados
             ocultarSelectors.forEach(sel => {
                 document.querySelectorAll(sel).forEach(el => {
                     try { el.classList.remove('d-none'); el.style.display = ''; } catch(e) {}
+                });
+            });
+
+            paginasRestringidas.forEach(href => {
+                document.querySelectorAll(`.navbar-nav .nav-link[href="${href}"]`).forEach(el => {
+                    const item = el.closest('li');
+                    if (item) {
+                        item.classList.remove('d-none');
+                    } else {
+                        el.classList.remove('d-none');
+                    }
                 });
             });
         }

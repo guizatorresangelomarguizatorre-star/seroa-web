@@ -49,9 +49,10 @@ function iniciarInvitado() {
         return;
     }
 
-    // Si el visitante está autenticado en esta sesión, enviar userId para permitir el vínculo de acceso
+    // Si el visitante está autenticado en esta sesión, enviar userId y nombre para permitir el vínculo de acceso
     const userId = localStorage.getItem('userId');
-    const userParam = userId ? `&userId=${encodeURIComponent(userId)}` : '';
+    const userName = localStorage.getItem('nombrePaciente');
+    const userParam = userId ? `&userId=${encodeURIComponent(userId)}${userName ? `&userName=${encodeURIComponent(userName)}` : ''}` : '';
     fetch(`/api/invitado?acceso=${encodeURIComponent(acceso)}${userParam}`)
         .then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data })))
         .then(({ status, ok, data }) => {
@@ -93,8 +94,15 @@ function iniciarInvitado() {
             }
             
             // Actualizar badge del paciente compartido
-            actualizarBadgePaciente();
+            if (typeof actualizarBadgePaciente === 'function') actualizarBadgePaciente();
             
+            // Si el usuario tiene sesión, enviarlo a la pestaña de pacientes para que su lista se refresque.
+            if (userId) {
+                localStorage.removeItem('pendingAccessId');
+                window.location.href = 'pacientes.html';
+                return;
+            }
+
             // Suscribirse únicamente a la ruta privada del paciente en Firebase
             try {
                 const idPaciente = data.id_paciente;

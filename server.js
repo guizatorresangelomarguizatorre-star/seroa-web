@@ -554,8 +554,9 @@ app.get('/api/invitado', (req, res) => {
         const guestBindUserName = req.query.userName || null;
         if (guestBindUserId && guestBindUserId > 0) {
             try {
-                const bindQuery = 'UPDATE acceso_pacientes SET id_usuario = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
-                db.query(bindQuery, [guestBindUserId, id_acceso], (bindErr, bindRes) => {
+                const bindQuery = 'UPDATE acceso_pacientes SET id_usuario = ?, usuario_nombre = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
+                const nombrePlano = guestBindUserName || '';
+                db.query(bindQuery, [guestBindUserId, nombrePlano, id_acceso], (bindErr, bindRes) => {
                     if (bindErr) console.error('[/api/invitado] Error vinculando invitado a usuario:', bindErr);
                     else if (bindRes.affectedRows > 0) console.log(`[/api/invitado] Acceso ${id_acceso} vinculado al usuario ${guestBindUserId}`);
                 });

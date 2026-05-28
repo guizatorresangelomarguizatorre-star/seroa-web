@@ -210,6 +210,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Actualizamos el badge en esta página y en todas las otras pantallas
         actualizarPacienteActualUI();
         if (typeof window.actualizarBadgePaciente === 'function') window.actualizarBadgePaciente();
+        if (typeof window.mostrarToast === 'function') {
+            window.mostrarToast(`Contexto clínico actualizado: Operando sobre el expediente de ${decodeURIComponent(nombre)}`, 'success', 3000);
+        }
         cargarPacientes();
     }
 
