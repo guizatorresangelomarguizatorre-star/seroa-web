@@ -7,7 +7,12 @@ let historialBpm = JSON.parse(localStorage.getItem('seroaHistorialBpm')) || [];
 let categoriasTiempo = JSON.parse(localStorage.getItem('seroaCategoriasTiempo')) || [];
 
 const LIMITE_PUNTOS = 15;
-
+if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
+    historialSpo2 = [];
+    historialBpm = [];
+    localStorage.removeItem('seroaHistorialSpo2');
+    localStorage.removeItem('seroaHistorialBpm');
+}
 function clasificarLectura(spo2, bpm) {
     if (spo2 < 85 || bpm < 50 || bpm > 140) return { nivel: 'Peligro', color: 'danger', accion: 'Válvula de oxígeno activada' };
     if ((spo2 >= 85 && spo2 <= 89) || (bpm >= 50 && bpm <= 59) || (bpm >= 101 && bpm <= 140)) return { nivel: 'Precaución', color: 'warning', accion: 'Monitoreo continuo' };
