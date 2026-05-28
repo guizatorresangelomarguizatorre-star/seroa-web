@@ -7,12 +7,16 @@ let historialBpm = JSON.parse(localStorage.getItem('seroaHistorialBpm')) || [];
 let categoriasTiempo = JSON.parse(localStorage.getItem('seroaCategoriasTiempo')) || [];
 
 const LIMITE_PUNTOS = 15;
+
+// --- LIMPIEZA DE FORMATO ANTIGUO ---
+// (Debe ejecutarse ANTES de renderizar la gráfica para evitar crasheos)
 if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
     historialSpo2 = [];
     historialBpm = [];
     localStorage.removeItem('seroaHistorialSpo2');
     localStorage.removeItem('seroaHistorialBpm');
 }
+
 function clasificarLectura(spo2, bpm) {
     if (spo2 < 85 || bpm < 50 || bpm > 140) return { nivel: 'Peligro', color: 'danger', accion: 'Válvula de oxígeno activada' };
     if ((spo2 >= 85 && spo2 <= 89) || (bpm >= 50 && bpm <= 59) || (bpm >= 101 && bpm <= 140)) return { nivel: 'Precaución', color: 'warning', accion: 'Monitoreo continuo' };
@@ -74,13 +78,6 @@ if(document.querySelector("#bpmChart")) {
     chartBpm.render();
 }
 
-if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
-    historialSpo2 = [];
-    historialBpm = [];
-    localStorage.removeItem('seroaHistorialSpo2');
-    localStorage.removeItem('seroaHistorialBpm');
-}
-
 // 4. EL MOTOR DE TIEMPO REAL CON INDICADOR LED
 window.SeroaRealtime.subscribe((datos) => {
     const cartelEstado = document.getElementById('estadoSensorOverlay'); 
@@ -110,7 +107,7 @@ window.SeroaRealtime.subscribe((datos) => {
         const presionBar = Number(datos.presionBar || 0);
         const valvulaActiva = datos.valvulaActiva === true || datos.valvula_estado === 'Abierta';
 
-       if (valorPresion) {
+        if (valorPresion) {
             valorPresion.innerText = presionBar.toFixed(2);
         }
 
