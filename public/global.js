@@ -126,6 +126,8 @@ function ocultarAlertaSeroa() {
 // ==========================================
 // REGISTRO DEL SERVICE WORKER
 // ==========================================
+let deferredPWAInstallPrompt = null;
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
@@ -133,6 +135,47 @@ if ('serviceWorker' in navigator) {
       .catch(error => console.log('Falló el Service Worker:', error));
   });
 }
+
+function configurarBotonInstalacion() {
+  const btnInstall = document.getElementById('btnInstallApp');
+  if (!btnInstall) return;
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    btnInstall.classList.add('d-none');
+    return;
+  }
+  if (!deferredPWAInstallPrompt) {
+    btnInstall.classList.add('d-none');
+    return;
+  }
+  btnInstall.classList.remove('d-none');
+  if (btnInstall.dataset.installHandlerAttached !== 'true') {
+    btnInstall.addEventListener('click', async () => {
+      if (!deferredPWAInstallPrompt) return;
+      deferredPWAInstallPrompt.prompt();
+      const choiceResult = await deferredPWAInstallPrompt.userChoice;
+      if (choiceResult.outcome === 'accepted') {
+        mostrarToast('Instalación aceptada. Abre Seroa desde tu pantalla de inicio.', 'success');
+      } else {
+        mostrarToast('Instalación cancelada. Vuelve a intentarlo cuando quieras.', 'warning');
+      }
+      deferredPWAInstallPrompt = null;
+      btnInstall.classList.add('d-none');
+    });
+    btnInstall.dataset.installHandlerAttached = 'true';
+  }
+}
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredPWAInstallPrompt = event;
+  configurarBotonInstalacion();
+});
+
+window.addEventListener('appinstalled', () => {
+  const btnInstall = document.getElementById('btnInstallApp');
+  if (btnInstall) btnInstall.classList.add('d-none');
+  mostrarToast('Seroa instalada. ¡Listo para usar como aplicación móvil!', 'success');
+});
 
 // ==========================================
 // MONITOR DE CONEXIÓN GLOBAL (Watchdog)
@@ -413,6 +456,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 2. Inyectar HTML Dinámico
     await inyectarComponentesDinamicos();
+
+    configurarBotonInstalacion();
 
     // 3. Configurar listener dinámico de Realtime según paciente seleccionado
     try { window.SeroaRealtime.attachListener(); } catch (e) { console.error('Error iniciando listener Realtime:', e); }
