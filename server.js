@@ -274,17 +274,25 @@ app.post('/api/pacientes', (req, res) => {
 
 app.get('/api/pacientes', (req, res) => {
     const id_usuario = req.query.id_usuario;
+    const id_paciente = req.query.id_paciente;
     if (!id_usuario) {
         return res.status(400).json({ error: 'ID del usuario es requerido.' });
     }
 
-    // Traer todos los pacientes vinculados al usuario, sin filtrar por tipo de permiso
-   const query = `SELECT p.*, a.tipo_permiso, a.id_acceso
-               FROM pacientes p
-               JOIN acceso_pacientes a ON a.id_paciente = p.id_paciente
-               WHERE a.id_usuario = ?
-               ORDER BY p.id_paciente DESC`;
-    db.query(query, [id_usuario], (err, results) => {
+    // Traer los pacientes vinculados al usuario, opcionalmente filtrando por paciente
+    let query = `SELECT p.*, a.tipo_permiso, a.id_acceso
+                 FROM pacientes p
+                 JOIN acceso_pacientes a ON a.id_paciente = p.id_paciente
+                 WHERE a.id_usuario = ?`;
+    const params = [id_usuario];
+
+    if (id_paciente) {
+        query += ' AND p.id_paciente = ?';
+        params.push(id_paciente);
+    }
+
+    query += ' ORDER BY p.id_paciente DESC';
+    db.query(query, params, (err, results) => {
         if (err) {
             console.error('Error MySQL al cargar pacientes:', err);
             return res.status(500).json({ error: 'Error interno al leer pacientes.' });
@@ -552,45 +560,54 @@ app.get('/api/invitado', (req, res) => {
         // Si el cliente es un usuario autenticado y nos pasa userId, intentar vincular el acceso 'Invitado' al usuario real
         const guestBindUserId = req.query.userId ? Number(req.query.userId) : null;
         const guestBindUserName = req.query.userName || null;
+        const pacienteQuery = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max
+                              FROM pacientes p WHERE p.id_paciente = ?`;
+
+        const enviarPaciente = () => {
+            db.query(pacienteQuery, [acceso.id_paciente], (pacErr, pacResults) => {
+                if (pacErr || pacResults.length === 0) {
+                    console.error('[/api/invitado] Error obteniendo paciente:', pacErr);
+                    return res.status(404).json({ error: 'Paciente no encontrado.' });
+                }
+                const paciente = pacResults[0];
+                console.log(`[/api/invitado] Retornando paciente: ${paciente.id_paciente}`);
+                let nombreDesencriptado = 'Paciente';
+                try {
+                    nombreDesencriptado = paciente.nombre ? desencriptar(paciente.nombre) : 'Paciente';
+                } catch (decryptErr) {
+                    console.error('[/api/invitado] Error desencriptando nombre:', decryptErr);
+                    nombreDesencriptado = paciente.nombre || 'Paciente';
+                }
+                res.json({
+                    id_acceso: acceso.id_acceso,
+                    ...paciente,
+                    nombre: nombreDesencriptado,
+                    tipo_permiso: 'Invitado'
+                });
+            });
+        };
+
         if (guestBindUserId && guestBindUserId > 0) {
             try {
                 const bindQuery = 'UPDATE acceso_pacientes SET id_usuario = ?, usuario_nombre = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
                 const nombrePlano = guestBindUserName || '';
                 db.query(bindQuery, [guestBindUserId, nombrePlano, id_acceso], (bindErr, bindRes) => {
-                    if (bindErr) console.error('[/api/invitado] Error vinculando invitado a usuario:', bindErr);
-                    else if (bindRes.affectedRows > 0) console.log(`[/api/invitado] Acceso ${id_acceso} vinculado al usuario ${guestBindUserId}`);
+                    if (bindErr) {
+                        console.error('[/api/invitado] Error vinculando invitado a usuario:', bindErr);
+                        return res.status(500).json({ error: 'No se pudo vincular el acceso al usuario.' });
+                    }
+                    if (bindRes.affectedRows > 0) {
+                        console.log(`[/api/invitado] Acceso ${id_acceso} vinculado al usuario ${guestBindUserId}`);
+                    }
+                    enviarPaciente();
                 });
-            } catch (bindEx) { console.error('[/api/invitado] Excepción vinculando invitado:', bindEx); }
+            } catch (bindEx) {
+                console.error('[/api/invitado] Excepción vinculando invitado:', bindEx);
+                return res.status(500).json({ error: 'Error interno al vincular el acceso.' });
+            }
+        } else {
+            enviarPaciente();
         }
-
-        // Ahora traer datos del paciente
-        const pacienteQuery = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max
-                              FROM pacientes p WHERE p.id_paciente = ?`;
-        db.query(pacienteQuery, [acceso.id_paciente], (pacErr, pacResults) => {
-            if (pacErr || pacResults.length === 0) {
-                console.error('[/api/invitado] Error obteniendo paciente:', pacErr);
-                return res.status(404).json({ error: 'Paciente no encontrado.' });
-            }
-            
-            const paciente = pacResults[0];
-            console.log(`[/api/invitado] Retornando paciente: ${paciente.id_paciente}`);
-            
-            // Usar try/catch para desencriptar de forma segura
-            let nombreDesencriptado = 'Paciente';
-            try {
-                nombreDesencriptado = paciente.nombre ? desencriptar(paciente.nombre) : 'Paciente';
-            } catch (decryptErr) {
-                console.error('[/api/invitado] Error desencriptando nombre:', decryptErr);
-                nombreDesencriptado = paciente.nombre || 'Paciente';
-            }
-            
-            res.json({
-                id_acceso: acceso.id_acceso,
-                ...paciente,
-                nombre: nombreDesencriptado,
-                tipo_permiso: 'Invitado'
-            });
-        });
     });
 });
 

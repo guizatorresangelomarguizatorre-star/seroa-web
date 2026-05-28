@@ -129,6 +129,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            if (Array.isArray(data) && data.length === 0 && selectedPatientId) {
+                const fallbackResponse = await fetch(`/api/pacientes?id_usuario=${encodeURIComponent(userId)}&id_paciente=${encodeURIComponent(selectedPatientId)}`);
+                const fallbackData = await fallbackResponse.json();
+                if (fallbackResponse.ok && Array.isArray(fallbackData) && fallbackData.length > 0) {
+                    const fallbackPaciente = fallbackData[0];
+                    localStorage.setItem('selectedPatientRole', fallbackPaciente.tipo_permiso || 'Invitado');
+                    mostrarPacientes(fallbackData);
+                    ocultarMensaje();
+                    return;
+                }
+            }
+
             mostrarPacientes(data);
             ocultarMensaje();
         } catch (error) {
