@@ -35,7 +35,7 @@ async function guardarRegistroBiometrico(registro) {
 
 let temporizadorDesconexion;
 
-// 3. CONFIGURACIÓN DE LAS GRÁFICAS (AQUÍ ESTÁ LA MAGIA DEL "noData")
+// 3. CONFIGURACIÓN DE LAS GRÁFICAS
 const commonOptions = {
     chart: { 
         type: 'area', 
@@ -76,14 +76,18 @@ const commonOptions = {
 let chartSpo2, chartBpm;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // EL TRUCO: Si la memoria está vacía, le pasamos `[]` en lugar de `[{ data: [] }]`
+    const seriesSpo2 = historialSpo2.length > 0 ? [{ name: "SpO2", data: historialSpo2 }] : [];
+    const seriesBpm = historialBpm.length > 0 ? [{ name: "BPM", data: historialBpm }] : [];
+
     if(document.querySelector("#spo2Chart")) {
-        const spo2Options = { ...commonOptions, colors: ['#66bb6a'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "SpO2", data: historialSpo2 }], yaxis: { min: 80, max: 100 } };
+        const spo2Options = { ...commonOptions, colors: ['#66bb6a'], stroke: { curve: 'smooth', width: 3 }, series: seriesSpo2, yaxis: { min: 80, max: 100 } };
         chartSpo2 = new ApexCharts(document.querySelector("#spo2Chart"), spo2Options);
         chartSpo2.render();
     }
 
     if(document.querySelector("#bpmChart")) {
-        const bpmOptions = { ...commonOptions, colors: ['#3b8b88'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "BPM", data: historialBpm }], yaxis: { min: 40, max: 150 } };
+        const bpmOptions = { ...commonOptions, colors: ['#3b8b88'], stroke: { curve: 'smooth', width: 3 }, series: seriesBpm, yaxis: { min: 40, max: 150 } };
         chartBpm = new ApexCharts(document.querySelector("#bpmChart"), bpmOptions);
         chartBpm.render();
     }
@@ -161,8 +165,9 @@ window.SeroaRealtime.subscribe((datos) => {
             localStorage.setItem('seroaHistorialSpo2', JSON.stringify(historialSpo2));
             localStorage.setItem('seroaHistorialBpm', JSON.stringify(historialBpm));
 
-            if(chartSpo2) chartSpo2.updateSeries([{ data: historialSpo2 }]);
-            if(chartBpm) chartBpm.updateSeries([{ data: historialBpm }]);
+            // Actualizamos la serie con el nombre y los datos para despertar la gráfica
+            if(chartSpo2) chartSpo2.updateSeries([{ name: "SpO2", data: historialSpo2 }]);
+            if(chartBpm) chartBpm.updateSeries([{ name: "BPM", data: historialBpm }]);
 
             const lectura = clasificarLectura(actualSpo2, actualBpm);
             const registro = {
