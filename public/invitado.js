@@ -84,13 +84,14 @@ function iniciarInvitado() {
             // Guardar datos del paciente en localStorage
             localStorage.setItem('selectedPatientId', data.id_paciente);
             localStorage.setItem('selectedPatientName', data.nombre);
-            localStorage.setItem('selectedPatientRole', 'Invitado');
+            localStorage.setItem('selectedPatientRole', data.tipo_permiso || 'Invitado');
             localStorage.setItem('selectedPatientPeso', data.peso_kg || 'N/A');
             localStorage.setItem('selectedPatientEdad', data.edad || 'N/A');
             localStorage.setItem('selectedPatientSexo', data.sexo || 'N/A');
             localStorage.setItem('selectedPatientPadecimiento', data.padecimiento || 'N/A');
             localStorage.setItem('selectedPatientSpo2Min', data.rango_spo2_min || 'N/A');
             localStorage.setItem('selectedPatientSpo2Max', data.rango_spo2_max || 'N/A');
+            localStorage.setItem('selectedPatientRole', data.tipo_permiso || 'Invitado');
             
             if (tituloPaciente) {
                 tituloPaciente.textContent = data.nombre;

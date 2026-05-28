@@ -26,7 +26,7 @@ async function procesarAccesoPendiente(userId, userName) {
 
         localStorage.setItem('selectedPatientId', data.id_paciente);
         localStorage.setItem('selectedPatientName', data.nombre);
-        localStorage.setItem('selectedPatientRole', 'Invitado');
+        localStorage.setItem('selectedPatientRole', data.tipo_permiso || 'Invitado');
         localStorage.setItem('selectedPatientPeso', data.peso_kg || 'N/A');
         localStorage.setItem('selectedPatientEdad', data.edad || 'N/A');
         localStorage.setItem('selectedPatientSexo', data.sexo || 'N/A');

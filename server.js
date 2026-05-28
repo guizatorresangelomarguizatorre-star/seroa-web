@@ -529,8 +529,7 @@ app.get('/api/invitado', (req, res) => {
         return res.status(400).json({ error: 'Código de acceso requerido.' });
     }
 
-    // Primero verificar que el acceso existe y es de tipo 'Invitado'
-    const checkQuery = `SELECT a.id_acceso, a.tipo_permiso, a.id_paciente FROM acceso_pacientes a WHERE a.id_acceso = ?`;
+    const checkQuery = `SELECT a.id_acceso, a.tipo_permiso, a.id_paciente, a.id_usuario FROM acceso_pacientes a WHERE a.id_acceso = ?`;
     db.query(checkQuery, [id_acceso], (checkErr, checkResults) => {
         if (checkErr) {
             console.error('[/api/invitado] Error verificando acceso:', checkErr);
@@ -543,21 +542,9 @@ app.get('/api/invitado', (req, res) => {
         }
         
         const acceso = checkResults[0];
-        console.log(`[/api/invitado] Acceso encontrado: tipo="${acceso.tipo_permiso}", id_paciente=${acceso.id_paciente}`);
-        
-        // Si no es invitado, enviamos una alerta especial para que el frontend (invitado.js) fuerce el login o lo mande al index
-        if (acceso.tipo_permiso !== 'Invitado') {
-            console.log(`[/api/invitado] Acceso ${id_acceso} fue elevado a ${acceso.tipo_permiso}`);
-            return res.status(200).json({ 
-                requireLogin: true, 
-                message: 'Este acceso tiene privilegios elevados. Redirigiendo a tu cuenta...',
-                id_paciente: acceso.id_paciente
-            });
-        }
-        
-        // Si el cliente es un usuario autenticado y nos pasa userId, intentar vincular el acceso 'Invitado' al usuario real
+        console.log(`[/api/invitado] Acceso encontrado: tipo="${acceso.tipo_permiso}", id_paciente=${acceso.id_paciente}, id_usuario=${acceso.id_usuario}`);
+
         const guestBindUserId = req.query.userId ? Number(req.query.userId) : null;
-        const guestBindUserName = req.query.userName || null;
         const pacienteQuery = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max
                               FROM pacientes p WHERE p.id_paciente = ?`;
 
@@ -580,13 +567,22 @@ app.get('/api/invitado', (req, res) => {
                     id_acceso: acceso.id_acceso,
                     ...paciente,
                     nombre: nombreDesencriptado,
-                    tipo_permiso: 'Invitado'
+                    tipo_permiso: acceso.tipo_permiso || 'Invitado'
                 });
             });
         };
 
+        if (!guestBindUserId && acceso.tipo_permiso !== 'Invitado') {
+            console.log(`[/api/invitado] Acceso ${id_acceso} fue elevado a ${acceso.tipo_permiso} y requiere login`);
+            return res.status(200).json({ 
+                requireLogin: true, 
+                message: 'Este acceso tiene privilegios elevados. Por favor ingresa con tu cuenta.',
+                id_paciente: acceso.id_paciente
+            });
+        }
+
         if (guestBindUserId && guestBindUserId > 0) {
-            try {
+            if (!acceso.id_usuario || acceso.id_usuario === 0) {
                 const bindQuery = 'UPDATE acceso_pacientes SET id_usuario = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
                 db.query(bindQuery, [guestBindUserId, id_acceso], (bindErr, bindRes) => {
                     if (bindErr) {
@@ -598,13 +594,16 @@ app.get('/api/invitado', (req, res) => {
                     }
                     enviarPaciente();
                 });
-            } catch (bindEx) {
-                console.error('[/api/invitado] Excepción vinculando invitado:', bindEx);
-                return res.status(500).json({ error: 'Error interno al vincular el acceso.' });
+                return;
             }
-        } else {
-            enviarPaciente();
+
+            if (acceso.id_usuario !== guestBindUserId) {
+                console.warn(`[/api/invitado] Acceso ${id_acceso} ya pertenece a otro usuario (${acceso.id_usuario})`);
+                return res.status(403).json({ error: 'Este enlace ya está asignado a otro usuario.' });
+            }
         }
+
+        enviarPaciente();
     });
 });
 
