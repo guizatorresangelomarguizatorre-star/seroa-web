@@ -5,21 +5,12 @@ const database = window.database || firebase.database();
 let historialSpo2 = JSON.parse(localStorage.getItem('seroaHistorialSpo2')) || [];
 let historialBpm = JSON.parse(localStorage.getItem('seroaHistorialBpm')) || [];
 
-// --- LA SOLUCIÓN DEL CRASHEO DE APEXCHARTS ---
-// Validar que el formato sea correcto (objetos con coordenadas x, y). Si es viejo, lo borramos.
-if (historialSpo2.length > 0 && (typeof historialSpo2[0] !== 'object' || historialSpo2[0].x === undefined)) {
+// Limpieza de caché corrupta estricta
+if (historialSpo2.length > 0 && (!historialSpo2[0] || typeof historialSpo2[0] !== 'object' || !historialSpo2[0].x || historialSpo2[0].y === null)) {
     historialSpo2 = [];
     historialBpm = [];
     localStorage.removeItem('seroaHistorialSpo2');
     localStorage.removeItem('seroaHistorialBpm');
-}
-
-// Si está vacío, le inyectamos un punto "invisible" con la hora actual
-// para que la gráfica tenga un eje de tiempo donde dibujarse y no colapse.
-if (historialSpo2.length === 0) {
-    const ahora = new Date().getTime();
-    historialSpo2.push({ x: ahora, y: null });
-    historialBpm.push({ x: ahora, y: null });
 }
 
 const LIMITE_PUNTOS = 15;
@@ -38,16 +29,27 @@ async function guardarRegistroBiometrico(registro) {
             body: JSON.stringify(registro)
         });
     } catch (error) {
-        console.error('Error guardando registro biométrico en el servidor:', error);
+        console.error('Error guardando registro biométrico:', error);
     }
 }
 
-// === VARIABLE PARA EL TEMPORIZADOR ===
 let temporizadorDesconexion;
 
-// 3. CONFIGURACIÓN DE LAS GRÁFICAS
+// 3. CONFIGURACIÓN DE LAS GRÁFICAS (AQUÍ ESTÁ LA MAGIA DEL "noData")
 const commonOptions = {
-    chart: { type: 'area', height: 250, toolbar: { show: false }, foreColor: '#555', animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 500 } } },
+    chart: { 
+        type: 'area', 
+        height: 250, 
+        toolbar: { show: false }, 
+        foreColor: '#555', 
+        animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 500 } } 
+    },
+    noData: {
+        text: 'Esperando datos del sensor...',
+        align: 'center',
+        verticalAlign: 'middle',
+        style: { color: '#3b8b88', fontSize: '16px', fontFamily: 'Helvetica, Arial, sans-serif' }
+    },
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
     dataLabels: { enabled: false },
     grid: { borderColor: '#e0e0e0', strokeDashArray: 4 }, 
@@ -73,7 +75,6 @@ const commonOptions = {
 
 let chartSpo2, chartBpm;
 
-// Nos aseguramos de que el DOM esté listo antes de dibujar
 document.addEventListener('DOMContentLoaded', () => {
     if(document.querySelector("#spo2Chart")) {
         const spo2Options = { ...commonOptions, colors: ['#66bb6a'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "SpO2", data: historialSpo2 }], yaxis: { min: 80, max: 100 } };
@@ -121,9 +122,7 @@ window.SeroaRealtime.subscribe((datos) => {
 
         if (valorValvula) {
             valorValvula.innerText = valvulaActiva ? 'Abierta' : 'Cerrada';
-            valorValvula.className = valvulaActiva
-                ? 'display-6 fw-bold text-success'
-                : 'display-6 fw-bold text-secondary';
+            valorValvula.className = valvulaActiva ? 'display-6 fw-bold text-success' : 'display-6 fw-bold text-secondary';
         }
 
         const valoresValidos = Number.isFinite(actualSpo2) && Number.isFinite(actualBpm) && actualSpo2 > 0 && actualBpm > 0;
@@ -150,12 +149,6 @@ window.SeroaRealtime.subscribe((datos) => {
 
             const ahora = new Date().getTime();
             const fechaHora = new Date().toISOString();
-
-            // Limpiamos los nulos iniciales si los hay
-            if (historialSpo2.length > 0 && historialSpo2[0].y === null) {
-                historialSpo2.shift();
-                historialBpm.shift();
-            }
 
             historialSpo2.push({ x: ahora, y: actualSpo2 });
             historialBpm.push({ x: ahora, y: actualBpm });
@@ -210,5 +203,4 @@ window.SeroaRealtime.subscribe((datos) => {
         if (valorSpo2) valorSpo2.innerText = "--";
         if (valorBpm) valorBpm.innerText = "--";
     }, 10000); 
-    
 });
