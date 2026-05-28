@@ -429,19 +429,46 @@ body {
     }
 }
 
+@media (max-width: 992px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .navbar .nav-link {
+    padding: 0.65rem 0.85rem;
+    font-size: 0.96rem;
+  }
+
+  .metric-card,
+  .card {
+    min-height: auto;
+    margin-bottom: 1rem;
+  }
+
+  .btn-outline-teal,
+  .btn-teal,
+  .btn-seroa,
+  .btn-guia-header {
+    width: 100%;
+  }
+
+  .header-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 768px) {
-  
-  /* Ajustes móviles para el nuevo Header Premium */
   .logo-icon { height: 45px; }
   .logo-text { height: 35px; }
-  .user-info-text, .btn-guia-header span { display: none; } 
+  .user-info-text, .btn-guia-header span { display: none; }
   .btn-guia-header { padding: 0.6rem; border-radius: 50%; }
   .btn-guia-header i { margin: 0 !important; font-size: 1.2rem; }
   .avatar-icon { font-size: 2rem; margin-left: 0; }
   .user-profile-badge { padding-right: 1rem; }
   .header-controls { gap: 1rem; }
 
-  /* Otros ajustes móviles existentes */
   .alerta-critica-flotante { padding: 15px 0; }
   .icono-alerta { font-size: 2.5rem; margin-right: 15px !important; margin-bottom: 10px; }
   .alerta-critica-flotante h2 { font-size: 1.2rem; }
@@ -450,18 +477,35 @@ body {
   .alerta-critica-flotante button { width: 100%; margin-top: 15px; padding: 15px !important; font-size: 1.1rem; }
 
   .pattern-separator {
-    height: 30px; 
-    background-size: auto 15px, auto 15px; 
+    height: 30px;
+    background-size: auto 15px, auto 15px;
     background-position: 0 0, -20px 15px;
   }
-  
+
   .offcanvas.sidebar-custom {
-      width: 260px !important; 
-      max-width: 80% !important; 
-      background-size: auto, auto 150px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background-size: auto, auto 140px !important;
+  }
+
+  .offcanvas.sidebar-custom .nav-link {
+    padding: 0.7rem 1rem !important;
+  }
+
+  .btn-outline-teal,
+  .btn-teal,
+  .btn-seroa {
+    width: 100%;
+  }
+
+  .patient-card {
+    min-height: 100%;
+  }
+
+  .card-body {
+    padding: 1rem !important;
   }
 }
-
 /* ========================================== */
 /* ESTILOS DE LA PANTALLA DE ACCESO (LOGIN)   */
 /* ========================================== */
