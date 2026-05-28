@@ -350,7 +350,7 @@ app.post('/api/pacientes/compartir', (req, res) => {
             return res.status(403).json({ error: 'Solo Administrador o Doctor pueden generar un enlace de invitado.' });
         }
 
-        const insertCompartido = `INSERT INTO acceso_pacientes (id_usuario, id_paciente, tipo_permiso, fecha_asignacion) VALUES (0, ?, 'Invitado', NOW())`;
+        const insertCompartido = `INSERT INTO acceso_pacientes (id_usuario, id_paciente, tipo_permiso, fecha_asignacion) VALUES (NULL, ?, 'Invitado', NOW())`;
         db.query(insertCompartido, [id_paciente], (shareErr, shareResult) => {
             if (shareErr) {
                 console.error('[/api/pacientes/compartir] Error MySQL:', shareErr);
