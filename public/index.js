@@ -105,8 +105,8 @@ window.SeroaRealtime.subscribe((datos) => {
         const presionBar = Number(datos.presionBar || 0);
         const valvulaActiva = datos.valvulaActiva === true || datos.valvula_estado === 'Abierta';
 
-        if (valorPresion) {
-            valorPresion.innerText = `${presionBar.toFixed(2)} bar`;
+       if (valorPresion) {
+            valorPresion.innerText = presionBar.toFixed(2);
         }
 
         if (valorValvula) {
