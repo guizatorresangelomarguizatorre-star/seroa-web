@@ -229,7 +229,9 @@ function actualizarBadgePaciente() {
 function aplicarRestriccionesDeRol() {
     try {
         const rol = localStorage.getItem('selectedPatientRole') || 'Invitado';
-        const ocultarSelectors = [
+        
+        // 1. Elementos específicos de la UI (Botones, formularios)
+        const ocultarSelectorsUI = [
             '.rol-editar',       // botones de edición y ajustes
             '.btn-activar-valvula',
             '.btn-guardar-config',
@@ -238,18 +240,54 @@ function aplicarRestriccionesDeRol() {
             '[data-protect-role]'
         ];
 
+        // 2. Pestañas de navegación que el invitado NO debe ver
+        const pestañasProhibidasParaInvitado = [
+            'dosificacion.html',
+            'registro.html',
+            'tanque.html',
+            'configuracion.html'
+        ];
+
         if (rol === 'Invitado') {
-            ocultarSelectors.forEach(sel => {
+            // A. Ocultar botones peligrosos
+            ocultarSelectorsUI.forEach(sel => {
                 document.querySelectorAll(sel).forEach(el => {
                     try { el.classList.add('d-none'); } catch(e) { try { el.style.display = 'none'; } catch(_){} }
                 });
             });
+
+            // B. Ocultar Pestañas del Menú
+            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                const href = link.getAttribute('href');
+                if (pestañasProhibidasParaInvitado.includes(href)) {
+                    // Ocultamos el <li> completo para que no quede el hueco en el diseño
+                    if(link.parentElement && link.parentElement.tagName === 'LI') {
+                        link.parentElement.classList.add('d-none');
+                    } else {
+                        link.classList.add('d-none');
+                    }
+                }
+            });
+
+            // C. Expulsión de seguridad: Si el invitado logró entrar a una pestaña prohibida, lo pateamos al index
+            const paginaActual = window.location.pathname.split("/").pop();
+            if (pestañasProhibidasParaInvitado.includes(paginaActual)) {
+                window.location.href = 'index.html';
+            }
+
         } else {
-            // Restaurar visibilidad para roles elevados
-            ocultarSelectors.forEach(sel => {
+            // Restaurar visibilidad para roles elevados (Administrador, Doctor)
+            
+            // A. Mostrar botones
+            ocultarSelectorsUI.forEach(sel => {
                 document.querySelectorAll(sel).forEach(el => {
                     try { el.classList.remove('d-none'); el.style.display = ''; } catch(e) {}
                 });
+            });
+
+            // B. Mostrar Pestañas
+            document.querySelectorAll('.navbar-nav .nav-link, .navbar-nav .nav-item').forEach(el => {
+                el.classList.remove('d-none');
             });
         }
     } catch (err) {

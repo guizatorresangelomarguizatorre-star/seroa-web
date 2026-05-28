@@ -120,7 +120,18 @@ function iniciarMonitoreoVerificacion(email) {
                     // Iniciamos su sesión automáticamente
                     localStorage.setItem('nombrePaciente', data.nombre);
                     localStorage.setItem('userId', data.id);
-                    window.location.href = 'index.html';
+                    
+                    // Si había una invitación pendiente, la procesamos en silencio antes de redirigir
+                    const accessId = localStorage.getItem('pendingAccessId');
+                    if(accessId) {
+                        fetch('/api/invitado?acceso=' + accessId + '&userId=' + data.id)
+                        .then(() => {
+                             localStorage.removeItem('pendingAccessId');
+                             window.location.href = 'index.html';
+                        });
+                    } else {
+                        window.location.href = 'index.html';
+                    }
                 }
             }
         } catch (err) {

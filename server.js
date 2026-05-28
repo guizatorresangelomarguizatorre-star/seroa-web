@@ -77,7 +77,7 @@ app.post('/api/registro', async (req, res) => {
                 const nuevoUsuarioId = result.insertId;
                 if (id_acceso) {
                     const nombrePlano = nombre || '';
-                    const bindQuery = 'UPDATE acceso_pacientes SET id_usuario = ?, usuario_nombre = ? WHERE id_acceso = ?';
+                    const bindQuery = 'UPDATE acceso_pacientes SET id_usuario = ?, usuario_nombre = ? WHERE id_acceso = ? AND (id_usuario = 0 OR id_usuario IS NULL)';
                     db.query(bindQuery, [nuevoUsuarioId, nombrePlano, id_acceso], (bindErr, bindRes) => {
                         if (bindErr) console.error('Error vinculando acceso en registro:', bindErr);
                         else if (bindRes.affectedRows > 0) console.log(`/api/registro: Acceso ${id_acceso} vinculado al usuario ${nuevoUsuarioId}`);
@@ -280,11 +280,11 @@ app.get('/api/pacientes', (req, res) => {
     }
 
     // Traer todos los pacientes vinculados al usuario, sin filtrar por tipo de permiso
-    const query = `SELECT p.*, a.tipo_permiso, a.id_acceso
-                   FROM pacientes p
-                   JOIN acceso_pacientes a ON a.id_paciente = p.id_paciente
-                   WHERE a.id_usuario = ?
-                   ORDER BY p.id_paciente DESC`;
+   const query = `SELECT p.*, a.tipo_permiso, a.id_acceso
+               FROM pacientes p
+               JOIN acceso_pacientes a ON a.id_paciente = p.id_paciente
+               WHERE a.id_usuario = ?
+               ORDER BY p.id_paciente DESC`;
     db.query(query, [id_usuario], (err, results) => {
         if (err) {
             console.error('Error MySQL al cargar pacientes:', err);
@@ -540,13 +540,14 @@ app.get('/api/invitado', (req, res) => {
         const acceso = checkResults[0];
         console.log(`[/api/invitado] Acceso encontrado: tipo="${acceso.tipo_permiso}", id_paciente=${acceso.id_paciente}`);
         
+        // Si no es invitado, enviamos una alerta especial para que el frontend (invitado.js) fuerce el login o lo mande al index
         if (acceso.tipo_permiso !== 'Invitado') {
-            console.log(`[/api/invitado] Acceso ${id_acceso} no es de tipo Invitado, es ${acceso.tipo_permiso}`);
-            // Si el acceso fue elevado a Admin/Doctor, indicar al cliente que debe iniciar sesión
-            if (['Administrador', 'Doctor'].includes(acceso.tipo_permiso)) {
-                return res.status(200).json({ requireLogin: true, message: 'Este acceso ha sido elevado. Por favor, inicia sesión.' });
-            }
-            return res.status(403).json({ error: 'Este código de acceso no es válido para invitados.' });
+            console.log(`[/api/invitado] Acceso ${id_acceso} fue elevado a ${acceso.tipo_permiso}`);
+            return res.status(200).json({ 
+                requireLogin: true, 
+                message: 'Este acceso tiene privilegios elevados. Redirigiendo a tu cuenta...',
+                id_paciente: acceso.id_paciente
+            });
         }
         
         // Si el cliente es un usuario autenticado y nos pasa userId, intentar vincular el acceso 'Invitado' al usuario real
