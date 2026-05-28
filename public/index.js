@@ -82,6 +82,8 @@ window.SeroaRealtime.subscribe((datos) => {
     const textoEstado = document.getElementById('textoEstadoSensor'); 
     const valorSpo2 = document.getElementById('spo2Valor');
     const valorBpm = document.getElementById('bpmValor');
+    const valorPresion = document.getElementById('presionValor');
+    const valorValvula = document.getElementById('valvulaValor');
     
     // Referencias al nuevo indicador LED
     const luzConexion = document.getElementById('luz-conexion');
@@ -100,6 +102,20 @@ window.SeroaRealtime.subscribe((datos) => {
         const estadoSensor = datos.estado;
         const actualSpo2 = Number(datos.spo2);
         const actualBpm = Number(datos.bpm);
+        const presionBar = Number(datos.presionBar || 0);
+        const valvulaActiva = datos.valvulaActiva === true || datos.valvula_estado === 'Abierta';
+
+        if (valorPresion) {
+            valorPresion.innerText = `${presionBar.toFixed(2)} bar`;
+        }
+
+        if (valorValvula) {
+            valorValvula.innerText = valvulaActiva ? 'Abierta' : 'Cerrada';
+            valorValvula.className = valvulaActiva
+                ? 'display-6 fw-bold text-success'
+                : 'display-6 fw-bold text-secondary';
+        }
+
         const valoresValidos = Number.isFinite(actualSpo2) && Number.isFinite(actualBpm) && actualSpo2 > 0 && actualBpm > 0;
 
         if (estadoSensor === "SIN_DEDO" || !valoresValidos) {
@@ -150,7 +166,9 @@ window.SeroaRealtime.subscribe((datos) => {
                 nivel_alerta: lectura.nivel,
                 accion_sistema: lectura.accion,
                 usuario_turno: usuarioTurno,
-                paciente: pacienteNombre
+                paciente: pacienteNombre,
+                presion_bar: presionBar,
+                valvula_estado: valvulaActiva ? 'Abierta' : 'Cerrada'
             };
 
             if (pacienteId) {

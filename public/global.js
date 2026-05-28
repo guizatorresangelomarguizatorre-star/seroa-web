@@ -52,27 +52,18 @@ window.SeroaRealtime = {
 // Attach a dynamic listener per-patient based on localStorage.selectedPatientId
 window.SeroaRealtime.attachListener = function() {
     try {
-        const id = localStorage.getItem('selectedPatientId');
-        if (!id) {
-            if (this.currentRef) {
-                try { this.currentRef.off(); } catch(e) { /* ignore */ }
-                this.currentRef = null;
-                this.currentPath = null;
-            }
-            this.notify(null);
-            return;
-        }
+        const path = `Seroa/Actual`;
 
-        const path = `Seroa/Pacientes/${id}/Actual`;
-        if (this.currentPath === path) return; // already attached
+        if (this.currentPath === path) return;
 
         if (this.currentRef) {
-            try { this.currentRef.off(); } catch(e) { /* ignore */ }
+            try { this.currentRef.off(); } catch(e) {}
             this.currentRef = null;
         }
 
         this.currentPath = path;
         this.currentRef = window.database.ref(path);
+
         this.currentRef.on('value', snapshot => {
             try {
                 const datos = snapshot.val() || null;
@@ -130,8 +121,7 @@ function ocultarAlertaSeroa() {
     }
 }
 
-// SOLO PARA PRUEBAS: Aparece a los 3 segundos. Bórralo cuando conectes el ESP32 real.
-setTimeout(mostrarAlertaSeroa, 3000);
+
 
 // ==========================================
 // REGISTRO DEL SERVICE WORKER
@@ -202,14 +192,6 @@ function validarSesionUsuario() {
             window.location.href = 'login.html';
         }
     }
-    if (pendingAccess && userId) {
-        console.log("Vinculando invitación pendiente: ", pendingAccess);
-        fetch(`/api/invitado?acceso=${pendingAccess}&userId=${userId}`)
-        .then(() => {
-            localStorage.removeItem('pendingAccessId'); // Borramos el boleto usado
-            window.location.reload(); // Recargamos para que aparezca el paciente
-        }).catch(e => console.error("Error al vincular: ", e));
-    }
 }
 
 function actualizarBadgePaciente() {
@@ -237,9 +219,7 @@ function actualizarBadgePaciente() {
 function aplicarRestriccionesDeRol() {
     try {
         const rol = localStorage.getItem('selectedPatientRole') || 'Invitado';
-        
-        // 1. Elementos específicos de la UI (Botones, formularios)
-        const ocultarSelectorsUI = [
+        const ocultarSelectors = [
             '.rol-editar',       // botones de edición y ajustes
             '.btn-activar-valvula',
             '.btn-guardar-config',
@@ -248,54 +228,18 @@ function aplicarRestriccionesDeRol() {
             '[data-protect-role]'
         ];
 
-        // 2. Pestañas de navegación que el invitado NO debe ver
-        const pestañasProhibidasParaInvitado = [
-            'dosificacion.html',
-            'registro.html',
-            'tanque.html',
-            'configuracion.html'
-        ];
-
         if (rol === 'Invitado') {
-            // A. Ocultar botones peligrosos
-            ocultarSelectorsUI.forEach(sel => {
+            ocultarSelectors.forEach(sel => {
                 document.querySelectorAll(sel).forEach(el => {
                     try { el.classList.add('d-none'); } catch(e) { try { el.style.display = 'none'; } catch(_){} }
                 });
             });
-
-            // B. Ocultar Pestañas del Menú
-            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
-                const href = link.getAttribute('href');
-                if (pestañasProhibidasParaInvitado.includes(href)) {
-                    // Ocultamos el <li> completo para que no quede el hueco en el diseño
-                    if(link.parentElement && link.parentElement.tagName === 'LI') {
-                        link.parentElement.classList.add('d-none');
-                    } else {
-                        link.classList.add('d-none');
-                    }
-                }
-            });
-
-            // C. Expulsión de seguridad: Si el invitado logró entrar a una pestaña prohibida, lo pateamos al index
-            const paginaActual = window.location.pathname.split("/").pop();
-            if (pestañasProhibidasParaInvitado.includes(paginaActual)) {
-                window.location.href = 'index.html';
-            }
-
         } else {
-            // Restaurar visibilidad para roles elevados (Administrador, Doctor)
-            
-            // A. Mostrar botones
-            ocultarSelectorsUI.forEach(sel => {
+            // Restaurar visibilidad para roles elevados
+            ocultarSelectors.forEach(sel => {
                 document.querySelectorAll(sel).forEach(el => {
                     try { el.classList.remove('d-none'); el.style.display = ''; } catch(e) {}
                 });
-            });
-
-            // B. Mostrar Pestañas
-            document.querySelectorAll('.navbar-nav .nav-link, .navbar-nav .nav-item').forEach(el => {
-                el.classList.remove('d-none');
             });
         }
     } catch (err) {
