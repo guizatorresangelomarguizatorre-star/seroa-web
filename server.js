@@ -387,7 +387,7 @@ app.get('/api/accesos', (req, res) => {
                 return res.status(500).json({ error: 'Error interno al leer accesos.' });
             }
             const datos = results.map(row => {
-                let usuarioNombre = row.id_usuario === 0 ? 'Invitado' : (row.usuario_nombre ? row.usuario_nombre : 'Usuario desconocido');
+                let usuarioNombre = (!row.id_usuario) ? 'Invitado (Pendiente)' : (row.usuario_nombre ? row.usuario_nombre : 'Usuario desconocido');
                 if (row.id_usuario !== 0 && row.usuario_nombre) {
                     try {
                         usuarioNombre = desencriptar(row.usuario_nombre);

@@ -202,6 +202,14 @@ function validarSesionUsuario() {
             window.location.href = 'login.html';
         }
     }
+    if (pendingAccess && userId) {
+        console.log("Vinculando invitación pendiente: ", pendingAccess);
+        fetch(`/api/invitado?acceso=${pendingAccess}&userId=${userId}`)
+        .then(() => {
+            localStorage.removeItem('pendingAccessId'); // Borramos el boleto usado
+            window.location.reload(); // Recargamos para que aparezca el paciente
+        }).catch(e => console.error("Error al vincular: ", e));
+    }
 }
 
 function actualizarBadgePaciente() {
