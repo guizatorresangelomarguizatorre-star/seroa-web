@@ -4,18 +4,25 @@ const database = window.database || firebase.database();
 // 2. RECUPERAR LA MEMORIA
 let historialSpo2 = JSON.parse(localStorage.getItem('seroaHistorialSpo2')) || [];
 let historialBpm = JSON.parse(localStorage.getItem('seroaHistorialBpm')) || [];
-let categoriasTiempo = JSON.parse(localStorage.getItem('seroaCategoriasTiempo')) || [];
 
-const LIMITE_PUNTOS = 15;
-
-// --- LIMPIEZA DE FORMATO ANTIGUO ---
-// (Debe ejecutarse ANTES de renderizar la gráfica para evitar crasheos)
-if (historialSpo2.length > 0 && typeof historialSpo2[0] !== 'object') {
+// --- LA SOLUCIÓN DEL CRASHEO DE APEXCHARTS ---
+// Validar que el formato sea correcto (objetos con coordenadas x, y). Si es viejo, lo borramos.
+if (historialSpo2.length > 0 && (typeof historialSpo2[0] !== 'object' || historialSpo2[0].x === undefined)) {
     historialSpo2 = [];
     historialBpm = [];
     localStorage.removeItem('seroaHistorialSpo2');
     localStorage.removeItem('seroaHistorialBpm');
 }
+
+// Si está vacío, le inyectamos un punto "invisible" con la hora actual
+// para que la gráfica tenga un eje de tiempo donde dibujarse y no colapse.
+if (historialSpo2.length === 0) {
+    const ahora = new Date().getTime();
+    historialSpo2.push({ x: ahora, y: null });
+    historialBpm.push({ x: ahora, y: null });
+}
+
+const LIMITE_PUNTOS = 15;
 
 function clasificarLectura(spo2, bpm) {
     if (spo2 < 85 || bpm < 50 || bpm > 140) return { nivel: 'Peligro', color: 'danger', accion: 'Válvula de oxígeno activada' };
@@ -66,17 +73,20 @@ const commonOptions = {
 
 let chartSpo2, chartBpm;
 
-if(document.querySelector("#spo2Chart")) {
-    const spo2Options = { ...commonOptions, colors: ['#66bb6a'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "SpO2", data: historialSpo2 }], yaxis: { min: 80, max: 100 } };
-    chartSpo2 = new ApexCharts(document.querySelector("#spo2Chart"), spo2Options);
-    chartSpo2.render();
-}
+// Nos aseguramos de que el DOM esté listo antes de dibujar
+document.addEventListener('DOMContentLoaded', () => {
+    if(document.querySelector("#spo2Chart")) {
+        const spo2Options = { ...commonOptions, colors: ['#66bb6a'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "SpO2", data: historialSpo2 }], yaxis: { min: 80, max: 100 } };
+        chartSpo2 = new ApexCharts(document.querySelector("#spo2Chart"), spo2Options);
+        chartSpo2.render();
+    }
 
-if(document.querySelector("#bpmChart")) {
-    const bpmOptions = { ...commonOptions, colors: ['#3b8b88'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "BPM", data: historialBpm }], yaxis: { min: 40, max: 150 } };
-    chartBpm = new ApexCharts(document.querySelector("#bpmChart"), bpmOptions);
-    chartBpm.render();
-}
+    if(document.querySelector("#bpmChart")) {
+        const bpmOptions = { ...commonOptions, colors: ['#3b8b88'], stroke: { curve: 'smooth', width: 3 }, series: [{ name: "BPM", data: historialBpm }], yaxis: { min: 40, max: 150 } };
+        chartBpm = new ApexCharts(document.querySelector("#bpmChart"), bpmOptions);
+        chartBpm.render();
+    }
+});
 
 // 4. EL MOTOR DE TIEMPO REAL CON INDICADOR LED
 window.SeroaRealtime.subscribe((datos) => {
@@ -87,15 +97,13 @@ window.SeroaRealtime.subscribe((datos) => {
     const valorPresion = document.getElementById('presionValor');
     const valorValvula = document.getElementById('valvulaValor');
     
-    // Referencias al nuevo indicador LED
     const luzConexion = document.getElementById('luz-conexion');
     const textoConexion = document.getElementById('texto-conexion');
 
-    // === SEÑAL RECIBIDA: Encendemos la luz verde ===
     clearTimeout(temporizadorDesconexion); 
     
     if (luzConexion && textoConexion) {
-        luzConexion.style.backgroundColor = '#28a745'; // Verde
+        luzConexion.style.backgroundColor = '#28a745'; 
         luzConexion.style.boxShadow = '0 0 8px #28a745';
         textoConexion.innerText = 'Dispositivo Seroa: En Línea';
     }
@@ -122,7 +130,7 @@ window.SeroaRealtime.subscribe((datos) => {
 
         if (estadoSensor === "SIN_DEDO" || !valoresValidos) {
             if (cartelEstado) cartelEstado.style.display = 'block';
-            if (textoEstado) textoEstado.innerText = "Por favor coloca tu dedo, el sensor tardará unos segundos en realizar la calibración, en un instante te brindaremos tus datos.";
+            if (textoEstado) textoEstado.innerText = "Por favor coloca tu dedo, el sensor tardará unos segundos en realizar la calibración.";
             if (valorSpo2) valorSpo2.innerText = "--";
             if (valorBpm) valorBpm.innerText = "--";
         } else if (estadoSensor === "CALIBRANDO") {
@@ -142,6 +150,12 @@ window.SeroaRealtime.subscribe((datos) => {
 
             const ahora = new Date().getTime();
             const fechaHora = new Date().toISOString();
+
+            // Limpiamos los nulos iniciales si los hay
+            if (historialSpo2.length > 0 && historialSpo2[0].y === null) {
+                historialSpo2.shift();
+                historialBpm.shift();
+            }
 
             historialSpo2.push({ x: ahora, y: actualSpo2 });
             historialBpm.push({ x: ahora, y: actualBpm });
@@ -177,7 +191,7 @@ window.SeroaRealtime.subscribe((datos) => {
                 const idRegistro = window.generarIdRegistro();
                 const registroRef = database.ref(`registros_biomedicos/${pacienteId}/${idRegistro}`);
                 registro.id_registro = idRegistro;
-                registroRef.set(registro).catch(error => console.error('Error guardando registro en Firebase:', error));
+                registroRef.set(registro).catch(error => console.error('Error guardando registro:', error));
                 guardarRegistroBiometrico(registro);
             }
 
@@ -186,22 +200,14 @@ window.SeroaRealtime.subscribe((datos) => {
         }
     }
 
-    // === SE PERDIÓ LA SEÑAL: Encendemos la luz roja ===
-    // Si pasan 10 segundos sin recibir datos, el ESP32 se desconectó
     temporizadorDesconexion = setTimeout(() => {
-        
-        // Cambiamos el LED a Rojo
         if (luzConexion && textoConexion) {
-            luzConexion.style.backgroundColor = '#dc3545'; // Rojo
+            luzConexion.style.backgroundColor = '#dc3545'; 
             luzConexion.style.boxShadow = '0 0 8px #dc3545';
             textoConexion.innerText = 'Dispositivo Seroa: Desconectado';
         }
-
         if (cartelEstado) cartelEstado.style.display = 'none';
-        
         if (valorSpo2) valorSpo2.innerText = "--";
         if (valorBpm) valorBpm.innerText = "--";
-        
     }, 10000); 
-
 });
