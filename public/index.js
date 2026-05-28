@@ -1,12 +1,12 @@
 // 1. CONFIGURACIÓN DE FIREBASE CENTRALIZADA EN global.js
-const database = window.database || firebase.database();
+var database = window.database || firebase.database();
 
 // 2. LA OPCIÓN NUCLEAR: Limpiar memoria corrupta SIEMPRE al inicio
 localStorage.removeItem('seroaHistorialSpo2');
 localStorage.removeItem('seroaHistorialBpm');
-let historialSpo2 = [];
-let historialBpm = [];
-const LIMITE_PUNTOS = 15;
+var historialSpo2 = [];
+var historialBpm = [];
+var LIMITE_PUNTOS = 15;
 
 function clasificarLectura(spo2, bpm) {
     if (spo2 < 85 || bpm < 50 || bpm > 140) return { nivel: 'Peligro', color: 'danger', accion: 'Válvula activada' };
@@ -26,11 +26,11 @@ async function guardarRegistroBiometrico(registro) {
     }
 }
 
-let temporizadorDesconexion;
-let chartSpo2, chartBpm;
+var temporizadorDesconexion;
+var chartSpo2, chartBpm;
 
 // 3. CONFIGURACIÓN DE LAS GRÁFICAS (CON TEXTO DE ESPERA FORZADO)
-const commonOptions = {
+var commonOptions = {
     chart: { type: 'area', height: 250, toolbar: { show: false }, animations: { enabled: true } },
     noData: {
         text: 'Esperando datos del dispositivo Seroa...',
@@ -84,7 +84,7 @@ function aplicarEstadoDesconectado() {
 aplicarEstadoDesconectado();
 
 // 5. FUNCIÓN CENTRAL DE PROCESAMIENTO (Desacoplada)
-const procesarDatosESP32 = (datos) => {
+var procesarDatosESP32 = (datos) => {
     const cartelEstado = document.getElementById('estadoSensorOverlay'); 
     const textoEstado = document.getElementById('textoEstadoSensor'); 
     const valorSpo2 = document.getElementById('spo2Valor');
@@ -192,7 +192,7 @@ if (window.SeroaRealtime) {
 // ========================================================
 window.activarSimulador = function() {
     console.log("🚀 Iniciando conexión con ESP32 Fantasma...");
-    let conteo = 0;
+    var conteo = 0;
     
     // Fase 1: Simulamos que el paciente apenas pone el dedo
     procesarDatosESP32({ estado: "CALIBRANDO", spo2: 0, bpm: 0, presionBar: 2.8, valvulaActiva: false });
