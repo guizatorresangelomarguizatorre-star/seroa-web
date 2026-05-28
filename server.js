@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -21,14 +22,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // === CONEXIÓN MAESTRA A BASE DE DATOS ===
 const db = mysql.createPool({
-    host: 'switchback.proxy.rlwy.net',
-    user: 'root',
-    password: 'DYfgQxnovIUFCHrgUPusszxMGMYfUrux',
-    database: 'railway',
-    port: 35115,
-    ssl: {
-        rejectUnauthorized: false
-    },
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT,
+    ssl: { rejectUnauthorized: false },
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
