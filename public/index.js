@@ -63,9 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 4. PROTOCOLO DE DESCONEXIÓN INMEDIATA
 function aplicarEstadoDesconectado() {
-    const luzConexion = document.getElementById('luz-conexion');
-    const textoConexion = document.getElementById('texto-conexion');
-    const cartelEstado = document.getElementById('estadoSensorOverlay');
+    var luzConexion = document.getElementById('luz-conexion');
+    var textoConexion = document.getElementById('texto-conexion');
+    var cartelEstado = document.getElementById('estadoSensorOverlay');
 
     if (luzConexion && textoConexion) {
         luzConexion.style.backgroundColor = '#dc3545'; 
@@ -76,147 +76,112 @@ function aplicarEstadoDesconectado() {
     if (cartelEstado) cartelEstado.style.display = 'none';
     
     ['spo2Valor', 'bpmValor', 'presionValor', 'valvulaValor'].forEach(id => {
-        const el = document.getElementById(id);
+        var el = document.getElementById(id);
         if(el) el.innerText = '--';
     });
 }
 
 aplicarEstadoDesconectado();
 
-// 5. FUNCIÓN CENTRAL DE PROCESAMIENTO (Desacoplada)
-var procesarDatosESP32 = (datos) => {
-    const cartelEstado = document.getElementById('estadoSensorOverlay'); 
-    const textoEstado = document.getElementById('textoEstadoSensor'); 
-    const valorSpo2 = document.getElementById('spo2Valor');
-    const valorBpm = document.getElementById('bpmValor');
-    const valorPresion = document.getElementById('presionValor');
-    const valorValvula = document.getElementById('valvulaValor');
-    const luzConexion = document.getElementById('luz-conexion');
-    const textoConexion = document.getElementById('texto-conexion');
-
-    clearTimeout(temporizadorDesconexion); 
-    
-    if (luzConexion && textoConexion) {
-        luzConexion.style.backgroundColor = '#28a745'; 
-        luzConexion.style.boxShadow = '0 0 8px #28a745';
-        textoConexion.innerText = 'Dispositivo Seroa: En Línea';
-    }
-
-    if (datos) {
-        const estadoSensor = datos.estado;
-        const actualSpo2 = Number(datos.spo2);
-        const actualBpm = Number(datos.bpm);
-        const presionBar = Number(datos.presionBar || 0);
-        const valvulaActiva = datos.valvulaActiva === true || datos.valvula_estado === 'Abierta';
-
-        if (valorPresion) valorPresion.innerText = presionBar.toFixed(2);
-
-        if (valorValvula) {
-            valorValvula.innerText = valvulaActiva ? 'Abierta' : 'Cerrada';
-            valorValvula.className = valvulaActiva ? 'display-6 fw-bold text-success' : 'display-6 fw-bold text-secondary';
-        }
-
-        const valoresValidos = Number.isFinite(actualSpo2) && Number.isFinite(actualBpm) && actualSpo2 > 0 && actualBpm > 0;
-
-        if (estadoSensor === "SIN_DEDO" || !valoresValidos) {
-            if (cartelEstado) cartelEstado.style.display = 'block';
-            if (textoEstado) textoEstado.innerText = "Por favor coloca tu dedo, el sensor tardará unos segundos en realizar la calibración.";
-            if (valorSpo2) valorSpo2.innerText = "--";
-            if (valorBpm) valorBpm.innerText = "--";
-        } else if (estadoSensor === "CALIBRANDO") {
-            if (cartelEstado) cartelEstado.style.display = 'block';
-            if (textoEstado) textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
-            if (valorSpo2) valorSpo2.innerText = "--";
-            if (valorBpm) valorBpm.innerText = "--";
-        } else if (estadoSensor === "ACTIVO") {
-            if (cartelEstado) cartelEstado.style.display = 'none';
-
-            if (valorSpo2) valorSpo2.innerText = actualSpo2;
-            if (valorBpm) valorBpm.innerText = actualBpm;
-
-            const ahora = new Date().getTime();
-            
-            historialSpo2.push({ x: ahora, y: actualSpo2 });
-            historialBpm.push({ x: ahora, y: actualBpm });
-
-            if (historialSpo2.length > LIMITE_PUNTOS) {
-                historialSpo2.shift();
-                historialBpm.shift();
-            }
-
-            if(chartSpo2) chartSpo2.updateSeries([{ name: "SpO2", data: historialSpo2 }]);
-            if(chartBpm) chartBpm.updateSeries([{ name: "BPM", data: historialBpm }]);
-
-            const pacienteId = localStorage.getItem('selectedPatientId');
-            
-            if (pacienteId) {
-                const idRegistro = window.generarIdRegistro ? window.generarIdRegistro() : Date.now().toString();
-                const lectura = clasificarLectura(actualSpo2, actualBpm);
-                
-                const registro = {
-                    id_paciente: parseInt(pacienteId, 10),
-                    id_dispositivo: datos.dispositivoId || null,
-                    saturacion_oxigeno: actualSpo2,
-                    ritmo_cardiaco: actualBpm,
-                    es_critico: lectura.color === 'danger' ? 1 : 0,
-                    fecha_hora: new Date().toISOString(),
-                    nivel_alerta: lectura.nivel,
-                    accion_sistema: lectura.accion,
-                    usuario_turno: localStorage.getItem('nombrePaciente') || 'Sesión anónima',
-                    paciente: localStorage.getItem('selectedPatientName') || 'Sin selección',
-                    presion_bar: presionBar,
-                    valvula_estado: valvulaActiva ? 'Abierta' : 'Cerrada',
-                    id_registro: idRegistro
-                };
-
-                const registroRef = database.ref(`registros_biomedicos/${pacienteId}/${idRegistro}`);
-                registroRef.set(registro).catch(error => console.error('Error guardando en Firebase:', error));
-                guardarRegistroBiometrico(registro);
-            }
-
-            const alerta = document.getElementById('alertaGlobalSeroa');
-            if (actualSpo2 < 90 && alerta) alerta.classList.remove('d-none');
-        }
-    }
-
-    temporizadorDesconexion = setTimeout(aplicarEstadoDesconectado, 10000); 
-};
-
-// 6. EL SUSCRIPTOR REAL
+// 5. MOTOR DE TIEMPO REAL CON EL ESP32
 if (window.SeroaRealtime) {
-    window.SeroaRealtime.subscribe(procesarDatosESP32);
-}
+    window.SeroaRealtime.subscribe((datos) => {
+        var cartelEstado = document.getElementById('estadoSensorOverlay'); 
+        var textoEstado = document.getElementById('textoEstadoSensor'); 
+        var valorSpo2 = document.getElementById('spo2Valor');
+        var valorBpm = document.getElementById('bpmValor');
+        var valorPresion = document.getElementById('presionValor');
+        var valorValvula = document.getElementById('valvulaValor');
+        var luzConexion = document.getElementById('luz-conexion');
+        var textoConexion = document.getElementById('texto-conexion');
 
-// ========================================================
-// 🧪 MODO SIMULADOR VIRTUAL (Para pruebas sin hardware físico)
-// ========================================================
-window.activarSimulador = function() {
-    console.log("🚀 Iniciando conexión con ESP32 Fantasma...");
-    var conteo = 0;
-    
-    // Fase 1: Simulamos que el paciente apenas pone el dedo
-    procesarDatosESP32({ estado: "CALIBRANDO", spo2: 0, bpm: 0, presionBar: 2.8, valvulaActiva: false });
-    
-    // Fase 2: Arrancamos la telemetría real después de 3 segundos
-    setTimeout(() => {
-        setInterval(() => {
-            conteo++;
-            
-            // Hacemos que de vez en cuando haya una pequeña caída de oxígeno para probar las gráficas
-            const esCaida = (conteo % 10 === 0); 
-            const spo2Simulado = esCaida ? Math.floor(Math.random() * (92 - 88 + 1)) + 88 : Math.floor(Math.random() * (100 - 95 + 1)) + 95; 
-            const bpmSimulado = Math.floor(Math.random() * (85 - 65 + 1)) + 65;   
-            const presionSimulada = (Math.random() * (3.0 - 2.8) + 2.8).toFixed(2); 
-            
-            procesarDatosESP32({
-                estado: "ACTIVO",
-                spo2: spo2Simulado,
-                bpm: bpmSimulado,
-                presionBar: presionSimulada,
-                valvulaActiva: true,
-                dispositivoId: "SIM-VIRTUAL-X1"
-            });
-        }, 2000); // 2 segundos, igual que el loop de tu microcontrolador
-        console.log("✅ Telemetría establecida. Inyectando datos...");
-    }, 3000);
-};
+        clearTimeout(temporizadorDesconexion); 
+        
+        if (luzConexion && textoConexion) {
+            luzConexion.style.backgroundColor = '#28a745'; 
+            luzConexion.style.boxShadow = '0 0 8px #28a745';
+            textoConexion.innerText = 'Dispositivo Seroa: En Línea';
+        }
+
+        if (datos) {
+            var estadoSensor = datos.estado;
+            var actualSpo2 = Number(datos.spo2);
+            var actualBpm = Number(datos.bpm);
+            var presionBar = Number(datos.presionBar || 0);
+            var valvulaActiva = datos.valvulaActiva === true || datos.valvula_estado === 'Abierta';
+
+            if (valorPresion) valorPresion.innerText = presionBar.toFixed(2);
+
+            if (valorValvula) {
+                valorValvula.innerText = valvulaActiva ? 'Abierta' : 'Cerrada';
+                valorValvula.className = valvulaActiva ? 'display-6 fw-bold text-success' : 'display-6 fw-bold text-secondary';
+            }
+
+            var valoresValidos = Number.isFinite(actualSpo2) && Number.isFinite(actualBpm) && actualSpo2 > 0 && actualBpm > 0;
+
+            if (estadoSensor === "SIN_DEDO" || !valoresValidos) {
+                if (cartelEstado) cartelEstado.style.display = 'block';
+                if (textoEstado) textoEstado.innerText = "Por favor coloca tu dedo, el sensor tardará unos segundos en realizar la calibración.";
+                if (valorSpo2) valorSpo2.innerText = "--";
+                if (valorBpm) valorBpm.innerText = "--";
+            } else if (estadoSensor === "CALIBRANDO") {
+                if (cartelEstado) cartelEstado.style.display = 'block';
+                if (textoEstado) textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
+                if (valorSpo2) valorSpo2.innerText = "--";
+                if (valorBpm) valorBpm.innerText = "--";
+            } else if (estadoSensor === "ACTIVO") {
+                if (cartelEstado) cartelEstado.style.display = 'none';
+
+                if (valorSpo2) valorSpo2.innerText = actualSpo2;
+                if (valorBpm) valorBpm.innerText = actualBpm;
+
+                var ahora = new Date().getTime();
+                
+                historialSpo2.push({ x: ahora, y: actualSpo2 });
+                historialBpm.push({ x: ahora, y: actualBpm });
+
+                if (historialSpo2.length > LIMITE_PUNTOS) {
+                    historialSpo2.shift();
+                    historialBpm.shift();
+                }
+
+                if(chartSpo2) chartSpo2.updateSeries([{ name: "SpO2", data: historialSpo2 }]);
+                if(chartBpm) chartBpm.updateSeries([{ name: "BPM", data: historialBpm }]);
+
+                var pacienteId = localStorage.getItem('selectedPatientId');
+                
+                if (pacienteId) {
+                    var idRegistro = window.generarIdRegistro ? window.generarIdRegistro() : Date.now().toString();
+                    var lectura = clasificarLectura(actualSpo2, actualBpm);
+                    
+                    var registro = {
+                        id_paciente: parseInt(pacienteId, 10),
+                        id_dispositivo: datos.dispositivoId || null,
+                        saturacion_oxigeno: actualSpo2,
+                        ritmo_cardiaco: actualBpm,
+                        es_critico: lectura.color === 'danger' ? 1 : 0,
+                        fecha_hora: new Date().toISOString(),
+                        nivel_alerta: lectura.nivel,
+                        accion_sistema: lectura.accion,
+                        usuario_turno: localStorage.getItem('nombrePaciente') || 'Sesión anónima',
+                        paciente: localStorage.getItem('selectedPatientName') || 'Sin selección',
+                        presion_bar: presionBar,
+                        valvula_estado: valvulaActiva ? 'Abierta' : 'Cerrada',
+                        id_registro: idRegistro
+                    };
+
+                    var registroRef = database.ref(`registros_biomedicos/${pacienteId}/${idRegistro}`);
+                    registroRef.set(registro).catch(error => console.error('Error guardando en Firebase:', error));
+                    guardarRegistroBiometrico(registro);
+                }
+
+                var alerta = document.getElementById('alertaGlobalSeroa');
+                if (actualSpo2 < 90 && alerta) alerta.classList.remove('d-none');
+            }
+        }
+
+        temporizadorDesconexion = setTimeout(aplicarEstadoDesconectado, 10000); 
+    });
+} else {
+    console.error("El motor SeroaRealtime no cargó correctamente.");
+}
