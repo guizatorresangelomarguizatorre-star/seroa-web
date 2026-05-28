@@ -12,6 +12,36 @@ function captureAccessCode() {
     return localStorage.getItem('pendingAccessId') || null;
 }
 
+async function procesarAccesoPendiente(userId, userName) {
+    const accessId = localStorage.getItem('pendingAccessId');
+    if (!accessId || !userId) return false;
+
+    try {
+        const response = await fetch(`/api/invitado?acceso=${encodeURIComponent(accessId)}&userId=${encodeURIComponent(userId)}&userName=${encodeURIComponent(userName || '')}`);
+        const data = await response.json();
+        if (!response.ok || data.error) {
+            console.warn('procesarAccesoPendiente falló:', data.error || response.status);
+            return false;
+        }
+
+        localStorage.setItem('selectedPatientId', data.id_paciente);
+        localStorage.setItem('selectedPatientName', data.nombre);
+        localStorage.setItem('selectedPatientRole', 'Invitado');
+        localStorage.setItem('selectedPatientPeso', data.peso_kg || 'N/A');
+        localStorage.setItem('selectedPatientEdad', data.edad || 'N/A');
+        localStorage.setItem('selectedPatientSexo', data.sexo || 'N/A');
+        localStorage.setItem('selectedPatientPadecimiento', data.padecimiento || 'N/A');
+        localStorage.setItem('selectedPatientSpo2Min', data.rango_spo2_min || 'N/A');
+        localStorage.setItem('selectedPatientSpo2Max', data.rango_spo2_max || 'N/A');
+        localStorage.setItem('pacienteActivoSeroa', data.nombre);
+        localStorage.removeItem('pendingAccessId');
+        return true;
+    } catch (error) {
+        console.error('Error procesando acceso pendiente:', error);
+        return false;
+    }
+}
+
 function generateCaptcha() {
     const n1 = Math.floor(Math.random() * 10) + 1;
     const n2 = Math.floor(Math.random() * 10) + 1;
@@ -123,15 +153,14 @@ function iniciarMonitoreoVerificacion(email) {
                     
                     // Si había una invitación pendiente, la procesamos en silencio antes de redirigir
                     const accessId = localStorage.getItem('pendingAccessId');
-                    if(accessId) {
-                        fetch('/api/invitado?acceso=' + accessId + '&userId=' + data.id)
-                        .then(() => {
-                             localStorage.removeItem('pendingAccessId');
-                             window.location.href = 'index.html';
-                        });
-                    } else {
-                        window.location.href = 'index.html';
+                    if (accessId) {
+                        const success = await procesarAccesoPendiente(data.id, data.nombre);
+                        if (success) {
+                            window.location.href = 'pacientes.html';
+                            return;
+                        }
                     }
+                    window.location.href = 'index.html';
                 }
             }
         } catch (err) {
@@ -172,6 +201,16 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             localStorage.setItem('nombrePaciente', data.nombre);
             localStorage.setItem('userId', data.id);
             
+            // Si hay un acceso pendiente, procesarlo y guardar el paciente compartido
+            const pending = localStorage.getItem('pendingAccessId');
+            if (pending) {
+                const success = await procesarAccesoPendiente(data.id, data.nombre);
+                if (success) {
+                    window.location.href = 'pacientes.html';
+                    return;
+                }
+            }
+
             // Limpiar el código de acceso pendiente ya que fue procesado
             localStorage.removeItem('pendingAccessId');
             
