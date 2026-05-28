@@ -210,4 +210,5 @@ window.SeroaRealtime.subscribe((datos) => {
         if (valorSpo2) valorSpo2.innerText = "--";
         if (valorBpm) valorBpm.innerText = "--";
     }, 10000); 
+    
 });
