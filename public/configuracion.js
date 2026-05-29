@@ -1,9 +1,104 @@
 const database = window.database || firebase.database();
 
+// ==========================================
+// === SINCRONIZACIÓN BLUETOOTH (ALEXA STYLE)
+// ==========================================
+
+// UUIDs únicos generados para el proyecto Seroa
+const SEROA_SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+const SEROA_CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+async function iniciarVinculacionBluetooth() {
+    const ssid = document.getElementById('wifiSsidInput').value.trim();
+    const pass = document.getElementById('wifiPassInput').value.trim();
+    const pacienteId = localStorage.getItem('selectedPatientId');
+    const msgBox = document.getElementById('btStatusMsg');
+
+    if (!ssid || !pass) {
+        msgBox.className = 'alert alert-danger';
+        msgBox.textContent = 'Por favor, ingresa el nombre de tu WiFi y la contraseña.';
+        msgBox.classList.remove('d-none');
+        return;
+    }
+
+    if (!pacienteId) {
+        msgBox.className = 'alert alert-warning';
+        msgBox.textContent = 'Selecciona un paciente en el menú lateral antes de sincronizar.';
+        msgBox.classList.remove('d-none');
+        return;
+    }
+
+    if (!navigator.bluetooth) {
+        msgBox.className = 'alert alert-danger';
+        msgBox.textContent = 'Tu navegador no soporta Web Bluetooth. Usa Chrome o Edge.';
+        msgBox.classList.remove('d-none');
+        return;
+    }
+
+    try {
+        msgBox.className = 'alert alert-info';
+        msgBox.textContent = 'Buscando Monitor Seroa... Enciende el dispositivo y acércalo.';
+        msgBox.classList.remove('d-none');
+
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: 'SEROA_ESP32' }],
+            optionalServices: [SEROA_SERVICE_UUID]
+        });
+
+        msgBox.textContent = `Conectando a ${device.name}...`;
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SEROA_SERVICE_UUID);
+        const characteristic = await service.getCharacteristic(SEROA_CHARACTERISTIC_UUID);
+
+        // Formato exacto que espera el ESP32
+        const payload = `${ssid}|${pass}|${pacienteId}`;
+        const encoder = new TextEncoder();
+        const dataArray = encoder.encode(payload);
+
+        msgBox.textContent = 'Transfiriendo credenciales...';
+
+        await characteristic.writeValue(dataArray);
+
+        msgBox.className = 'alert alert-success fw-bold';
+        msgBox.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>¡Sincronización Exitosa! El ESP32 se reiniciará para conectarse.';
+        
+        setTimeout(() => {
+            if (device.gatt.connected) device.gatt.disconnect();
+        }, 3000);
+
+    } catch (error) {
+        console.error('Error Bluetooth:', error);
+        msgBox.className = 'alert alert-danger';
+        msgBox.textContent = `Error de conexión: ${error.message}`;
+        msgBox.classList.remove('d-none');
+    }
+}
+
+function suscribirEstadoNube() {
+    const pacienteId = localStorage.getItem('selectedPatientId');
+    const statusBox = document.getElementById('statusNubeFirebase');
+    if(!pacienteId || !statusBox) return;
+
+    database.ref(`Seroa/Pacientes/${pacienteId}/Actual`).on('value', (snapshot) => {
+        const datos = snapshot.val();
+        if (datos && datos.estado === 'ACTIVO') {
+            statusBox.innerHTML = '<span class="badge bg-success px-3 py-2"><i class="bi bi-cloud-check me-2"></i>Recibiendo datos del ESP32</span>';
+        } else {
+            statusBox.innerHTML = '<span class="badge bg-secondary px-3 py-2"><i class="bi bi-cloud-slash me-2"></i>Sin conexión activa</span>';
+        }
+    });
+}
+
+// ==========================================
+// === FUNCIONES ORIGINALES DEL SISTEMA
+// ==========================================
+
 async function cargarDispositivos() {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
     const lista = document.getElementById('listaDispositivos');
+    if (!lista) return; // Si quitaste la lista de HTML, esto no choca
     try {
         const response = await fetch(`/api/dispositivos?id_usuario=${userId}`);
         const dispositivos = await response.json();
@@ -26,11 +121,11 @@ async function cargarDispositivos() {
 }
 
 window.mostrarConfigDispositivo = (id, ssid, password, estado, usuario) => {
-    document.getElementById('dispositivoConfigId').value = id;
-    document.getElementById('dispositivoConfigSSID').value = ssid;
-    document.getElementById('dispositivoConfigPassword').value = password;
-    document.getElementById('dispositivoConfigEstado').value = estado;
-    document.getElementById('dispositivoConfigUsuario').value = usuario;
+    if(document.getElementById('dispositivoConfigId')) document.getElementById('dispositivoConfigId').value = id;
+    if(document.getElementById('dispositivoConfigSSID')) document.getElementById('dispositivoConfigSSID').value = ssid;
+    if(document.getElementById('dispositivoConfigPassword')) document.getElementById('dispositivoConfigPassword').value = password;
+    if(document.getElementById('dispositivoConfigEstado')) document.getElementById('dispositivoConfigEstado').value = estado;
+    if(document.getElementById('dispositivoConfigUsuario')) document.getElementById('dispositivoConfigUsuario').value = usuario;
 };
 
 function mostrarMensajeConfiguracion(texto, tipo = 'success') {
@@ -43,8 +138,8 @@ function mostrarMensajeConfiguracion(texto, tipo = 'success') {
 
 async function guardarDispositivo(event) {
     event.preventDefault();
-    const ssid = document.getElementById('nuevoDispositivoSSID').value.trim();
-    const password = document.getElementById('nuevoDispositivoPassword').value.trim();
+    const ssid = document.getElementById('nuevoDispositivoSSID')?.value.trim();
+    const password = document.getElementById('nuevoDispositivoPassword')?.value.trim();
     const userId = localStorage.getItem('userId');
     if (!ssid || !password || !userId) return mostrarMensajeConfiguracion('Completa SSID y contraseña.', 'danger');
 
@@ -63,7 +158,7 @@ async function guardarDispositivo(event) {
         const data = await response.json();
         if (!response.ok) return mostrarMensajeConfiguracion(data.error || 'No se pudo agregar el dispositivo.', 'danger');
         mostrarMensajeConfiguracion('Dispositivo agregado correctamente.');
-        document.getElementById('formAgregarDispositivo').reset();
+        document.getElementById('formAgregarDispositivo')?.reset();
         cargarDispositivos();
     } catch (error) {
         console.error(error);
@@ -73,11 +168,11 @@ async function guardarDispositivo(event) {
 
 async function actualizarDispositivo(event) {
     event.preventDefault();
-    const id = document.getElementById('dispositivoConfigId').value;
-    const ssid = document.getElementById('dispositivoConfigSSID').value.trim();
-    const password = document.getElementById('dispositivoConfigPassword').value.trim();
-    const estado = document.getElementById('dispositivoConfigEstado').value;
-    const usuario = document.getElementById('dispositivoConfigUsuario').value.trim();
+    const id = document.getElementById('dispositivoConfigId')?.value;
+    const ssid = document.getElementById('dispositivoConfigSSID')?.value.trim();
+    const password = document.getElementById('dispositivoConfigPassword')?.value.trim();
+    const estado = document.getElementById('dispositivoConfigEstado')?.value;
+    const usuario = document.getElementById('dispositivoConfigUsuario')?.value.trim();
     if (!id || !ssid || !password) return mostrarMensajeConfiguracion('Completa la configuración del dispositivo.', 'danger');
 
     try {
@@ -235,15 +330,15 @@ async function generarLinkInvitadoConfig() {
     const sharePatientName = document.getElementById('shareConfigPatientName');
     const shareLinkInput = document.getElementById('shareConfigLinkInput');
     const shareQr = document.getElementById('shareConfigQrImage');
-    const modal = new bootstrap.Modal(document.getElementById('modalInvitacionConfig'));
+    const modalEl = document.getElementById('modalInvitacionConfig');
+    if(!modalEl) return;
+    const modal = new bootstrap.Modal(modalEl);
 
     if (!pacienteId || !userId) {
         return alert('Selecciona un paciente y asegúrate de tener sesión iniciada para generar el enlace.');
     }
 
     try {
-        console.log(`[generarLinkInvitadoConfig] Enviando: pacienteId=${pacienteId}, userId=${userId}`);
-        
         const response = await fetch('/api/pacientes/compartir', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -251,7 +346,6 @@ async function generarLinkInvitadoConfig() {
         });
         
         const data = await response.json();
-        console.log(`[generarLinkInvitadoConfig] Respuesta:`, data, `status: ${response.status}`);
         
         if (!response.ok) {
             throw new Error(data.error || `HTTP ${response.status}`);
@@ -262,7 +356,6 @@ async function generarLinkInvitadoConfig() {
         }
 
         const url = `${window.location.origin}/invitado.html?acceso=${data.id_acceso}`;
-        console.log(`[generarLinkInvitadoConfig] URL generada: ${url}`);
         
         if (sharePatientName) sharePatientName.textContent = nombrePaciente;
         if (shareLinkInput) shareLinkInput.value = url;
@@ -289,11 +382,7 @@ async function cambiarPermisoAcceso(idAcceso, nuevoPermiso) {
         if (!response.ok) throw new Error(data.error || 'No se pudo actualizar el permiso.');
         
         mostrarMensajeConfiguracion(`Permiso actualizado a ${nuevoPermiso}. Sincronizando sistema...`, 'success');
-        
-        // Recarga automática para aplicar el RBAC
-        setTimeout(() => {
-            window.location.reload();
-        }, 1200);
+        setTimeout(() => { window.location.reload(); }, 1200);
 
     } catch (error) {
         console.error(error);
@@ -316,11 +405,7 @@ async function revocarAcceso(idAcceso) {
         if (!response.ok) throw new Error(data.error || 'No se pudo revocar el acceso.');
         
         mostrarMensajeConfiguracion('Acceso revocado correctamente. Sincronizando...', 'warning');
-        
-        // Recarga automática para expulsar al usuario si estaba conectado
-        setTimeout(() => {
-            window.location.reload();
-        }, 1200);
+        setTimeout(() => { window.location.reload(); }, 1200);
 
     } catch (error) {
         console.error(error);
@@ -329,7 +414,6 @@ async function revocarAcceso(idAcceso) {
 }
 
 async function cargarPacienteDatos() {
-    const patientId = localStorage.getItem('selectedPatientId');
     const nombre = localStorage.getItem('selectedPatientName') || 'Sin selección';
     const rol = localStorage.getItem('selectedPatientRole') || 'Invitado';
     const peso = localStorage.getItem('selectedPatientPeso') || 'N/A';
@@ -356,31 +440,18 @@ async function cargarPacienteDatos() {
     }
 }
 
-function bluetoothAgregarDispositivo() {
-    if (!navigator.bluetooth) {
-        mostrarMensajeConfiguracion('Bluetooth no es compatible en este navegador.', 'danger');
-        return;
-    }
-    navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['battery_service'] })
-        .then(device => {
-            mostrarMensajeConfiguracion(`Dispositivo detectado: ${device.name || device.id}`);
-        })
-        .catch(error => {
-            console.error(error);
-            mostrarMensajeConfiguracion('No se pudo conectar por Bluetooth.', 'danger');
-        });
-}
-
 function iniciarConfiguracion() {
     document.getElementById('formAgregarDispositivo')?.addEventListener('submit', guardarDispositivo);
     document.getElementById('formConfigDispositivo')?.addEventListener('submit', actualizarDispositivo);
     document.getElementById('btnPermitirNotificaciones')?.addEventListener('click', solicitarPermisoNotificaciones);
-    document.getElementById('btnDetectarBluetooth')?.addEventListener('click', bluetoothAgregarDispositivo);
     document.getElementById('btnGenerarInvitacionConfig')?.addEventListener('click', generarLinkInvitadoConfig);
+    document.getElementById('btnVincularBluetooth')?.addEventListener('click', iniciarVinculacionBluetooth);
+    
     cargarDispositivos();
     cargarPreferenciasNotificaciones();
     cargarPacienteDatos();
     cargarAccesos();
+    suscribirEstadoNube();
 }
 
 document.addEventListener('DOMContentLoaded', iniciarConfiguracion);

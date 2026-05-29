@@ -6,35 +6,44 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+// Librerías de Bluetooth y Memoria
+#include <Preferences.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
 
-// ================= WIFI / FIREBASE =================
-#define WIFI_SSID "TU_WIFI"
-#define WIFI_PASSWORD "TU_PASSWORD"
-
+// ================= CONSTANTES =================
 #define API_KEY "AIzaSyD8GcNrjousLrlNSKXcNrjl0gjAYuXvTMQ"
 #define DATABASE_URL "https://seroa-e8606-default-rtdb.firebaseio.com"
 
-// ================= PINES =================
 #define PIN_RELAY 25
 #define PIN_PRESION 34
-
-// Muchos relays de 1 canal son activos en LOW.
-// Si tu relay se prende al revés, cambia true por false.
 #define RELAY_ACTIVE_LOW true
 
 // ================= OBJETOS =================
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
-
 MAX30105 particleSensor;
+Preferences preferencias;
 
-// ================= MAX30102 =================
+// ================= VARIABLES GLOBALES =================
+String wifi_ssid = "";
+String wifi_pass = "";
+String id_paciente = "";
+bool bleConectado = false;
+
+// UUIDs del Bluetooth
+#define SERVICE_UUID           "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID    "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+// Variables del algoritmo y sensores
 uint32_t irBuffer[100];
 uint32_t redBuffer[100];
-
 int32_t bufferLength = 100;
 int32_t spo2;
 int8_t validSPO2;
@@ -42,51 +51,80 @@ int32_t heartRate;
 int8_t validHeartRate;
 
 bool bufferLleno = false;
-
 const int numLecturas = 5;
 int lecturasSpO2[numLecturas];
 int lecturasBPM[numLecturas];
 int indiceFiltro = 0;
 bool bufferFiltroLleno = false;
 
-// ================= TIEMPOS =================
 unsigned long tiempoAnterior = 0;
 unsigned long tiempoFirebase = 0;
 unsigned long intervaloFirebase = 1000;
 
-// ================= CONTROL =================
 int LIMITE_SPO2_BAJO = 90;
 bool valvulaActiva = false;
 
-// ================= FUNCIONES =================
+// ================= BLUETOOTH CALLBACKS =================
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+      bleConectado = true;
+      Serial.println("App vinculada. Esperando datos...");
+    };
+    void onDisconnect(BLEServer* pServer) {
+      bleConectado = false;
+      Serial.println("App desconectada.");
+    }
+};
+
+class MyCallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *pCharacteristic) {
+      std::string rxValue = pCharacteristic->getValue();
+
+      if (rxValue.length() > 0) {
+        String payload = String(rxValue.c_str());
+        Serial.println("Payload recibido: " + payload);
+
+        int primerPipe = payload.indexOf('|');
+        int segundoPipe = payload.indexOf('|', primerPipe + 1);
+
+        if (primerPipe > 0 && segundoPipe > 0) {
+          wifi_ssid = payload.substring(0, primerPipe);
+          wifi_pass = payload.substring(primerPipe + 1, segundoPipe);
+          id_paciente = payload.substring(segundoPipe + 1);
+
+          preferencias.begin("seroa-cred", false);
+          preferencias.putString("ssid", wifi_ssid);
+          preferencias.putString("pass", wifi_pass);
+          preferencias.putString("paciente", id_paciente);
+          preferencias.end();
+
+          Serial.println("Datos guardados. El dispositivo se reiniciará en 2 segundos...");
+          delay(2000);
+          ESP.restart(); 
+        } else {
+          Serial.println("Error: El formato no es válido.");
+        }
+      }
+    }
+};
+
+// ================= FUNCIONES HARDWARE =================
 void activarValvula() {
-  if (RELAY_ACTIVE_LOW) {
-    digitalWrite(PIN_RELAY, LOW);
-  } else {
-    digitalWrite(PIN_RELAY, HIGH);
-  }
+  if (RELAY_ACTIVE_LOW) digitalWrite(PIN_RELAY, LOW);
+  else digitalWrite(PIN_RELAY, HIGH);
   valvulaActiva = true;
 }
 
 void desactivarValvula() {
-  if (RELAY_ACTIVE_LOW) {
-    digitalWrite(PIN_RELAY, HIGH);
-  } else {
-    digitalWrite(PIN_RELAY, LOW);
-  }
+  if (RELAY_ACTIVE_LOW) digitalWrite(PIN_RELAY, HIGH);
+  else digitalWrite(PIN_RELAY, LOW);
   valvulaActiva = false;
 }
 
 float leerPresionBar() {
   int lecturaADC = analogRead(PIN_PRESION);
-
   float voltajeADC = (lecturaADC / 4095.0) * 3.3;
-
-  // Si usaste divisor: 10k arriba y 20k abajo,
-  // el voltaje real del sensor es aproximadamente voltajeADC * 1.5
   float voltajeSensor = voltajeADC * 1.5;
-
-  // Sensor típico: 0.5V = 0 bar, 4.5V = 12 bar
   float presion = ((voltajeSensor - 0.5) * 12.0) / 4.0;
 
   if (presion < 0) presion = 0;
@@ -96,11 +134,38 @@ float leerPresionBar() {
 }
 
 void enviarFirebase(int spo2Final, int bpmFinal, String estado, float presionBar) {
-  Firebase.RTDB.setInt(&fbdo, "Seroa/Actual/spo2", spo2Final);
-  Firebase.RTDB.setInt(&fbdo, "Seroa/Actual/bpm", bpmFinal);
-  Firebase.RTDB.setString(&fbdo, "Seroa/Actual/estado", estado);
-  Firebase.RTDB.setFloat(&fbdo, "Seroa/Actual/presionBar", presionBar);
-  Firebase.RTDB.setBool(&fbdo, "Seroa/Actual/valvulaActiva", valvulaActiva);
+  // Enviar a la ruta del paciente específico sincronizado
+  String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
+
+  Firebase.RTDB.setInt(&fbdo, rutaBase + "/spo2", spo2Final);
+  Firebase.RTDB.setInt(&fbdo, rutaBase + "/bpm", bpmFinal);
+  Firebase.RTDB.setString(&fbdo, rutaBase + "/estado", estado);
+  Firebase.RTDB.setFloat(&fbdo, rutaBase + "/presionBar", presionBar);
+  Firebase.RTDB.setBool(&fbdo, rutaBase + "/valvulaActiva", valvulaActiva);
+}
+
+void setupBluetooth() {
+  Serial.println("Inicializando BLE...");
+  BLEDevice::init("SEROA_ESP32"); 
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+                                         CHARACTERISTIC_UUID,
+                                         BLECharacteristic::PROPERTY_READ |
+                                         BLECharacteristic::PROPERTY_WRITE
+                                       );
+  pCharacteristic->setCallbacks(new MyCallbacks());
+  pService->start();
+  
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
+  Serial.println("Modo Sincronización. Envia los datos desde la PWA...");
 }
 
 void setup() {
@@ -109,61 +174,76 @@ void setup() {
 
   pinMode(PIN_RELAY, OUTPUT);
   desactivarValvula();
-
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
 
   Serial.println("Iniciando SEROA...");
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Conectando WiFi");
+  preferencias.begin("seroa-cred", false);
+  wifi_ssid = preferencias.getString("ssid", "");
+  wifi_pass = preferencias.getString("pass", "");
+  id_paciente = preferencias.getString("paciente", "");
+  preferencias.end();
 
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
-
-  Serial.println("\nWiFi conectado.");
-
-  config.api_key = API_KEY;
-  config.database_url = DATABASE_URL;
-
-  if (Firebase.signUp(&config, &auth, "", "")) {
-    Serial.println("Firebase conectado.");
+  if (wifi_ssid == "") {
+    setupBluetooth();
+    // Atrapar en loop infinito hasta que se configure el WiFi
+    while (true) { delay(100); }
   } else {
-    Serial.printf("Error Firebase: %s\n", config.signer.signupError.message.c_str());
+    BLEDevice::deinit(true); // Apagar BLE para liberar memoria RAM
+    Serial.println("Conectando al WiFi guardado...");
+    WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
+
+    int intentos = 0;
+    while (WiFi.status() != WL_CONNECTED && intentos < 20) {
+      Serial.print(".");
+      delay(500);
+      intentos++;
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nWiFi conectado.");
+      config.api_key = API_KEY;
+      config.database_url = DATABASE_URL;
+
+      if (Firebase.signUp(&config, &auth, "", "")) {
+        Serial.println("Firebase listo. ID Paciente: " + id_paciente);
+      }
+      Firebase.begin(&config, &auth);
+      Firebase.reconnectWiFi(true);
+
+      Wire.begin(21, 22);
+      if (!particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
+        Serial.println("ERROR: MAX30102 no detectado.");
+        while (1);
+      }
+      particleSensor.setup(50, 4, 2, 100, 411, 4096);
+      
+      // Estado de inicio
+      Firebase.RTDB.setString(&fbdo, "Seroa/Pacientes/" + id_paciente + "/Actual/estado", "SIN_DEDO");
+      Serial.println("Sistema en línea. Coloca tu dedo.");
+    } else {
+      Serial.println("\nFallo en el WiFi. Reseteando configuración...");
+      preferencias.begin("seroa-cred", false);
+      preferencias.clear();
+      preferencias.end();
+      ESP.restart();
+    }
   }
-
-  Firebase.begin(&config, &auth);
-  Firebase.reconnectWiFi(true);
-
-  Wire.begin(21, 22);
-
-  if (!particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
-    Serial.println("ERROR: MAX30102 no detectado.");
-    while (1);
-  }
-
-  particleSensor.setup(50, 4, 2, 100, 411, 4096);
-
-  Firebase.RTDB.setString(&fbdo, "Seroa/Actual/estado", "SIN_DEDO");
-
-  Serial.println("SEROA listo. Coloca tu dedo.");
 }
 
 void loop() {
-  float presionBar = leerPresionBar();
+  if (wifi_ssid == "") return; 
 
+  float presionBar = leerPresionBar();
   long irValue = particleSensor.getIR();
 
   if (irValue < 20000) {
     desactivarValvula();
-
     if (millis() - tiempoFirebase > intervaloFirebase) {
       tiempoFirebase = millis();
       enviarFirebase(0, 0, "SIN_DEDO", presionBar);
     }
-
     Serial.println("Sin dedo detectado.");
     delay(500);
     return;
@@ -171,20 +251,16 @@ void loop() {
 
   if (!bufferLleno) {
     Serial.print("Calibrando");
-
     for (byte i = 0; i < bufferLength; i++) {
       while (particleSensor.available() == false) {
         particleSensor.check();
         delay(1);
       }
-
       redBuffer[i] = particleSensor.getRed();
       irBuffer[i] = particleSensor.getIR();
       particleSensor.nextSample();
-
       if (i % 10 == 0) Serial.print(".");
     }
-
     Serial.println(" listo.");
     bufferLleno = true;
   } else {
@@ -192,13 +268,11 @@ void loop() {
       redBuffer[i - 25] = redBuffer[i];
       irBuffer[i - 25] = irBuffer[i];
     }
-
     for (byte i = 75; i < 100; i++) {
       while (particleSensor.available() == false) {
         particleSensor.check();
         delay(1);
       }
-
       redBuffer[i] = particleSensor.getRed();
       irBuffer[i] = particleSensor.getIR();
       particleSensor.nextSample();
@@ -206,18 +280,11 @@ void loop() {
   }
 
   maxim_heart_rate_and_oxygen_saturation(
-    irBuffer,
-    bufferLength,
-    redBuffer,
-    &spo2,
-    &validSPO2,
-    &heartRate,
-    &validHeartRate
+    irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate
   );
 
   if (millis() - tiempoAnterior > 1000) {
     tiempoAnterior = millis();
-
     int bpmFinal = heartRate;
 
     if (validHeartRate == 1 && bpmFinal > 130 && bpmFinal < 250) {
@@ -258,27 +325,18 @@ void loop() {
         enviarFirebase(promedioSpO2, bpmAjustado, "ACTIVO", presionBar);
 
         Serial.println("============== SEROA ==============");
-        Serial.print("SpO2: ");
-        Serial.print(promedioSpO2);
-        Serial.println("%");
-
-        Serial.print("BPM: ");
-        Serial.println(bpmAjustado);
-
-        Serial.print("Presion: ");
-        Serial.print(presionBar);
-        Serial.println(" bar");
-
-        Serial.print("Valvula: ");
-        Serial.println(valvulaActiva ? "ACTIVA" : "INACTIVA");
+        Serial.print("SpO2: "); Serial.print(promedioSpO2); Serial.println("%");
+        Serial.print("BPM: ");  Serial.println(bpmAjustado);
+        Serial.print("Presion: "); Serial.print(presionBar); Serial.println(" bar");
+        Serial.print("Valvula: "); Serial.println(valvulaActiva ? "ACTIVA" : "INACTIVA");
         Serial.println("===================================");
       } else {
-        Firebase.RTDB.setString(&fbdo, "Seroa/Actual/estado", "CALIBRANDO");
+        enviarFirebase(0, 0, "CALIBRANDO", presionBar);
         Serial.println("Llenando filtro...");
       }
     } else {
       desactivarValvula();
-      Firebase.RTDB.setString(&fbdo, "Seroa/Actual/estado", "CALIBRANDO");
+      enviarFirebase(0, 0, "CALIBRANDO", presionBar);
       Serial.println("Lectura inestable, calibrando...");
     }
   }

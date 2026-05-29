@@ -61,7 +61,9 @@
       <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
         <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Sin selección</strong>
       </span>
-    </div> <div class="row mt-4">
+    </div> 
+    
+    <div class="row mt-4">
       
       <div class="col-12 col-md-4 col-lg-3 mb-4">
         <div class="nav flex-column nav-pills config-windows-menu pe-md-3 border-end h-100" id="v-pills-tab" role="tablist" aria-orientation="vertical">
@@ -84,18 +86,22 @@
         <div class="tab-content" id="v-pills-tabContent">
           
           <div class="tab-pane fade show active" id="pane-hardware" role="tabpanel">
-            <h3 class="fw-normal mb-4" style="color: var(--color-seroa-teal);">Dispositivo Seroa</h3>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-normal mb-0" style="color: var(--color-seroa-teal);">Dispositivo Seroa</h3>
+                <button class="btn btn-teal text-white rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalBluetoothSync">
+                    <i class="bi bi-bluetooth me-2"></i> Añadir Dispositivo (Bluetooth)
+                </button>
+            </div>
             
             <div class="windows-setting-item border-0 pt-2">
               <div class="d-flex justify-content-between align-items-center mb-5 pb-4 border-bottom">
                 <div class="d-flex align-items-center">
                   <i class="bi bi-wifi fs-1 text-teal me-4"></i>
                   <div>
-                    <span class="d-block fw-bold fs-5 text-dark">Estado de Conexión</span>
-                    <span class="text-muted fs-6">Conectado a "Red_Familia"</span>
+                    <span class="d-block fw-bold fs-5 text-dark">Estado de Conexión en la Nube</span>
+                    <span class="text-muted fs-6" id="statusNubeFirebase">Esperando datos...</span>
                   </div>
                 </div>
-                <span class="text-success fw-bold fs-5 bg-success bg-opacity-10 px-4 py-2 rounded-pill">En Línea</span>
               </div>
 
               <div class="d-flex justify-content-between align-items-center mb-5 pb-4 border-bottom">
@@ -103,12 +109,9 @@
                   <i class="bi bi-motherboard fs-1 text-secondary me-4"></i>
                   <div>
                     <span class="d-block fw-bold fs-5 text-dark">ID del Dispositivo</span>
-                    <span class="text-muted fs-6">SEROA-ESP-8842</span>
+                    <span class="text-muted fs-6">Seroa ESP32 (Vía Nube)</span>
                   </div>
                 </div>
-                <button class="btn btn-outline-danger px-4 py-2 rounded-pill shadow-sm" title="Desvincular equipo">
-                  <i class="bi bi-x-circle me-2"></i>Desvincular
-                </button>
               </div>
 
               <div class="mt-4 text-end">
@@ -149,7 +152,7 @@
                   <span class="text-muted fs-6">Reproducir un sonido fuerte en caso de emergencias.</span>
                 </div>
                 <div class="form-check form-switch fs-2 m-0">
-                  <input class="form-check-input shadow-sm" type="checkbox" role="switch">
+                  <input id="toggleNotificaciones" class="form-check-input shadow-sm" type="checkbox" role="switch">
                 </div>
               </div>
             </div>
@@ -224,7 +227,38 @@
       </div>
       
     </div>
-  </div> <div class="modal fade" id="modalInvitacionConfig" tabindex="-1" aria-labelledby="modalInvitacionConfigLabel" aria-hidden="true">
+  </div> 
+
+  <div class="modal fade" id="modalBluetoothSync" tabindex="-1" aria-labelledby="modalBluetoothSyncLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-sm">
+        <div class="modal-header bg-teal text-white border-0">
+          <h5 class="modal-title" id="modalBluetoothSyncLabel"><i class="bi bi-bluetooth me-2"></i>Sincronizar Nuevo Dispositivo</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body p-4 text-center">
+          <p class="mb-4 text-muted">Asegúrate de que tu monitor Seroa esté encendido. Ingresa la red WiFi de tu casa para enviarla al dispositivo.</p>
+          
+          <div class="text-start mb-3">
+            <label class="form-label fw-bold">Nombre de tu Red WiFi (SSID)</label>
+            <input type="text" id="wifiSsidInput" class="form-control shadow-sm" placeholder="Ej: INFINITUM123">
+          </div>
+          <div class="text-start mb-4">
+            <label class="form-label fw-bold">Contraseña del WiFi</label>
+            <input type="password" id="wifiPassInput" class="form-control shadow-sm" placeholder="********">
+          </div>
+
+          <div id="btStatusMsg" class="alert alert-info d-none mb-3"></div>
+
+          <button id="btnVincularBluetooth" class="btn btn-lg w-100 text-white rounded-pill shadow-sm" style="background: linear-gradient(135deg, #0078d4, #00b4d8);">
+            <i class="bi bi-broadcast me-2"></i> Buscar Seroa y Enviar Datos
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalInvitacionConfig" tabindex="-1" aria-labelledby="modalInvitacionConfigLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content border-0 shadow-sm">
         <div class="modal-header bg-teal text-white border-0">
