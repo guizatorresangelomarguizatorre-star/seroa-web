@@ -287,7 +287,14 @@ async function cambiarPermisoAcceso(idAcceso, nuevoPermiso) {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'No se pudo actualizar el permiso.');
-        cargarAccesos();
+        
+        mostrarMensajeConfiguracion(`Permiso actualizado a ${nuevoPermiso}. Sincronizando sistema...`, 'success');
+        
+        // Recarga automática para aplicar el RBAC
+        setTimeout(() => {
+            window.location.reload();
+        }, 1200);
+
     } catch (error) {
         console.error(error);
         alert(error.message || 'Error actualizando el permiso.');
@@ -299,7 +306,7 @@ async function revocarAcceso(idAcceso) {
     const userId = localStorage.getItem('userId');
     if (!pacienteId || !userId) return;
 
-    if (!confirm('¿Estás seguro de revocar este acceso?')) return;
+    if (!confirm('¿Estás seguro de revocar este acceso permanentemente?')) return;
 
     try {
         const response = await fetch(`/api/accesos/${idAcceso}?id_usuario=${encodeURIComponent(userId)}&id_paciente=${encodeURIComponent(pacienteId)}`, {
@@ -307,7 +314,14 @@ async function revocarAcceso(idAcceso) {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'No se pudo revocar el acceso.');
-        cargarAccesos();
+        
+        mostrarMensajeConfiguracion('Acceso revocado correctamente. Sincronizando...', 'warning');
+        
+        // Recarga automática para expulsar al usuario si estaba conectado
+        setTimeout(() => {
+            window.location.reload();
+        }, 1200);
+
     } catch (error) {
         console.error(error);
         alert(error.message || 'Error revocando el acceso.');

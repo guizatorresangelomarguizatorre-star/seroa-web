@@ -203,12 +203,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function dispararAlertaIntrusiva(nombrePaciente, callback) {
+        // 1. Crear el overlay si no existe en el DOM
+        let overlay = document.getElementById('alertaCambioContexto');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'alertaCambioContexto';
+            overlay.className = 'overlay-intrusivo-seroa';
+            overlay.innerHTML = `
+                <div class="overlay-content-card">
+                    <div class="spinner-seroa"></div>
+                    <h5 class="text-uppercase text-white fw-bold mb-1" style="letter-spacing: 2px;">Contexto Clínico Actualizado</h5>
+                    <p class="text-light fw-light mb-3">Redirigiendo controles y permisos al expediente de:</p>
+                    <h2 class="fw-bold" style="color: #66bb6a;" id="nombrePacienteOverlay"></h2>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        // 2. Inyectar el nombre y mostrar
+        document.getElementById('nombrePacienteOverlay').textContent = nombrePaciente;
+        overlay.classList.add('activo');
+
+        // 3. Esperar 2.2 segundos para que el usuario lea, y luego ejecutar recarga
+        setTimeout(() => {
+            overlay.classList.remove('activo');
+            setTimeout(callback, 300); // Esperar a que termine la animación de opacidad
+        }, 2200);
+    }
+
     function seleccionarPaciente(pacienteId, nombre, rol, detalles = {}) {
         localStorage.setItem('selectedPatientId', pacienteId);
         localStorage.setItem('selectedPatientName', decodeURIComponent(nombre));
         localStorage.setItem('selectedPatientRole', rol);
 
-        // Guardar detalles útiles del paciente para que otras pantallas los muestren fácilmente
         if (detalles.peso) localStorage.setItem('selectedPatientPeso', detalles.peso);
         if (detalles.edad) localStorage.setItem('selectedPatientEdad', detalles.edad);
         if (detalles.sexo) localStorage.setItem('selectedPatientSexo', detalles.sexo);
@@ -216,18 +244,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (detalles.spo2min) localStorage.setItem('selectedPatientSpo2Min', detalles.spo2min);
         if (detalles.spo2max) localStorage.setItem('selectedPatientSpo2Max', detalles.spo2max);
 
-        // Mantener compatibilidad con la clave existente usada en global.js
         localStorage.setItem('pacienteActivoSeroa', decodeURIComponent(nombre));
 
-        // Actualizamos el badge en esta página y en todas las otras pantallas
-        actualizarPacienteActualUI();
-        if (typeof window.actualizarBadgePaciente === 'function') window.actualizarBadgePaciente();
-        if (typeof window.mostrarToast === 'function') {
-            window.mostrarToast(`Contexto clínico actualizado: Operando sobre el expediente de ${decodeURIComponent(nombre)}`, 'success', 3000);
-        }
-        cargarPacientes();
+        // En lugar de mostrar un Toast y quedarse en la página, bloqueamos y recargamos
+        dispararAlertaIntrusiva(decodeURIComponent(nombre), () => {
+            // La recarga automática fuerza a todas las validaciones de UI y Base de Datos a sincronizarse
+            window.location.reload();
+        });
     }
-
     async function generarLinkInvitado(pacienteId, nombre) {
         if (!userId) return mostrarMensaje('No se encontró el ID de usuario. Vuelve a iniciar sesión.');
 
