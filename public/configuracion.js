@@ -83,9 +83,15 @@ function suscribirEstadoNube() {
     database.ref(`Seroa/Pacientes/${pacienteId}/Actual`).on('value', (snapshot) => {
         const datos = snapshot.val();
         
-        // CORRECCIÓN: Si Firebase recibe datos y el estado es ACTIVO, SIN_DEDO o CALIBRANDO, el equipo está vivo.
-        if (datos && (datos.estado === 'ACTIVO' || datos.estado === 'SIN_DEDO' || datos.estado === 'CALIBRANDO')) {
-            statusBox.innerHTML = '<span class="badge bg-success px-3 py-2"><i class="bi bi-cloud-check me-2"></i>En Línea (Conectado)</span>';
+        if (datos) {
+            if (datos.estado === 'ACTIVO' || datos.estado === 'SIN_DEDO' || datos.estado === 'CALIBRANDO') {
+                statusBox.innerHTML = '<span class="badge bg-success px-3 py-2"><i class="bi bi-cloud-check me-2"></i>En Línea (Conectado)</span>';
+            } else if (datos.estado === 'SIN_SENSOR') {
+                // AQUÍ ESTÁ LA MAGIA: El ESP32 está en línea, pero avisa que le falta el hardware
+                statusBox.innerHTML = '<span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-exclamation-triangle me-2"></i>En Línea (Sensor Desconectado)</span>';
+            } else {
+                statusBox.innerHTML = '<span class="badge bg-secondary px-3 py-2"><i class="bi bi-cloud-slash me-2"></i>Sin conexión activa</span>';
+            }
         } else {
             statusBox.innerHTML = '<span class="badge bg-secondary px-3 py-2"><i class="bi bi-cloud-slash me-2"></i>Sin conexión activa</span>';
         }
