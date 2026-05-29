@@ -1325,3 +1325,140 @@ input:-webkit-autofill:active{
         font-size: 1.2rem;
     }
 }
+/* ========================================== */
+/* --- ALERTA INTRUSIVA DE CONTEXTO CLÍNICO --- */
+/* ========================================== */
+.overlay-intrusivo-seroa {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, rgba(44, 62, 80, 0.98), rgba(59, 139, 136, 0.98));
+    background-image: url('img/patron-separador.png');
+    background-repeat: repeat;
+    background-size: 300px;
+    background-blend-mode: overlay;
+    z-index: 10500;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: white;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.overlay-intrusivo-seroa.activo {
+    opacity: 1;
+    visibility: visible;
+}
+
+.overlay-content-card {
+    background: rgba(0, 0, 0, 0.45);
+    padding: 3rem 2rem;
+    border-radius: 24px;
+    border: 2px solid var(--color-accent-green);
+    backdrop-filter: blur(12px);
+    transform: scale(0.8);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 90%;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+}
+
+.aviso-contexto-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65); /* Fondo oscuro semitransparente */
+    backdrop-filter: blur(4px);
+    z-index: 10500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.aviso-contexto-overlay.activo {
+    opacity: 1;
+    visibility: visible;
+}
+
+.aviso-contexto-card {
+    background: #ffffff;
+    padding: 2.5rem 2rem;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+    max-width: 90%;
+    width: 420px;
+    text-align: center;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.aviso-contexto-overlay.activo .aviso-contexto-card {
+    transform: translateY(0) scale(1);
+}
+
+.btn-aceptar-aviso {
+    background-color: var(--color-seroa-teal);
+    color: white;
+    border: none;
+    padding: 12px 40px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(59, 139, 136, 0.3);
+}
+
+.btn-aceptar-aviso:hover {
+    background-color: #2f706d;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(59, 139, 136, 0.4);
+}
+
+.spinner-seroa {
+    width: 65px;
+    height: 65px;
+    border: 5px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--color-accent-green);
+    border-radius: 50%;
+    animation: spin-seroa 1s linear infinite;
+    margin: 0 auto 1.5rem auto;
+}
+
+@keyframes spin-seroa { 
+    100% { transform: rotate(360deg); } 
+}
+
+/* ========================================== */
+/* --- PARCHES DE CORRECCIÓN MOBILE FIRST --- */
+/* ========================================== */
+/* Evita que los nombres largos rompan las tarjetas */
+.patient-card h6, .patient-card p {
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* Fuerza a los botones a apilarse si no caben */
+.patient-card .d-flex.gap-2.flex-wrap {
+    flex-direction: column;
+}
+.patient-card .d-flex.gap-2.flex-wrap button {
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+/* Corrige la tabla de accesos en móviles para que no se desborde */
+.table-responsive {
+    border-radius: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}

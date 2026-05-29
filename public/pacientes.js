@@ -1,3 +1,12 @@
+// Función global para cerrar el aviso desde el botón HTML
+window.cerrarAvisoContexto = function() {
+    const overlay = document.getElementById('alertaCambioContexto');
+    if (overlay) {
+        overlay.classList.remove('activo');
+        setTimeout(() => overlay.remove(), 300);
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const pacienteActualBadge = document.getElementById('pacienteActualBadge');
     const pacienteActualLabel = document.getElementById('pacienteActualLabel');
@@ -14,6 +23,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedPatientId = localStorage.getItem('selectedPatientId');
     const selectedPatientName = localStorage.getItem('selectedPatientName');
     const selectedPatientRole = localStorage.getItem('selectedPatientRole');
+
+    // --- NUEVA LÓGICA: REVISAR BANDERA AL CARGAR LA PÁGINA ---
+    if (localStorage.getItem('mostrarAvisoPostRecarga') === 'true') {
+        // Borramos la bandera de inmediato para que no vuelva a salir si presionas F5
+        localStorage.removeItem('mostrarAvisoPostRecarga'); 
+        
+        const nombrePaciente = localStorage.getItem('selectedPatientName') || 'Paciente Seleccionado';
+        
+        // Crear e inyectar la ventana en el DOM
+        let overlay = document.createElement('div');
+        overlay.id = 'alertaCambioContexto';
+        overlay.className = 'aviso-contexto-overlay';
+        overlay.innerHTML = `
+            <div class="aviso-contexto-card">
+                <i class="bi bi-person-check-fill mb-3 d-block" style="font-size: 3.5rem; color: var(--color-seroa-teal);"></i>
+                <h4 class="fw-bold mb-2 text-dark">Contexto Actualizado</h4>
+                <p class="text-muted mb-4" style="font-size: 1rem;">
+                    Los controles han sido redirigidos al expediente de:<br>
+                    <strong class="fs-4 mt-2 d-block text-teal">${nombrePaciente}</strong>
+                </p>
+                <button class="btn-aceptar-aviso" onclick="cerrarAvisoContexto()">Aceptar</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // Pequeño delay para que la animación CSS funcione al inyectarlo
+        setTimeout(() => overlay.classList.add('activo'), 100);
+    }
 
     function actualizarPacienteActualUI() {
         const nombre = localStorage.getItem('selectedPatientName') || userName || 'Sin selección';
@@ -203,35 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function dispararAlertaIntrusiva(nombrePaciente, callback) {
-        // 1. Crear el overlay si no existe en el DOM
-        let overlay = document.getElementById('alertaCambioContexto');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'alertaCambioContexto';
-            overlay.className = 'overlay-intrusivo-seroa';
-            overlay.innerHTML = `
-                <div class="overlay-content-card">
-                    <div class="spinner-seroa"></div>
-                    <h5 class="text-uppercase text-white fw-bold mb-1" style="letter-spacing: 2px;">Contexto Clínico Actualizado</h5>
-                    <p class="text-light fw-light mb-3">Redirigiendo controles y permisos al expediente de:</p>
-                    <h2 class="fw-bold" style="color: #66bb6a;" id="nombrePacienteOverlay"></h2>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-        }
-
-        // 2. Inyectar el nombre y mostrar
-        document.getElementById('nombrePacienteOverlay').textContent = nombrePaciente;
-        overlay.classList.add('activo');
-
-        // 3. Esperar 2.2 segundos para que el usuario lea, y luego ejecutar recarga
-        setTimeout(() => {
-            overlay.classList.remove('activo');
-            setTimeout(callback, 300); // Esperar a que termine la animación de opacidad
-        }, 2200);
-    }
-
     function seleccionarPaciente(pacienteId, nombre, rol, detalles = {}) {
         localStorage.setItem('selectedPatientId', pacienteId);
         localStorage.setItem('selectedPatientName', decodeURIComponent(nombre));
@@ -246,12 +254,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         localStorage.setItem('pacienteActivoSeroa', decodeURIComponent(nombre));
 
-        // En lugar de mostrar un Toast y quedarse en la página, bloqueamos y recargamos
-        dispararAlertaIntrusiva(decodeURIComponent(nombre), () => {
-            // La recarga automática fuerza a todas las validaciones de UI y Base de Datos a sincronizarse
-            window.location.reload();
-        });
+        // Dejar una bandera para que la página sepa que debe mostrar el aviso al despertar
+        localStorage.setItem('mostrarAvisoPostRecarga', 'true');
+
+        // Recargar inmediatamente
+        window.location.reload();
     }
+
     async function generarLinkInvitado(pacienteId, nombre) {
         if (!userId) return mostrarMensaje('No se encontró el ID de usuario. Vuelve a iniciar sesión.');
 
