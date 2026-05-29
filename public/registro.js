@@ -81,7 +81,6 @@ function renderNotas(notas) {
         return;
     }
 
-    // Adaptado para usar los nombres de columnas de MySQL (fecha_registro y cuerpo_nota)
     listaNotas.innerHTML = notas.map(nota => `
         <div class="card border-0 shadow-sm mb-3 border-start border-4 border-success">
             <div class="card-body">
@@ -95,8 +94,10 @@ function renderNotas(notas) {
         </div>
     `).join('');
 }
-// ==========================================
 
+// ===============================================
+// === LÓGICA DE RENDERS E HISTORIAL BIOMÉDRICO ===
+// ===============================================
 
 function renderRegistrosFirebase(registros) {
     const tablaRegistros = document.getElementById('tablaRegistros');
@@ -107,7 +108,6 @@ function renderRegistrosFirebase(registros) {
         return;
     }
 
-    // Apply current filters if present
     const filtered = applyCurrentFilters(regs);
     latestRegistrosFiltered = filtered;
 
@@ -115,10 +115,7 @@ function renderRegistrosFirebase(registros) {
         const nivel = registro.nivel_alerta || registro.nivel || (registro.es_critico === 2 ? 'Peligro' : (registro.es_critico === 1 ? 'Precaución' : 'Normal'));
         const clasificacion = nivel === 'Peligro' ? { color: 'danger', nivel } : nivel === 'Precaución' ? { color: 'warning', nivel } : { color: 'success', nivel };
         const accion = registro.accion_sistema || registro.accion || (nivel === 'Peligro' ? 'Válvula de emergencia activada' : 'Monitoreo continuo');
-
-        // Determine tipo: si el registro tiene campo "resumen_hora" o si su metadata indica que es agregado
         const tipo = registro.tipo_registro || (registro.resumen_hora ? 'Resumen por Hora' : (nivel === 'Normal' ? 'Resumen por Hora (Normal)' : 'Incidente Crítico'));
-
         const badgeClass = nivel === 'Peligro' ? 'badge bg-danger' : nivel === 'Precaución' ? 'badge bg-warning text-dark' : 'badge bg-success';
 
         return `
@@ -162,12 +159,8 @@ function applyCurrentFilters(regs) {
             const df = new Date(fin + 'T23:59:59');
             if (fecha > df) return false;
         }
-
         const nivel = (r.nivel_alerta || r.nivel || (r.es_critico === 2 ? 'Peligro' : (r.es_critico === 1 ? 'Precaución' : 'Normal')));
-        if (tipo && tipo !== 'todos') {
-            if (nivel !== tipo) return false;
-        }
-
+        if (tipo && tipo !== 'todos' && nivel !== tipo) return false;
         return true;
     });
 }
@@ -186,14 +179,12 @@ function initRegistroFilters() {
     });
 }
 
-// Guarda un registro estructurado en RTDB y lo envía al servidor backend
 async function guardarRegistroEstructurado(lectura) {
     const pacienteId = localStorage.getItem('selectedPatientId');
     if (!pacienteId) return console.warn('No hay paciente seleccionado. Registro no guardado.');
 
     const idRegistro = generarIdRegistro();
     const ref = database.ref(`registros_biomedicos/${pacienteId}/${idRegistro}`);
-
     const usuarioTurno = localStorage.getItem('nombrePaciente') || 'Usuario anónimo';
 
     const registro = {
@@ -208,36 +199,26 @@ async function guardarRegistroEstructurado(lectura) {
         usuario_turno: usuarioTurno
     };
 
-    try {
-        await ref.set(registro);
-    } catch (err) {
-        console.error('Error guardando en RTDB:', err);
-    }
+    try { await ref.set(registro); } catch (err) { console.error('Error guardando en RTDB:', err); }
 
-    // Enviar al backend también
     try {
         await fetch('/api/registros', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(registro)
         });
-    } catch (err) {
-        console.error('Error enviando registro al servidor:', err);
-    }
+    } catch (err) { console.error('Error enviando registro al servidor:', err); }
 }
 
-// Suscribir a lecturas en tiempo real (Seroa/Actual) y guardar cada entrada
 function suscribirLecturasRT(leerGuardar = true) {
     window.SeroaRealtime.subscribe((datos) => {
         if (!datos || datos.estado !== 'ACTIVO') return;
-
         const spo2 = Number(datos.spo2);
         const bpm = Number(datos.bpm);
         if (!Number.isFinite(spo2) || !Number.isFinite(bpm) || spo2 <= 0 || bpm <= 0) return;
 
         const clas = clasificarLectura(spo2, bpm);
         const lectura = { spo2, bpm, nivel: clas.nivel, accion: clas.accion };
-
         if (leerGuardar) guardarRegistroEstructurado(lectura);
     });
 }
@@ -270,12 +251,136 @@ function actualizarResumenDiario(registros) {
     if (cardValvula) cardValvula.textContent = `${activaciones} ${activaciones === 1 ? 'vez' : 'veces'}`;
 }
 
+// ==========================================
+// === CONTROLADOR DE HISTORIAL DE REPORTES ===
+// ==========================================
+
+async function cargarHistorialFechas(idPaciente) {
+    if (!idPaciente) return;
+    try {
+        const res = await fetch(`/api/historial-fechas?id_paciente=${idPaciente}`);
+        const fechas = await res.json();
+        const container = document.getElementById('listaHistorialReportes');
+        
+        if (!container) return;
+        if (fechas.length === 0) {
+            container.innerHTML = '<div class="col-12"><p class="text-muted text-center py-3">No hay reportes de días anteriores guardados en el último mes.</p></div>';
+            return;
+        }
+
+        container.innerHTML = fechas.map(f => {
+            const dateObj = new Date(f.fecha_guardada + 'T12:00:00'); 
+            const fechaTexto = dateObj.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            return `
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 h-100 border-start border-4 border-secondary">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 fw-bold text-secondary text-capitalize small">${fechaTexto}</h6>
+                            <small class="text-muted"><i class="bi bi-file-earmark-pdf me-1"></i>Reporte Diario</small>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm rounded-circle shadow-sm" onclick="descargarPDFHistorico('${f.fecha_guardada}', '${fechaTexto}')" title="Descargar PDF">
+                            <i class="bi bi-download"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        console.error("Error cargando historial de fechas:", e);
+    }
+}
+
+async function descargarPDFHistorico(fechaISO, fechaTexto) {
+    const idPaciente = localStorage.getItem('selectedPatientId');
+    const pacienteNombre = localStorage.getItem('selectedPatientName') || 'Paciente';
+    
+    try {
+        const res = await fetch(`/api/reporte-dia?id_paciente=${idPaciente}&fecha=${fechaISO}`);
+        const dataDia = await res.json();
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+
+        // Header
+        doc.setFontSize(18);
+        doc.text(`Reporte Médico Histórico — Seroa`, 40, 48);
+        doc.setFontSize(10);
+        doc.text(`Fecha del registro: ${fechaTexto}`, 40, 66);
+        doc.text(`Generado el: ${new Date().toLocaleString('es-MX')}`, 40, 80);
+
+        doc.setFontSize(12);
+        doc.text(`Paciente: ${pacienteNombre}`, 40, 110);
+
+        let currentY = 130;
+
+        // Tabla de Registros del día solicitado
+        doc.setFontSize(11);
+        doc.text('Lecturas Biométricas del Día:', 40, currentY);
+        
+        const rowsRegistros = dataDia.registros.map(r => [
+            (new Date(r.fecha_hora)).toLocaleTimeString('es-MX'), 
+            `${r.saturacion_oxigeno}%`, 
+            `${r.ritmo_cardiaco} bpm`, 
+            r.es_critico === 2 ? 'Peligro' : (r.es_critico === 1 ? 'Precaución' : 'Normal')
+        ]);
+
+        if (rowsRegistros.length > 0) {
+            doc.autoTable({
+                startY: currentY + 10,
+                head: [['Hora', 'SpO2', 'BPM', 'Estado']],
+                body: rowsRegistros,
+                styles: { fontSize: 9 }
+            });
+            currentY = doc.lastAutoTable.finalY + 25;
+        } else {
+            currentY += 20;
+            doc.setFontSize(9);
+            doc.text('No hubo lecturas biométricas este día.', 40, currentY);
+            currentY += 25;
+        }
+
+        // Tabla de Notas de ese día
+        doc.setFontSize(11);
+        doc.text('Notas del Cuidador:', 40, currentY);
+
+        if (dataDia.notas.length > 0) {
+            const rowsNotas = dataDia.notas.map(n => [
+                (new Date(n.fecha_registro)).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }), 
+                n.cuerpo_nota
+            ]);
+
+            doc.autoTable({
+                startY: currentY + 10,
+                head: [['Hora', 'Observación']],
+                body: rowsNotas,
+                styles: { fontSize: 9 },
+                columnStyles: { 0: { cellWidth: 50 } }
+            });
+        } else {
+            currentY += 20;
+            doc.setFontSize(9);
+            doc.text('No se escribieron notas clínicas este día.', 40, currentY);
+        }
+
+        doc.save(`Reporte_Seroa_${pacienteNombre.replace(/\s+/g,'_')}_${fechaISO}.pdf`);
+
+    } catch (e) {
+        console.error("Error al generar PDF histórico:", e);
+        alert("Hubo un error al intentar descargar el reporte histórico.");
+    }
+}
+
+// ==========================================
+// === INICIALIZADOR DE LA PÁGINA RESTRY ====
+// ==========================================
+
 async function iniciarRegistroDiario() {
     const userId = localStorage.getItem('userId');
     const pacienteId = localStorage.getItem('selectedPatientId');
     const pacienteNombre = localStorage.getItem('selectedPatientName') || 'Sin selección';
     
-    // Inyectar el ID del paciente en el input oculto del formulario
     const inputOculto = document.getElementById('inputIdPaciente');
     if(inputOculto) inputOculto.value = pacienteId;
 
@@ -295,7 +400,6 @@ async function iniciarRegistroDiario() {
         btnDescargar.addEventListener('click', generarPDF);
     }
 
-    // Configuración del botón para guardar notas en la base de datos MySQL
     if (formNotas) {
         formNotas.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -306,32 +410,27 @@ async function iniciarRegistroDiario() {
 
             if (!textoInput || !idActual) return;
 
-            // Concatenamos la hora al texto para no perder ese dato que el médico ingresó
             const notaFinal = `[Hora indicada: ${horaInput}] ${textoInput}`;
-
-            // Efecto visual de carga
             const btnSubmit = formNotas.querySelector('button[type="submit"]');
             btnSubmit.disabled = true;
             btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
             try {
-                // Guardamos en MySQL
                 await guardarNotaBackend(idActual, notaFinal);
                 formNotas.reset();
-                // Recargamos la lista actualizada desde MySQL
                 await cargarNotasBackend(idActual);
             } catch (error) {
                 alert("Hubo un error al guardar la nota. Revisa tu conexión.");
             } finally {
-                // Restaurar botón
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = '<i class="bi bi-send"></i> Guardar';
             }
         });
     }
 
-    // Cargar notas desde MySQL al abrir la pantalla
+    // Inicializaciones de Carga desde DB
     cargarNotasBackend(pacienteId);
+    cargarHistorialFechas(pacienteId); // <- ¡Carga automática del historial de 30 días!
 
     suscribirRegistrosRTDB(pacienteId);
     suscribirLecturasRT(true);
@@ -346,18 +445,7 @@ async function iniciarRegistroDiario() {
     } catch (e) { console.warn('No se pudo inyectar estilos de resaltado:', e); }
 }
 
-// ---------- Generar PDF de reporte médico ----------
-async function obtenerImagenBase64(url) {
-    const resp = await fetch(url);
-    const blob = await resp.blob();
-    return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
-
+// ---------- Generar PDF de reporte médico (Hoy) ----------
 async function generarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -388,7 +476,6 @@ async function generarPDF() {
     const pacienteSpo2Min = Number(localStorage.getItem('selectedPatientSpo2Min'));
     const pacienteSpo2Max = Number(localStorage.getItem('selectedPatientSpo2Max'));
 
-    // Calculadora dinámica de posición Y para evitar solapamientos
     let infoY = 150; 
     doc.setFontSize(11);
     
@@ -407,7 +494,6 @@ async function generarPDF() {
         }
     }
 
-    // --- 1. TABLA DE REGISTROS BIOMÉTRICOS ---
     const source = (latestRegistrosFiltered && latestRegistrosFiltered.length) ? latestRegistrosFiltered : latestRegistros;
     const rows = (source || []).slice(0, 500).map(r => [
         r.id_registro || '-', 
@@ -420,29 +506,22 @@ async function generarPDF() {
     ]);
     
     doc.autoTable({
-        startY: infoY + 10, // <- ¡Aquí está la magia! Ahora la tabla inicia dinámicamente debajo del texto
+        startY: infoY + 10,
         head: [['ID', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
         body: rows,
         styles: { fontSize: 9 }
     });
 
-    // Guardamos dónde terminó la primera tabla para poner lo siguiente
     let currentY = doc.lastAutoTable.finalY + 25;
 
-    // --- 2. NOTAS CLÍNICAS DEL DÍA DE HOY ---
     let notasHoy = [];
     if (pacienteId) {
         try {
-            // Hacemos una llamada a MySQL para traer las notas justas antes de armar el PDF
             const resp = await fetch(`/api/notas?id_paciente=${pacienteId}`);
             const todasLasNotas = await resp.json();
-            
             const hoyStr = new Date().toLocaleDateString('es-MX');
-            // Filtramos únicamente las notas de hoy
             notasHoy = todasLasNotas.filter(n => new Date(n.fecha_registro).toLocaleDateString('es-MX') === hoyStr);
-        } catch (e) {
-            console.warn('Error al obtener notas para el PDF:', e);
-        }
+        } catch (e) { console.warn('Error al obtener notas para el PDF:', e); }
     }
 
     doc.setFontSize(11);
@@ -460,7 +539,7 @@ async function generarPDF() {
             head: [['Hora', 'Observación']],
             body: rowsNotas,
             styles: { fontSize: 9 },
-            columnStyles: { 0: { cellWidth: 50 } } // Hace la columna de hora más pequeña para darle espacio al texto
+            columnStyles: { 0: { cellWidth: 50 } }
         });
         currentY = doc.lastAutoTable.finalY + 25;
     } else {
@@ -470,7 +549,6 @@ async function generarPDF() {
         currentY += 25;
     }
 
-    // --- 3. GRÁFICAS (Opcional, si existen en la vista) ---
     try {
         const spo2Chart = window.spo2Chart || window.chartSpo2 || window.chartSPO2;
         const bpmChart = window.chartBpm || window.bpmChart || window.chartBPM;
@@ -478,7 +556,6 @@ async function generarPDF() {
         if (spo2Chart && typeof spo2Chart.dataURI === 'function') {
             const data = await spo2Chart.dataURI();
             if (data && data.imgURI) {
-                // Las gráficas siempre es mejor mandarlas a una página nueva por espacio
                 doc.addPage();
                 doc.addImage(data.imgURI, 'PNG', 40, 40, doc.internal.pageSize.width - 80, 180);
                 currentY = 240;
@@ -492,12 +569,8 @@ async function generarPDF() {
                 currentY += 200;
             }
         }
-    } catch (e) {
-        console.warn('No fue posible incrustar las gráficas en el PDF:', e);
-    }
+    } catch (e) { console.warn('No fue posible incrustar las gráficas en el PDF:', e); }
 
-    // --- 4. TABLA DE UMBRALES CRÍTICOS ---
-    // Verificamos si hay espacio en la hoja actual, si no, brincamos de página
     if (currentY > doc.internal.pageSize.height - 150) {
         doc.addPage();
         currentY = 40;

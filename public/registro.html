@@ -69,7 +69,7 @@
       </div>
       <div class="d-flex align-items-center gap-2">
         <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
-          <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte
+          <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte Hoy
         </button>
         <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
           <i class="bi bi-person-fill text-teal me-1"></i> Paciente: <strong>Sin selección</strong>
@@ -179,7 +179,16 @@
     </div>
 
     <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-journal-text me-2"></i>Notas del Cuidador</h6>
-    <div id="listaNotasDiarias"></div>
+    <div id="listaNotasDiarias" class="mb-5"></div>
+
+    <hr class="my-5 border-light">
+    <div class="mb-3">
+      <h5 class="fw-semibold text-secondary mb-0"><i class="bi bi-archive me-2"></i>Historial de Reportes (Último mes)</h5>
+      <p class="text-muted small mb-0">Descarga los reportes diarios en PDF de los días en que hubo lecturas.</p>
+    </div>
+    <div id="listaHistorialReportes" class="row g-3 mb-5">
+      <div class="col-12"><p class="text-muted text-center py-3">Buscando reportes anteriores...</p></div>
+    </div>
 
   </div>
 
