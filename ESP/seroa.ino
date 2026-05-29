@@ -36,6 +36,7 @@ String wifi_ssid = "";
 String wifi_pass = "";
 String id_paciente = "";
 bool bleConectado = false;
+bool sensorConectado = false; // NUEVA VARIABLE PARA CONTROLAR EL HARDWARE
 
 // UUIDs del Bluetooth
 #define SERVICE_UUID           "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -78,10 +79,9 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
-      std::string rxValue = pCharacteristic->getValue();
+      String payload = pCharacteristic->getValue();
 
-      if (rxValue.length() > 0) {
-        String payload = String(rxValue.c_str());
+      if (payload.length() > 0) {
         Serial.println("Payload recibido: " + payload);
 
         int primerPipe = payload.indexOf('|');
@@ -134,7 +134,6 @@ float leerPresionBar() {
 }
 
 void enviarFirebase(int spo2Final, int bpmFinal, String estado, float presionBar) {
-  // Enviar a la ruta del paciente específico sincronizado
   String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
 
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/spo2", spo2Final);
@@ -187,10 +186,9 @@ void setup() {
 
   if (wifi_ssid == "") {
     setupBluetooth();
-    // Atrapar en loop infinito hasta que se configure el WiFi
     while (true) { delay(100); }
   } else {
-    BLEDevice::deinit(true); // Apagar BLE para liberar memoria RAM
+    BLEDevice::deinit(true); 
     Serial.println("Conectando al WiFi guardado...");
     WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
 
@@ -213,15 +211,20 @@ void setup() {
       Firebase.reconnectWiFi(true);
 
       Wire.begin(21, 22);
-      if (!particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
-        Serial.println("ERROR: MAX30102 no detectado.");
-        while (1);
-      }
-      particleSensor.setup(50, 4, 2, 100, 411, 4096);
       
-      // Estado de inicio
-      Firebase.RTDB.setString(&fbdo, "Seroa/Pacientes/" + id_paciente + "/Actual/estado", "SIN_DEDO");
-      Serial.println("Sistema en línea. Coloca tu dedo.");
+      // AQUÍ ESTÁ EL CAMBIO: Ya no se congela si falta el sensor
+      if (!particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
+        Serial.println("ADVERTENCIA: MAX30102 no detectado. El equipo trabajará sin sensor.");
+        sensorConectado = false;
+        Firebase.RTDB.setString(&fbdo, "Seroa/Pacientes/" + id_paciente + "/Actual/estado", "SIN_SENSOR");
+      } else {
+        Serial.println("Sensor detectado correctamente.");
+        sensorConectado = true;
+        particleSensor.setup(50, 4, 2, 100, 411, 4096);
+        Firebase.RTDB.setString(&fbdo, "Seroa/Pacientes/" + id_paciente + "/Actual/estado", "SIN_DEDO");
+      }
+      
+      Serial.println("Sistema en línea.");
     } else {
       Serial.println("\nFallo en el WiFi. Reseteando configuración...");
       preferencias.begin("seroa-cred", false);
@@ -236,6 +239,18 @@ void loop() {
   if (wifi_ssid == "") return; 
 
   float presionBar = leerPresionBar();
+
+  // Si no hay sensor conectado, solo avisamos a Firebase periódicamente y evitamos leerlo
+  if (!sensorConectado) {
+    if (millis() - tiempoFirebase > intervaloFirebase) {
+      tiempoFirebase = millis();
+      enviarFirebase(0, 0, "SIN_SENSOR", presionBar);
+      Serial.println("Ping: Sigo vivo, pero sin sensor.");
+    }
+    return; // Evita que se ejecute el resto del código del MAX30102
+  }
+
+  // --- Lógica normal si el sensor sí está conectado ---
   long irValue = particleSensor.getIR();
 
   if (irValue < 20000) {
@@ -244,13 +259,11 @@ void loop() {
       tiempoFirebase = millis();
       enviarFirebase(0, 0, "SIN_DEDO", presionBar);
     }
-    Serial.println("Sin dedo detectado.");
     delay(500);
     return;
   }
 
   if (!bufferLleno) {
-    Serial.print("Calibrando");
     for (byte i = 0; i < bufferLength; i++) {
       while (particleSensor.available() == false) {
         particleSensor.check();
@@ -259,9 +272,7 @@ void loop() {
       redBuffer[i] = particleSensor.getRed();
       irBuffer[i] = particleSensor.getIR();
       particleSensor.nextSample();
-      if (i % 10 == 0) Serial.print(".");
     }
-    Serial.println(" listo.");
     bufferLleno = true;
   } else {
     for (byte i = 25; i < 100; i++) {
@@ -332,12 +343,10 @@ void loop() {
         Serial.println("===================================");
       } else {
         enviarFirebase(0, 0, "CALIBRANDO", presionBar);
-        Serial.println("Llenando filtro...");
       }
     } else {
       desactivarValvula();
       enviarFirebase(0, 0, "CALIBRANDO", presionBar);
-      Serial.println("Lectura inestable, calibrando...");
     }
   }
 }
