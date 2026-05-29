@@ -82,8 +82,10 @@ function suscribirEstadoNube() {
 
     database.ref(`Seroa/Pacientes/${pacienteId}/Actual`).on('value', (snapshot) => {
         const datos = snapshot.val();
-        if (datos && datos.estado === 'ACTIVO') {
-            statusBox.innerHTML = '<span class="badge bg-success px-3 py-2"><i class="bi bi-cloud-check me-2"></i>Recibiendo datos del ESP32</span>';
+        
+        // CORRECCIÓN: Si Firebase recibe datos y el estado es ACTIVO, SIN_DEDO o CALIBRANDO, el equipo está vivo.
+        if (datos && (datos.estado === 'ACTIVO' || datos.estado === 'SIN_DEDO' || datos.estado === 'CALIBRANDO')) {
+            statusBox.innerHTML = '<span class="badge bg-success px-3 py-2"><i class="bi bi-cloud-check me-2"></i>En Línea (Conectado)</span>';
         } else {
             statusBox.innerHTML = '<span class="badge bg-secondary px-3 py-2"><i class="bi bi-cloud-slash me-2"></i>Sin conexión activa</span>';
         }
@@ -98,7 +100,7 @@ async function cargarDispositivos() {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
     const lista = document.getElementById('listaDispositivos');
-    if (!lista) return; // Si quitaste la lista de HTML, esto no choca
+    if (!lista) return; 
     try {
         const response = await fetch(`/api/dispositivos?id_usuario=${userId}`);
         const dispositivos = await response.json();
