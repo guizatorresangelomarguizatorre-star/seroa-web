@@ -46,6 +46,7 @@ db.getConnection((err, connection) => {
 // === RUTAS DEL SISTEMA ===
 const rutasBiometricos = require('./api_biometricos')(db);
 app.use('/api', rutasBiometricos);
+
 app.post('/api/registro', async (req, res) => {
     const { nombre, email, password, id_acceso } = req.body;
 
@@ -863,6 +864,53 @@ app.get('/api/registros', (req, res) => {
         res.json(results);
     });
 });
+
+// ==========================================
+// === RUTAS PARA NOTAS CLÍNICAS (NUEVO) ====
+// ==========================================
+
+// Guardar una nueva nota
+app.post('/api/notas', (req, res) => {
+    const { id_paciente, cuerpo_nota } = req.body;
+
+    if (!id_paciente || !cuerpo_nota) {
+        return res.status(400).json({ error: 'ID del paciente y cuerpo de la nota son requeridos.' });
+    }
+
+    const sql = 'INSERT INTO notas_clinicas (id_paciente, cuerpo_nota) VALUES (?, ?)';
+    db.query(sql, [id_paciente, cuerpo_nota], (err, result) => {
+        if (err) {
+            console.error('Error MySQL al guardar nota:', err);
+            return res.status(500).json({ error: 'Error interno al guardar la nota.' });
+        }
+        
+        res.status(200).json({ 
+            mensaje: 'Nota clínica registrada correctamente.', 
+            id_nota: result.insertId 
+        });
+    });
+});
+
+// Leer las notas de un paciente en específico
+app.get('/api/notas', (req, res) => {
+    const { id_paciente } = req.query;
+
+    if (!id_paciente) {
+        return res.status(400).json({ error: 'ID de paciente requerido.' });
+    }
+
+    // Traemos las notas ordenadas desde la más reciente a la más vieja
+    const sql = 'SELECT * FROM notas_clinicas WHERE id_paciente = ? ORDER BY fecha_registro DESC';
+    db.query(sql, [id_paciente], (err, results) => {
+        if (err) {
+            console.error('Error MySQL al cargar notas:', err);
+            return res.status(500).json({ error: 'Error interno al leer notas clínicas.' });
+        }
+        
+        res.json(results);
+    });
+});
+// ==========================================
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

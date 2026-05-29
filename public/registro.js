@@ -37,17 +37,39 @@ function generarIdRegistro() {
     return `R-${tiempo}-${aleatorio}`;
 }
 
-function obtenerNotasGuardadas(idPaciente) {
-    if (!idPaciente) return [];
-    const notas = localStorage.getItem(`seroaNotasPaciente_${idPaciente}`);
-    return notas ? JSON.parse(notas) : [];
+// ==========================================
+// === CONEXIÓN A MYSQL PARA NOTAS CLÍNICAS ===
+// ==========================================
+
+async function cargarNotasBackend(idPaciente) {
+    if (!idPaciente) return;
+    try {
+        const respuesta = await fetch(`/api/notas?id_paciente=${idPaciente}`);
+        const notas = await respuesta.json();
+        renderNotas(notas);
+    } catch (error) {
+        console.error("Error al cargar notas desde MySQL:", error);
+        document.getElementById('listaNotasDiarias').innerHTML = `<div class="text-danger text-center py-3">Error al conectar con la base de datos.</div>`;
+    }
 }
 
-function guardarNotaLocal(idPaciente, nota) {
-    if (!idPaciente) return;
-    const notasPrevias = obtenerNotasGuardadas(idPaciente);
-    notasPrevias.unshift(nota);
-    localStorage.setItem(`seroaNotasPaciente_${idPaciente}`, JSON.stringify(notasPrevias.slice(0, 20)));
+async function guardarNotaBackend(idPaciente, textoNota) {
+    try {
+        const respuesta = await fetch('/api/notas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                id_paciente: Number(idPaciente), 
+                cuerpo_nota: textoNota 
+            })
+        });
+        
+        if (!respuesta.ok) throw new Error("Error en el servidor");
+        return await respuesta.json();
+    } catch (error) {
+        console.error("Error guardando nota:", error);
+        throw error;
+    }
 }
 
 function renderNotas(notas) {
@@ -59,20 +81,22 @@ function renderNotas(notas) {
         return;
     }
 
+    // Adaptado para usar los nombres de columnas de MySQL (fecha_registro y cuerpo_nota)
     listaNotas.innerHTML = notas.map(nota => `
-        <div class="card border-0 shadow-sm mb-3">
+        <div class="card border-0 shadow-sm mb-3 border-start border-4 border-success">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
-                        <strong>${nota.hora}</strong>
-                        <p class="mb-0 text-muted small">${nota.fecha}</p>
+                        <small class="text-muted fw-bold"><i class="bi bi-clock-history me-1"></i>${formatoFecha(nota.fecha_registro)}</small>
                     </div>
                 </div>
-                <p class="mb-0">${nota.texto}</p>
+                <p class="mb-0 text-dark">${nota.cuerpo_nota}</p>
             </div>
         </div>
     `).join('');
 }
+// ==========================================
+
 
 function renderRegistrosFirebase(registros) {
     const tablaRegistros = document.getElementById('tablaRegistros');
@@ -250,17 +274,20 @@ async function iniciarRegistroDiario() {
     const userId = localStorage.getItem('userId');
     const pacienteId = localStorage.getItem('selectedPatientId');
     const pacienteNombre = localStorage.getItem('selectedPatientName') || 'Sin selección';
-    // Buscamos el badge de paciente tanto por id como por data attribute global
+    
+    // Inyectar el ID del paciente en el input oculto del formulario
+    const inputOculto = document.getElementById('inputIdPaciente');
+    if(inputOculto) inputOculto.value = pacienteId;
+
     const pacienteBadge = document.getElementById('pacienteActualLabel') || document.querySelector('[data-paciente-actual]');
     const titulo = document.getElementById('registroPacienteNombre');
     const btnDescargar = document.getElementById('btnDescargarPDF');
     const formNotas = document.getElementById('formNotas');
 
     if (pacienteBadge) {
-        // si contiene un <strong>, actualizar su texto; si no, escribir el HTML completo
         const strong = pacienteBadge.querySelector ? pacienteBadge.querySelector('strong') : null;
         if (strong) strong.textContent = pacienteNombre;
-        else pacienteBadge.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>${pacienteNombre}</strong>`;
+        else pacienteBadge.innerHTML = `<i class="bi bi-person-fill text-teal me-1"></i> Paciente: <strong>${pacienteNombre}</strong>`;
     }
     if (titulo) titulo.textContent = pacienteNombre;
 
@@ -268,31 +295,48 @@ async function iniciarRegistroDiario() {
         btnDescargar.addEventListener('click', generarPDF);
     }
 
+    // Configuración del botón para guardar notas en la base de datos MySQL
     if (formNotas) {
-        formNotas.addEventListener('submit', (event) => {
+        formNotas.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const hora = document.getElementById('notaHora').value;
-            const texto = document.getElementById('notaTexto').value.trim();
-            if (!texto || !hora) return;
-            const nota = {
-                fecha: new Date().toLocaleDateString('es-MX'),
-                hora,
-                texto
-            };
-            guardarNotaLocal(pacienteId, nota);
-            renderNotas(obtenerNotasGuardadas(pacienteId));
-            formNotas.reset();
+            
+            const textoInput = document.getElementById('notaTexto').value.trim();
+            const horaInput = document.getElementById('notaHora').value;
+            const idActual = document.getElementById('inputIdPaciente').value;
+
+            if (!textoInput || !idActual) return;
+
+            // Concatenamos la hora al texto para no perder ese dato que el médico ingresó
+            const notaFinal = `[Hora indicada: ${horaInput}] ${textoInput}`;
+
+            // Efecto visual de carga
+            const btnSubmit = formNotas.querySelector('button[type="submit"]');
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+
+            try {
+                // Guardamos en MySQL
+                await guardarNotaBackend(idActual, notaFinal);
+                formNotas.reset();
+                // Recargamos la lista actualizada desde MySQL
+                await cargarNotasBackend(idActual);
+            } catch (error) {
+                alert("Hubo un error al guardar la nota. Revisa tu conexión.");
+            } finally {
+                // Restaurar botón
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="bi bi-send"></i> Guardar';
+            }
         });
     }
 
-    renderNotas(obtenerNotasGuardadas(pacienteId));
+    // Cargar notas desde MySQL al abrir la pantalla
+    cargarNotasBackend(pacienteId);
+
     suscribirRegistrosRTDB(pacienteId);
-    // Suscribimos además al flujo principal de lecturas para guardar eventos en RTDB
     suscribirLecturasRT(true);
-    // Inicializar filtros de la UI
     initRegistroFilters();
 
-    // Resaltar títulos en la pestaña Registro Diario (color Verde Seroa)
     try {
         const style = document.createElement('style');
         style.innerHTML = `
@@ -335,7 +379,6 @@ async function generarPDF() {
     doc.text(`Paciente: ${paciente}`, 40, 110);
     doc.text(`Usuario en turno: ${usuario}`, 40, 130);
 
-    // Información adicional del paciente (si está disponible)
     const pacienteEdad = localStorage.getItem('selectedPatientEdad');
     const pacientePeso = localStorage.getItem('selectedPatientPeso');
     const pacienteSexo = localStorage.getItem('selectedPatientSexo');
@@ -360,7 +403,6 @@ async function generarPDF() {
         }
     }
 
-    // Tabla de registros recientes (usar los filtrados si el usuario aplicó filtros)
     const source = (latestRegistrosFiltered && latestRegistrosFiltered.length) ? latestRegistrosFiltered : latestRegistros;
     const rows = (source || []).slice(0, 500).map(r => [r.id_registro || '-', (new Date(r.fecha_hora)).toLocaleString('es-MX'), `${r.saturacion_oxigeno}%`, `${r.ritmo_cardiaco} bpm`, r.nivel_alerta || r.nivel || '-', r.accion_sistema || r.accion || '-', r.usuario_turno || '-']);
     doc.autoTable({
@@ -370,7 +412,6 @@ async function generarPDF() {
         styles: { fontSize: 9 }
     });
 
-    // Insertar gráficas si existen instancias de ApexCharts en la página (intento seguro)
     try {
         const spo2Chart = window.spo2Chart || window.chartSpo2 || window.chartSPO2;
         const bpmChart = window.chartBpm || window.bpmChart || window.chartBPM;
@@ -392,7 +433,6 @@ async function generarPDF() {
         console.warn('No fue posible incrustar las gráficas en el PDF:', e);
     }
 
-    // Tabla de umbrales críticos (adaptada al paciente si aplica)
     const afterTableY = doc.previousAutoTable ? doc.previousAutoTable.finalY + 20 : (doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 :  doc.internal.pageSize.height - 200);
     doc.setFontSize(11);
     doc.text('Tabla de Umbrales Críticos', 40, afterTableY);
