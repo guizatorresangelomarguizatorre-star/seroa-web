@@ -373,8 +373,10 @@ async function generarPDF() {
     doc.setFontSize(10);
     doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, 120, 66);
 
+    const pacienteId = localStorage.getItem('selectedPatientId');
     const paciente = localStorage.getItem('selectedPatientName') || 'Sin selección';
     const usuario = localStorage.getItem('nombrePaciente') || 'Usuario anónimo';
+    
     doc.setFontSize(12);
     doc.text(`Paciente: ${paciente}`, 40, 110);
     doc.text(`Usuario en turno: ${usuario}`, 40, 130);
@@ -386,8 +388,10 @@ async function generarPDF() {
     const pacienteSpo2Min = Number(localStorage.getItem('selectedPatientSpo2Min'));
     const pacienteSpo2Max = Number(localStorage.getItem('selectedPatientSpo2Max'));
 
-    let infoY = 150;
+    // Calculadora dinámica de posición Y para evitar solapamientos
+    let infoY = 150; 
     doc.setFontSize(11);
+    
     if (pacienteEdad || pacientePeso || pacienteSexo || pacientePadecimiento) {
         doc.text('Datos del Paciente:', 40, infoY);
         infoY += 14;
@@ -399,43 +403,108 @@ async function generarPDF() {
         infoY += 18;
         if (Number.isFinite(pacienteSpo2Min) && Number.isFinite(pacienteSpo2Max)) {
             doc.text(`Rango SpO2 configurado: ${pacienteSpo2Min}% - ${pacienteSpo2Max}%`, 50, infoY);
-            infoY += 18;
+            infoY += 18; 
         }
     }
 
+    // --- 1. TABLA DE REGISTROS BIOMÉTRICOS ---
     const source = (latestRegistrosFiltered && latestRegistrosFiltered.length) ? latestRegistrosFiltered : latestRegistros;
-    const rows = (source || []).slice(0, 500).map(r => [r.id_registro || '-', (new Date(r.fecha_hora)).toLocaleString('es-MX'), `${r.saturacion_oxigeno}%`, `${r.ritmo_cardiaco} bpm`, r.nivel_alerta || r.nivel || '-', r.accion_sistema || r.accion || '-', r.usuario_turno || '-']);
+    const rows = (source || []).slice(0, 500).map(r => [
+        r.id_registro || '-', 
+        (new Date(r.fecha_hora)).toLocaleString('es-MX'), 
+        `${r.saturacion_oxigeno}%`, 
+        `${r.ritmo_cardiaco} bpm`, 
+        r.nivel_alerta || r.nivel || '-', 
+        r.accion_sistema || r.accion || '-', 
+        r.usuario_turno || '-'
+    ]);
+    
     doc.autoTable({
-        startY: 160,
+        startY: infoY + 10, // <- ¡Aquí está la magia! Ahora la tabla inicia dinámicamente debajo del texto
         head: [['ID', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
         body: rows,
         styles: { fontSize: 9 }
     });
 
+    // Guardamos dónde terminó la primera tabla para poner lo siguiente
+    let currentY = doc.lastAutoTable.finalY + 25;
+
+    // --- 2. NOTAS CLÍNICAS DEL DÍA DE HOY ---
+    let notasHoy = [];
+    if (pacienteId) {
+        try {
+            // Hacemos una llamada a MySQL para traer las notas justas antes de armar el PDF
+            const resp = await fetch(`/api/notas?id_paciente=${pacienteId}`);
+            const todasLasNotas = await resp.json();
+            
+            const hoyStr = new Date().toLocaleDateString('es-MX');
+            // Filtramos únicamente las notas de hoy
+            notasHoy = todasLasNotas.filter(n => new Date(n.fecha_registro).toLocaleDateString('es-MX') === hoyStr);
+        } catch (e) {
+            console.warn('Error al obtener notas para el PDF:', e);
+        }
+    }
+
+    doc.setFontSize(11);
+    doc.text('Notas del Cuidador (Día de hoy):', 40, currentY);
+
+    if (notasHoy.length > 0) {
+        const rowsNotas = notasHoy.map(n => {
+            const fechaDate = new Date(n.fecha_registro);
+            const horaStr = fechaDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+            return [horaStr, n.cuerpo_nota];
+        });
+
+        doc.autoTable({
+            startY: currentY + 10,
+            head: [['Hora', 'Observación']],
+            body: rowsNotas,
+            styles: { fontSize: 9 },
+            columnStyles: { 0: { cellWidth: 50 } } // Hace la columna de hora más pequeña para darle espacio al texto
+        });
+        currentY = doc.lastAutoTable.finalY + 25;
+    } else {
+        currentY += 15;
+        doc.setFontSize(9);
+        doc.text('No se registraron notas clínicas en el sistema el día de hoy.', 40, currentY);
+        currentY += 25;
+    }
+
+    // --- 3. GRÁFICAS (Opcional, si existen en la vista) ---
     try {
         const spo2Chart = window.spo2Chart || window.chartSpo2 || window.chartSPO2;
         const bpmChart = window.chartBpm || window.bpmChart || window.chartBPM;
-        let yOffset = 160;
+        
         if (spo2Chart && typeof spo2Chart.dataURI === 'function') {
             const data = await spo2Chart.dataURI();
             if (data && data.imgURI) {
+                // Las gráficas siempre es mejor mandarlas a una página nueva por espacio
                 doc.addPage();
                 doc.addImage(data.imgURI, 'PNG', 40, 40, doc.internal.pageSize.width - 80, 180);
+                currentY = 240;
             }
         }
         if (bpmChart && typeof bpmChart.dataURI === 'function') {
             const data2 = await bpmChart.dataURI();
             if (data2 && data2.imgURI) {
-                doc.addImage(data2.imgURI, 'PNG', 40, 240, doc.internal.pageSize.width - 80, 180);
+                if (currentY > doc.internal.pageSize.height - 200) { doc.addPage(); currentY = 40; }
+                doc.addImage(data2.imgURI, 'PNG', 40, currentY, doc.internal.pageSize.width - 80, 180);
+                currentY += 200;
             }
         }
     } catch (e) {
         console.warn('No fue posible incrustar las gráficas en el PDF:', e);
     }
 
-    const afterTableY = doc.previousAutoTable ? doc.previousAutoTable.finalY + 20 : (doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 :  doc.internal.pageSize.height - 200);
+    // --- 4. TABLA DE UMBRALES CRÍTICOS ---
+    // Verificamos si hay espacio en la hoja actual, si no, brincamos de página
+    if (currentY > doc.internal.pageSize.height - 150) {
+        doc.addPage();
+        currentY = 40;
+    }
+
     doc.setFontSize(11);
-    doc.text('Tabla de Umbrales Críticos', 40, afterTableY);
+    doc.text('Tabla de Umbrales Críticos', 40, currentY);
 
     const pacienteMin = Number.isFinite(pacienteSpo2Min) && pacienteSpo2Min > 0 ? pacienteSpo2Min : 90;
     const peligroUmbral = Math.max(0, Math.round(pacienteMin - 5));
@@ -444,7 +513,7 @@ async function generarPDF() {
     const peligroTexto = `< ${peligroUmbral}%`;
 
     doc.autoTable({
-        startY: afterTableY + 8,
+        startY: currentY + 10,
         head: [['Estado', 'SpO2', 'BPM', 'Significado']],
         body: [
             ['Normal', normalTexto, '60 a 100', 'Valores estables. Monitoreo silencioso.'],
