@@ -52,7 +52,15 @@ window.SeroaRealtime = {
 // Attach a dynamic listener per-patient based on localStorage.selectedPatientId
 window.SeroaRealtime.attachListener = function() {
     try {
-        const path = `Seroa/Pacientes/{id_paciente}/Actual`;
+        const pacienteId = localStorage.getItem('selectedPatientId');
+
+        if (!pacienteId) {
+            console.warn('No hay paciente seleccionado.');
+            this.notify(null);
+            return;
+        }
+
+        const path = `Seroa/Pacientes/${pacienteId}/Actual`;
 
         if (this.currentPath === path) return;
 
@@ -65,14 +73,11 @@ window.SeroaRealtime.attachListener = function() {
         this.currentRef = window.database.ref(path);
 
         this.currentRef.on('value', snapshot => {
-            try {
-                const datos = snapshot.val() || null;
-                this.notify(datos);
-            } catch (e) {
-                console.error('Error procesando snapshot Realtime:', e);
-                this.notify(null);
-            }
+            const datos = snapshot.val() || null;
+            console.log("Datos recibidos de Firebase:", datos);
+            this.notify(datos);
         });
+
     } catch (err) {
         console.error('Error SeroaRealtime.attachListener:', err);
         this.notify(null);
