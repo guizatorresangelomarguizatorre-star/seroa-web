@@ -4,7 +4,7 @@
 
 // --- FIREBASE Y GESTOR GLOBAL DE LECTURAS ---
 const firebaseConfig = {
-    apiKey: "AIzaSyD8GcNrjousLrlNSKXcNrjl0gjAYuXvTMQ",
+    apiKey: "AIzaSyD8GcNRjouSlrlNSKXcNrjl0gjAYuXvTMQ",
     authDomain: "seroa-e8606.firebaseapp.com",
     databaseURL: "https://seroa-e8606-default-rtdb.firebaseio.com",
     projectId: "seroa-e8606",
