@@ -468,5 +468,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     try { window.SeroaRealtime.attachListener(); } catch (e) { console.error('Error iniciando listener Realtime:', e); }
 
     // 4. Disparar Pruebas
-    iniciarModoPrueba();
+    
 });
