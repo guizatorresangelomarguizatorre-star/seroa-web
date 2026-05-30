@@ -7,7 +7,7 @@ var historialSpo2 = [];
 var historialBpm = [];
 var LIMITE_PUNTOS = 15;
 
-var temporizadorDesconexion;
+var temporizadorDesconexionIndex;
 var chartSpo2, chartBpm;
 
 function clasificarLectura(spo2, bpm) {
@@ -171,7 +171,7 @@ if (window.SeroaRealtime) {
         var valorPresion = document.getElementById('presionValor');
         var valorValvula = document.getElementById('valvulaValor');
 
-        clearTimeout(temporizadorDesconexion);
+        clearTimeout(temporizadorDesconexionIndex);
 
         if (!datos) {
             aplicarEstadoDesconectado();
@@ -217,7 +217,7 @@ if (window.SeroaRealtime) {
             mostrarDatosValidos(actualSpo2, actualBpm, presionBar, valvulaActiva, datos);
         }
 
-        temporizadorDesconexion = setTimeout(aplicarEstadoDesconectado, 15000);
+        temporizadorDesconexionIndex = setTimeout(aplicarEstadoDesconectado, 15000);
     });
 } else {
     console.error("El motor SeroaRealtime no cargó correctamente.");
