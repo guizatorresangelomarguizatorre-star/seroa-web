@@ -52,7 +52,7 @@ window.SeroaRealtime = {
 // Attach a dynamic listener per-patient based on localStorage.selectedPatientId
 window.SeroaRealtime.attachListener = function() {
     try {
-        const path = `Seroa/Actual`;
+        const path = `Seroa/Pacientes/{id_paciente}/Actual`;
 
         if (this.currentPath === path) return;
 
