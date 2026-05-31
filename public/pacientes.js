@@ -164,7 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function mostrarPacientes(pacientes = []) {
         if (!pacientesCardsContainer) return;
 
+        // 1. Buscamos la alerta en el HTML
+        const alertaFaltaPaciente = document.getElementById('alertaFaltaPaciente');
+
         if (pacientes.length === 0) {
+            // SI NO HAY PACIENTES: Mostramos la alerta quitando el d-none
+            if (alertaFaltaPaciente) alertaFaltaPaciente.classList.remove('d-none');
+
             pacientesCardsContainer.innerHTML = `
                 <div class="col-12">
                     <div class="card shadow-sm border-0 py-5">
@@ -181,6 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             return;
         }
+
+        // SI SÍ HAY PACIENTES: Ocultamos la alerta agregando el d-none
+        if (alertaFaltaPaciente) alertaFaltaPaciente.classList.add('d-none');
 
         pacientesCardsContainer.innerHTML = pacientes.map(crearCardPaciente).join('');
     }
