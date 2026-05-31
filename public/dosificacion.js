@@ -32,7 +32,14 @@ async function cargarConfigDosificacion() {
         if (rangoMinInput) rangoMinInput.value = paciente.rango_spo2_min;
         if (rangoMaxInput) rangoMaxInput.value = paciente.rango_spo2_max;
 
-        document.getElementById('panelRangoActual').textContent = `${paciente.rango_spo2_min}% - ${paciente.rango_spo2_max}%`;
+        // Actualizar display del rango
+        const displayMin = document.getElementById('rangoDisplayMin');
+        const displayMax = document.getElementById('rangoDisplayMax');
+        if (displayMin) displayMin.textContent = `${paciente.rango_spo2_min}%`;
+        if (displayMax) displayMax.textContent = `${paciente.rango_spo2_max}%`;
+        if (document.getElementById('panelRangoActual')) {
+            document.getElementById('panelRangoActual').textContent = `${paciente.rango_spo2_min}% - ${paciente.rango_spo2_max}%`;
+        }
     } catch (error) {
         console.error('Error cargando paciente:', error);
     }
@@ -96,12 +103,36 @@ function actualizarPanelLectura(data) {
 
 function suscribirLecturas() {
     window.SeroaRealtime.subscribe((datos) => {
-        if (!datos || datos.estado !== 'ACTIVO') return;
+        if (!datos) return;
         const spo2 = Number(datos.spo2);
         const bpm = Number(datos.bpm);
-        if (!Number.isFinite(spo2) || !Number.isFinite(bpm) || spo2 <= 0 || bpm <= 0) return;
+        
+        // Solo actualizar lectura si hay valores válidos
+        if (Number.isFinite(spo2) && Number.isFinite(bpm) && spo2 > 0 && bpm > 0) {
+            actualizarPanelLectura({ spo2, bpm });
+        }
 
-        actualizarPanelLectura({ spo2, bpm });
+        // Actualizar estado de válvula basado en valvulaActiva (enviado por Arduino)
+        const valvulaAbierta = datos.valvulaActiva === true || datos.valvulaActiva === 1;
+        const card = document.getElementById('estadoSistemaCard');
+        const titulo = document.getElementById('estadoSistemaTitulo');
+        const texto = document.getElementById('estadoSistemaTexto');
+        const indicador = document.getElementById('indicadorValvula');
+        const icon = document.getElementById('iconValvula');
+
+        if (valvulaAbierta) {
+            if (card) { card.classList.remove('bg-light'); card.classList.add('bg-teal', 'text-white'); }
+            if (titulo) { titulo.textContent = 'SUMINISTRANDO'; titulo.classList.remove('text-secondary'); titulo.classList.add('text-white'); }
+            if (texto) { texto.textContent = 'Válvula Proporcional Abierta'; texto.classList.remove('text-secondary'); texto.classList.add('text-white'); }
+            if (indicador) { indicador.classList.remove('inactiva'); indicador.classList.add('activa'); }
+            if (icon) { icon.classList.remove('d-none'); icon.classList.add('bi-wind'); }
+        } else {
+            if (card) { card.classList.remove('bg-teal', 'text-white'); card.classList.add('bg-light'); }
+            if (titulo) { titulo.textContent = 'NO SUMINISTRANDO'; titulo.classList.remove('text-white'); titulo.classList.add('text-secondary'); }
+            if (texto) { texto.textContent = 'Válvula Cerrada'; texto.classList.remove('text-white'); texto.classList.add('text-secondary'); }
+            if (indicador) { indicador.classList.remove('activa'); indicador.classList.add('inactiva'); }
+            if (icon) { icon.classList.add('d-none'); }
+        }
     });
 }
 
@@ -110,6 +141,40 @@ function iniciarDosificacion() {
     suscribirLecturas();
     const form = document.getElementById('formDosificacion');
     form?.addEventListener('submit', guardarRangos);
+
+    // Cargar promedio de la última hora
+    cargarPromedioHora();
+    // Recalcular cada 60 segundos
+    setInterval(cargarPromedioHora, 60000);
+}
+
+async function cargarPromedioHora() {
+    const patientId = localStorage.getItem('selectedPatientId');
+    if (!patientId) return;
+    try {
+        const resp = await fetch(`/api/registros?id_paciente=${encodeURIComponent(patientId)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const ahora = Date.now();
+        const unaHora = 60 * 60 * 1000;
+        const últimos = (data || []).filter(r => {
+            const fecha = new Date(r.ultima_actualizacion || r.fecha_hora || r.fecha_registro || null);
+            return fecha && (ahora - fecha.getTime()) <= unaHora;
+        });
+        const valores = últimos.map(r => Number(r.saturacion_oxigeno || r.spo2 || r.saturacion || 0)).filter(v => Number.isFinite(v) && v > 0);
+        const promedio = valores.length ? Math.round(valores.reduce((a,b)=>a+b,0)/valores.length) : 0;
+        const elem = document.getElementById('promedioHoraSpo2');
+        if (elem) elem.textContent = `${promedio === 0 ? '--' : promedio}%`;
+
+        // Actualizar progress bar
+        const progressBar = document.getElementById('promedioProgressBar');
+        if (progressBar && promedio > 0) {
+            progressBar.style.width = `${Math.min(promedio, 100)}%`;
+            progressBar.setAttribute('aria-valuenow', promedio);
+        }
+    } catch (e) {
+        console.error('Error cargando promedio hora:', e);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', iniciarDosificacion);

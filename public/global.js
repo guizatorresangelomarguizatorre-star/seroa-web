@@ -343,17 +343,75 @@ function aplicarRestriccionesDeRol() {
                 });
             });
 
+            // Marcar enlaces como deshabilitados y añadir tooltip explicativo
             paginasRestringidas.forEach(href => {
                 document.querySelectorAll(`.navbar-nav .nav-link[href="${href}"]`).forEach(el => {
                     const item = el.closest('li');
-                    if (item) {
-                        item.classList.add('d-none');
-                    } else {
-                        el.classList.add('d-none');
-                    }
+                    const target = item || el;
+                    try {
+                        target.classList.add('nav-disabled');
+                        el.setAttribute('aria-disabled', 'true');
+                        el.setAttribute('data-bs-toggle', 'tooltip');
+                        el.setAttribute('data-bs-placement', 'bottom');
+                        el.setAttribute('title', 'Acceso restringido: agrega un paciente o solicita un permiso');
+                    } catch (e) { /* ignore */ }
                 });
             });
 
+
+        // Además, verificar si el usuario NO tiene pacientes en su cuenta.
+        // Si no tiene pacientes, ocultamos las mismas pestañas restringidas.
+        // Esto permite a usuarios sin pacientes no ver secciones que requieren un paciente.
+        (async function actualizarVisibilidadPestanias() {
+            try {
+                const userId = localStorage.getItem('userId');
+                let noTienePacientes = false;
+
+                if (!userId) {
+                    // Sin sesión, consideramos que no puede acceder a funciones
+                    noTienePacientes = true;
+                } else {
+                    try {
+                        const resp = await fetch(`/api/pacientes?id_usuario=${encodeURIComponent(userId)}`);
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (Array.isArray(data) && data.length === 0) noTienePacientes = true;
+                        } else {
+                            // Si la petición falla, no cambiamos visibilidad por seguridad
+                            console.warn('No se pudo comprobar lista de pacientes:', resp.status);
+                        }
+                    } catch (err) {
+                        console.error('Error al comprobar pacientes del usuario:', err);
+                    }
+                }
+
+                const enlaces = document.querySelectorAll('.navbar-nav .nav-link');
+                enlaces.forEach(el => {
+                    const href = el.getAttribute('href');
+                    if (!href) return;
+                    if (paginasRestringidas.includes(href)) {
+                        const item = el.closest('li');
+                        const target = item || el;
+                        if (noTienePacientes || rol === 'Invitado') {
+                            target.classList.add('nav-disabled');
+                            el.setAttribute('aria-disabled', 'true');
+                            el.setAttribute('data-bs-toggle', 'tooltip');
+                            el.setAttribute('data-bs-placement', 'bottom');
+                            el.setAttribute('title', 'Acceso restringido: agrega un paciente o solicita un permiso');
+                        } else {
+                            target.classList.remove('nav-disabled');
+                            el.removeAttribute('aria-disabled');
+                            el.removeAttribute('data-bs-toggle');
+                            el.removeAttribute('title');
+                        }
+                    }
+                });
+                // Inicializar tooltips en caso de que Bootstrap esté cargado
+                try { var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]')); tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); }); } catch(e) {}
+            } catch (e) {
+                console.error('actualizarVisibilidadPestanias error:', e);
+            }
+        })();
             const paginaActual = window.location.pathname.split('/').pop();
             if (paginasRestringidas.includes(paginaActual)) {
                 window.location.href = 'pacientes.html';
