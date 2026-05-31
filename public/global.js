@@ -298,6 +298,31 @@ window.mostrarToast = function(mensaje, tipo = 'success', duracion = 3000) {
     }
 };
 
+window.formatearErrorUsuario = function(error, fallback = 'Ocurrió un error inesperado. Intenta nuevamente.') {
+    if (!error) return fallback;
+    const texto = typeof error === 'string' ? error : (error.message || error.error || '');
+    const mensaje = texto.toString().trim();
+    if (!mensaje) return fallback;
+    const clave = mensaje.toLowerCase();
+
+    if (clave.includes('network') || clave.includes('failed to fetch') || clave.includes('fetch') || clave.includes('timeout')) {
+        return 'No se pudo conectar con el servidor. Revisa tu conexión a internet.';
+    }
+    if (clave.includes('unauthorized') || clave.includes('forbidden') || clave.includes('acceso denegado') || clave.includes('permiso')) {
+        return 'No tienes permisos para realizar esta acción.';
+    }
+    if (clave.includes('not found') || clave.includes('no encontrado')) {
+        return 'El recurso no fue encontrado. Intenta nuevamente.';
+    }
+    if (clave.includes('invalid') || clave.includes('inválido') || clave.includes('required') || clave.includes('campo')) {
+        return 'Por favor revisa los datos y completa los campos requeridos.';
+    }
+    if (clave.includes('email') && clave.includes('exists')) {
+        return 'El correo ya está registrado. Usa otro o recupera tu cuenta.';
+    }
+    return mensaje.charAt(0).toUpperCase() + mensaje.slice(1);
+};
+
 function aplicarRestriccionesDeRol() {
     try {
         const rol = localStorage.getItem('selectedPatientRole') || 'Invitado';

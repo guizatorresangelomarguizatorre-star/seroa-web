@@ -63,19 +63,27 @@
  
 <div class="container mt-4 mb-5">
 <div class="d-flex justify-content-between align-items-center mb-4">
- <h4 class="text-success fw-bold mb-0" style="color: var(--color-seroa-teal) !important;">Directorio de Pacientes</h4>
+    <div>
+      <h4 class="text-success fw-bold mb-0" style="color: var(--color-seroa-teal) !important;">Directorio de Pacientes</h4>
+      <p class="text-muted mb-0">Selecciona un paciente para ver el resto de las funciones del sistema.</p>
+    </div>
 
-  <div class="d-flex align-items-center gap-2">
-    <button class="btn btn-primary bg-teal border-0 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoPaciente">
-      <i class="bi bi-person-plus-fill me-1"></i> Agregar
-    </button>
-    
-    <span id="pacienteActualBadge" class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
-      <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Angel Guiza</strong>
-    </span>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-primary bg-teal border-0 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoPaciente">
+        <i class="bi bi-person-plus-fill me-1"></i> Agregar
+      </button>
+      
+      <span id="pacienteActualBadge" class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
+        <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Angel Guiza</strong>
+      </span>
+    </div>
   </div>
-</div>
-
+  <div class="mb-4">
+    <div class="alert alert-info rounded-4 shadow-sm">
+      <i class="bi bi-journal-bookmark-fill me-2"></i>
+      Para acceder al resto de funciones, primero debes agregar un paciente.
+    </div>
+  </div>
   <div class="row mb-4">
     <div class="col-md-8 col-lg-6">
       <div class="input-group shadow-sm rounded-pill overflow-hidden">
@@ -91,7 +99,10 @@
         <div class="card-body text-center text-muted">
           <i class="bi bi-person-lines-fill fs-1 mb-3 text-teal"></i>
           <h5 class="fw-bold">Aún no tienes pacientes registrados</h5>
-          <p class="mb-0">Haz clic en <strong>Agregar</strong> para registrar al primer paciente de tu sistema.</p>
+          <p class="mb-3">Para acceder al resto de funciones, primero debes agregar un paciente.</p>
+          <button class="btn btn-teal text-white rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalNuevoPaciente">
+            <i class="bi bi-person-plus-fill me-2"></i> Agregar paciente
+          </button>
         </div>
       </div>
     </div>
@@ -146,6 +157,61 @@
           <div class="mt-4 d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
             <button type="submit" class="btn btn-primary bg-teal border-0 rounded-pill px-4 shadow-sm">Guardar paciente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalEditarPaciente" tabindex="-1" aria-labelledby="modalEditarPacienteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-sm">
+      <div class="modal-header bg-teal text-white border-0">
+        <h5 class="modal-title" id="modalEditarPacienteLabel"><i class="bi bi-pencil-square me-2"></i>Editar paciente</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formEditarPaciente">
+          <div id="mensajeEditarPaciente" class="alert alert-danger d-none" role="alert"></div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="editarPacienteNombre" class="form-label">Nombre completo</label>
+              <input type="text" class="form-control shadow-sm" id="editarPacienteNombre" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editarPacientePeso" class="form-label">Peso (Kg)</label>
+              <input type="number" step="0.1" min="1" class="form-control shadow-sm" id="editarPacientePeso" required>
+            </div>
+            <div class="col-md-4">
+              <label for="editarPacienteEdad" class="form-label">Edad</label>
+              <input type="number" min="0" class="form-control shadow-sm" id="editarPacienteEdad" required>
+            </div>
+            <div class="col-md-4">
+              <label for="editarPacienteSexo" class="form-label">Sexo</label>
+              <select class="form-select shadow-sm" id="editarPacienteSexo" required>
+                <option value="">Selecciona</option>
+                <option value="F">Femenino</option>
+                <option value="M">Masculino</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="editarPacientePadecimiento" class="form-label">Padecimiento</label>
+              <input type="text" class="form-control shadow-sm" id="editarPacientePadecimiento" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editarPacienteSpo2Min" class="form-label">Rango SpO₂ mínimo</label>
+              <input type="number" min="50" max="100" class="form-control shadow-sm" id="editarPacienteSpo2Min" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editarPacienteSpo2Max" class="form-label">Rango SpO₂ máximo</label>
+              <input type="number" min="50" max="100" class="form-control shadow-sm" id="editarPacienteSpo2Max" required>
+            </div>
+          </div>
+          <div class="mt-4 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary bg-teal border-0 rounded-pill px-4 shadow-sm">Guardar cambios</button>
           </div>
         </form>
       </div>
