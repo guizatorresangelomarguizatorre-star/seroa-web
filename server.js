@@ -777,20 +777,29 @@ app.post('/api/registros', (req, res) => {
     const isAnomaly = nivel === 'Peligro' || nivel === 'Precaución';
 
     if (isAnomaly) {
-        // Insert immediately as incident
+        // Insert immediately as incident + create alert
         const idr = id_registro || crypto.randomBytes(12).toString('hex');
         const fecha = fecha_hora || new Date().toISOString();
         const esCrit = (nivel === 'Peligro') ? 2 : (nivel === 'Precaución' ? 1 : 0);
 
-        const query = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-        db.query(query, [idr, id_paciente, id_dispositivo || null, spo2, bpm, esCrit, fecha], (err) => {
+        const queryRegistro = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        db.query(queryRegistro, [idr, id_paciente, id_dispositivo || null, spo2, bpm, esCrit, fecha], (err) => {
             if (err) {
                 console.error('Error MySQL al guardar incidente:', err);
                 return res.status(500).json({ error: 'No se pudo guardar el incidente.' });
             }
-            // Reset aggregate for this patient (rompe el promediado)
+            
+            // Also insert into alertas table for critical events
+            const descripcionAlerta = `SpO2: ${spo2}%, BPM: ${bpm} - Nivel: ${nivel}`;
+            const queryAlerta = `INSERT INTO alertas (id_paciente, id_registro, tipo_alerta, descripcion, fecha_alerta) VALUES (?, ?, ?, ?, ?)`;
+            db.query(queryAlerta, [id_paciente, idr, nivel, descripcionAlerta, fecha], (errAlerta) => {
+                if (errAlerta) console.error('Error al guardar alerta:', errAlerta);
+                else console.log(`Alerta creada: paciente=${id_paciente}, tipo=${nivel}, registro=${idr}`);
+            });
+            
+            // Reset aggregate for this patient
             if (hourAggregates[id_paciente]) delete hourAggregates[id_paciente];
-            // También publicar lectura en Realtime DB bajo ruta privada del paciente
+            // Publicar lectura en Realtime DB bajo ruta privada del paciente
             try {
                 const payload = {
                     spo2: spo2,
@@ -803,7 +812,7 @@ app.post('/api/registros', (req, res) => {
                 writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error (incidente):', e));
             } catch (wErr) { console.error('Error publicando incidente a Realtime:', wErr); }
 
-            return res.json({ mensaje: 'Incidente guardado inmediatamente.' });
+            return res.json({ mensaje: 'Incidente guardado inmediatamente y alerta creada.' });
         });
         return;
     }
@@ -865,6 +874,73 @@ app.get('/api/registros', (req, res) => {
     });
 });
 
+// === ENDPOINTS DE HISTORIAL Y REPORTES ===
+
+// Obtener fechas con registros en los últimos 30 días
+app.get('/api/historial-fechas', (req, res) => {
+    const id_paciente = req.query.id_paciente;
+    if (!id_paciente) {
+        return res.status(400).json({ error: 'Falta id_paciente' });
+    }
+
+    const hace30dias = new Date();
+    hace30dias.setDate(hace30dias.getDate() - 30);
+
+    const query = `SELECT DISTINCT DATE(fecha_hora) AS fecha_guardada 
+                   FROM registros_biomedicos 
+                   WHERE id_paciente = ? AND fecha_hora >= ?
+                   ORDER BY fecha_guardada DESC`;
+    
+    db.query(query, [id_paciente, hace30dias.toISOString()], (err, results) => {
+        if (err) {
+            console.error('Error en historial-fechas:', err);
+            return res.status(500).json({ error: 'Error en consulta' });
+        }
+        res.json(results || []);
+    });
+});
+
+// Obtener registros y notas de un día específico
+app.get('/api/reporte-dia', (req, res) => {
+    const id_paciente = req.query.id_paciente;
+    const fecha = req.query.fecha; // Formato: YYYY-MM-DD
+
+    if (!id_paciente || !fecha) {
+        return res.status(400).json({ error: 'Faltan id_paciente o fecha' });
+    }
+
+    // Registros del día
+    const queryRegistros = `SELECT id_registro, id_paciente, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora
+                            FROM registros_biomedicos
+                            WHERE id_paciente = ? AND DATE(fecha_hora) = ?
+                            ORDER BY fecha_hora ASC`;
+    
+    // Notas del día
+    const queryNotas = `SELECT id_nota, id_paciente, cuerpo_nota, fecha_registro
+                        FROM notas_clinicas
+                        WHERE id_paciente = ? AND DATE(fecha_registro) = ?
+                        ORDER BY fecha_registro ASC`;
+
+    db.query(queryRegistros, [id_paciente, fecha], (errReg, registros) => {
+        if (errReg) {
+            console.error('Error en reporte registros:', errReg);
+            return res.status(500).json({ error: 'Error en consulta de registros' });
+        }
+
+        db.query(queryNotas, [id_paciente, fecha], (errNot, notas) => {
+            if (errNot) {
+                console.error('Error en reporte notas:', errNot);
+                return res.status(500).json({ error: 'Error en consulta de notas' });
+            }
+
+            res.json({
+                registros: registros || [],
+                notas: notas || []
+            });
+        });
+    });
+});
+
 // ==========================================
 // === RUTAS PARA NOTAS CLÍNICAS (NUEVO) ====
 // ==========================================
@@ -915,5 +991,50 @@ app.get('/api/notas', (req, res) => {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// ==========================================
+// === RUTINA DE RETENCIÓN DE 30 DÍAS ====
+// ==========================================
+
+function limpiarDatosAntiguos() {
+    const ahora = new Date();
+    const hace30dias = new Date(ahora.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const fechaLimite = hace30dias.toISOString();
+
+    // Borrar registros biométricos más antiguos de 30 días
+    const queryRegistros = `DELETE FROM registros_biomedicos WHERE fecha_hora < ?`;
+    db.query(queryRegistros, [fechaLimite], (err, result) => {
+        if (err) {
+            console.error('Error limpiando registros antiguos:', err);
+        } else {
+            console.log(`✓ Limpieza automática: ${result.affectedRows} registros biométricos eliminados (> 30 días)`);
+        }
+    });
+
+    // Borrar notas más antiguas de 30 días
+    const queryNotas = `DELETE FROM notas_clinicas WHERE fecha_registro < ?`;
+    db.query(queryNotas, [fechaLimite], (err, result) => {
+        if (err) {
+            console.error('Error limpiando notas antiguas:', err);
+        } else {
+            console.log(`✓ Limpieza automática: ${result.affectedRows} notas clínicas eliminadas (> 30 días)`);
+        }
+    });
+
+    // OPCIONAL: Borrar alertas más antiguas de 30 días
+    const queryAlertas = `DELETE FROM alertas WHERE fecha_alerta < ?`;
+    db.query(queryAlertas, [fechaLimite], (err, result) => {
+        if (err) {
+            console.error('Error limpiando alertas antiguas:', err);
+        } else {
+            console.log(`✓ Limpieza automática: ${result.affectedRows} alertas eliminadas (> 30 días)`);
+        }
+    });
+}
+
+// Ejecutar limpieza cada hora (3600000 ms)
+setInterval(limpiarDatosAntiguos, 3600000);
+// Ejecutar una limpieza inicial 5 minutos después del arranque
+setTimeout(limpiarDatosAntiguos, 300000);
 
 app.listen(PORT, '0.0.0.0', () => console.log(`Seroa activo en puerto ${PORT}`));
