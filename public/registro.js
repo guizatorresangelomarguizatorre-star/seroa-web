@@ -515,8 +515,8 @@ async function generarPDF() {
     }
 
     const source = (latestRegistrosFiltered && latestRegistrosFiltered.length) ? latestRegistrosFiltered : latestRegistros;
-    const rows = (source || []).slice(0, 500).map(r => [
-        r.id_registro || '-', 
+    const rows = (source || []).slice(0, 500).map((r, index) => [
+        (index + 1).toString(), 
         (new Date(r.fecha_hora)).toLocaleString('es-MX'), 
         `${r.saturacion_oxigeno}%`, 
         `${r.ritmo_cardiaco} bpm`, 
@@ -525,9 +525,15 @@ async function generarPDF() {
         r.usuario_turno || '-'
     ]);
     
+    // Agregar título de la tabla
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Promediado por horas', 40, infoY + 10);
+    doc.setFont('helvetica', 'normal');
+    
     doc.autoTable({
-        startY: infoY + 10,
-        head: [['ID', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
+        startY: infoY + 25,
+        head: [['#', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
         body: rows,
         styles: { fontSize: 9 }
     });
