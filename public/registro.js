@@ -487,8 +487,8 @@ async function generarPDF() {
     
     doc.setFontSize(12);
     doc.text(`Paciente: ${paciente}`, 40, 110);
-    doc.text(`Usuario en turno: ${usuario}`, 40, 130);
-    doc.text(`Rol de acceso: ${rolUsuario}`, 40, 136);
+    doc.text(`Usuario en turno: ${usuario}`, 40, 138);
+    doc.text(`Rol de acceso: ${rolUsuario}`, 40, 148);
 
     const pacienteEdad = localStorage.getItem('selectedPatientEdad');
     const pacientePeso = localStorage.getItem('selectedPatientPeso');
