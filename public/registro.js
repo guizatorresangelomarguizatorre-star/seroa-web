@@ -115,9 +115,14 @@ function renderRegistrosMySQL(registros) {
         const esCritico = Number(registro.es_critico);
         const nivel = esCritico === 2 ? 'Peligro' : (esCritico === 1 ? 'Precaución' : 'Normal');
         const badgeClass = esCritico === 2 ? 'badge bg-danger' : esCritico === 1 ? 'badge bg-warning text-dark' : 'badge bg-success';
-        const accion = registro.accion_sistema || 'Monitoreo continuo';
+        const accion = esCritico === 2 ? 'Válvula de oxígeno activada' : 'Monitoreo continuo';
         const tipo = 'Resumen por Hora';
-        const rowStyle = esCritico === 2 ? 'style="background-color: rgba(220, 53, 69, 0.15) !important;"' : '';
+        let rowStyle = '';
+        if (esCritico === 2) {
+            rowStyle = 'style="background-color: rgba(220, 53, 69, 0.15) !important;"';
+        } else if (esCritico === 1) {
+            rowStyle = 'style="background-color: rgba(255, 193, 7, 0.15) !important;"';
+        }
 
         return `
             <tr ${rowStyle}>
@@ -126,7 +131,7 @@ function renderRegistrosMySQL(registros) {
                 <td>${registro.ritmo_cardiaco} bpm</td>
                 <td><span class="${badgeClass}">${nivel}</span></td>
                 <td>${accion}</td>
-                <td>${registro.usuario_turno || 'Usuario anónimo'}</td>
+                <td>${localStorage.getItem('nombrePaciente') || 'Sistema Automático'}</td>
                 <td><small class="text-muted">${tipo}</small></td>
             </tr>
         `;
@@ -338,9 +343,11 @@ async function descargarPDFHistorico(fechaISO, fechaTexto) {
                 head: [['Hora', 'SpO2', 'BPM', 'Estado']],
                 body: rowsRegistros,
                 styles: { fontSize: 9 },
-                didParseCell: (data) => {
-                    if (data.column.index === 3 && data.cell.text[0] === 'Peligro') {
-                        data.cell.styles.fillColor = [255, 204, 204];
+                didParseCell: function(data) {
+                    if (data.row.raw[3] === 'Peligro') {
+                        data.cell.styles.fillColor = [255, 204, 204]; // Rojo claro
+                    } else if (data.row.raw[3] === 'Precaución') {
+                        data.cell.styles.fillColor = [255, 243, 205]; // Amarillo claro
                     }
                 }
             });
@@ -526,15 +533,21 @@ async function generarPDF() {
     }
 
     const source = (latestRegistrosFiltered && latestRegistrosFiltered.length) ? latestRegistrosFiltered : latestRegistros;
-    const rows = (source || []).slice(0, 500).map((r, index) => [
-        (index + 1).toString(), 
-        (new Date(r.fecha_hora)).toLocaleString('es-MX'), 
-        `${r.saturacion_oxigeno}%`, 
-        `${r.ritmo_cardiaco} bpm`, 
-        r.nivel_alerta || r.nivel || '-', 
-        r.accion_sistema || r.accion || '-', 
-        r.usuario_turno || '-'
-    ]);
+    const rows = (source || []).slice(0, 500).map((r, index) => {
+        const esCritico = Number(r.es_critico);
+        const nivel = esCritico === 2 ? 'Peligro' : (esCritico === 1 ? 'Precaución' : 'Normal');
+        const accion = esCritico === 2 ? 'Válvula de oxígeno activada' : 'Monitoreo continuo';
+        const usuario = localStorage.getItem('nombrePaciente') || 'Sistema Automático';
+        return [
+            (index + 1).toString(), 
+            (new Date(r.fecha_hora)).toLocaleString('es-MX'), 
+            `${r.saturacion_oxigeno}%`, 
+            `${r.ritmo_cardiaco} bpm`, 
+            nivel, 
+            accion, 
+            usuario
+        ];
+    });
     
     // Agregar título de la tabla
     doc.setFontSize(12);
@@ -547,9 +560,11 @@ async function generarPDF() {
         head: [['#', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
         body: rows,
         styles: { fontSize: 9 },
-        didParseCell: (data) => {
-            if (data.column.index === 4 && data.cell.text[0] === 'Peligro') {
-                data.cell.styles.fillColor = [255, 204, 204];
+        didParseCell: function(data) {
+            if (data.row.raw[4] === 'Peligro') {
+                data.cell.styles.fillColor = [255, 204, 204]; // Rojo claro
+            } else if (data.row.raw[4] === 'Precaución') {
+                data.cell.styles.fillColor = [255, 243, 205]; // Amarillo claro
             }
         }
     });
