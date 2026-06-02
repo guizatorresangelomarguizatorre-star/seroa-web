@@ -99,7 +99,7 @@ function renderNotas(notas) {
 // === LÓGICA DE RENDERS E HISTORIAL BIOMÉDRICO ===
 // ===============================================
 
-function renderRegistrosFirebase(registros) {
+function renderRegistrosMySQL(registros) {
     const tablaRegistros = document.getElementById('tablaRegistros');
     if (!tablaRegistros) return;
     const regs = registros || [];
@@ -112,18 +112,19 @@ function renderRegistrosFirebase(registros) {
     latestRegistrosFiltered = filtered;
 
     tablaRegistros.innerHTML = filtered.map(registro => {
-        const nivel = registro.nivel_alerta || registro.nivel || (registro.es_critico === 2 ? 'Peligro' : (registro.es_critico === 1 ? 'Precaución' : 'Normal'));
-        const clasificacion = nivel === 'Peligro' ? { color: 'danger', nivel } : nivel === 'Precaución' ? { color: 'warning', nivel } : { color: 'success', nivel };
-        const accion = registro.accion_sistema || registro.accion || (nivel === 'Peligro' ? 'Válvula de emergencia activada' : 'Monitoreo continuo');
-        const tipo = registro.tipo_registro || (registro.resumen_hora ? 'Resumen por Hora' : (nivel === 'Normal' ? 'Resumen por Hora (Normal)' : 'Incidente Crítico'));
-        const badgeClass = nivel === 'Peligro' ? 'badge bg-danger' : nivel === 'Precaución' ? 'badge bg-warning text-dark' : 'badge bg-success';
+        const esCritico = Number(registro.es_critico);
+        const nivel = esCritico === 2 ? 'Peligro' : (esCritico === 1 ? 'Precaución' : 'Normal');
+        const badgeClass = esCritico === 2 ? 'badge bg-danger' : esCritico === 1 ? 'badge bg-warning text-dark' : 'badge bg-success';
+        const accion = registro.accion_sistema || 'Monitoreo continuo';
+        const tipo = 'Resumen por Hora';
+        const rowStyle = esCritico === 2 ? 'style="background-color: rgba(220, 53, 69, 0.15) !important;"' : '';
 
         return `
-            <tr class="table-${clasificacion.color}">
+            <tr ${rowStyle}>
                 <td>${formatoFecha(registro.fecha_hora)}</td>
                 <td>${registro.saturacion_oxigeno}%</td>
                 <td>${registro.ritmo_cardiaco} bpm</td>
-                <td><span class="${badgeClass}">${clasificacion.nivel}</span></td>
+                <td><span class="${badgeClass}">${nivel}</span></td>
                 <td>${accion}</td>
                 <td>${registro.usuario_turno || 'Usuario anónimo'}</td>
                 <td><small class="text-muted">${tipo}</small></td>
@@ -132,16 +133,17 @@ function renderRegistrosFirebase(registros) {
     }).join('');
 }
 
-function suscribirRegistrosRTDB(idPaciente) {
+async function cargarRegistrosMySQL(idPaciente) {
     if (!idPaciente) return;
-    const path = `registros_biomedicos/${idPaciente}`;
-    database.ref(path).limitToLast(200).on('value', snapshot => {
-        const datos = snapshot.val();
-        const registros = datos ? Object.values(datos).sort((a,b)=> new Date(b.fecha_hora) - new Date(a.fecha_hora)) : [];
-        latestRegistros = registros;
-        renderRegistrosFirebase(registros);
-        actualizarResumenDiario(registros);
-    });
+    try {
+        const respuesta = await fetch(`/api/registros?id_paciente=${idPaciente}`);
+        const registros = await respuesta.json();
+        latestRegistros = registros || [];
+        renderRegistrosMySQL(latestRegistros);
+        actualizarResumenDiario(latestRegistros);
+    } catch (error) {
+        console.error('Error cargando registros desde MySQL:', error);
+    }
 }
 
 function applyCurrentFilters(regs) {
@@ -168,14 +170,14 @@ function applyCurrentFilters(regs) {
 function initRegistroFilters() {
     document.getElementById('btnAplicarFiltros')?.addEventListener('click', (e) => {
         e.preventDefault();
-        renderRegistrosFirebase(latestRegistros);
+        renderRegistrosMySQL(latestRegistros);
     });
     document.getElementById('btnLimpiarFiltros')?.addEventListener('click', (e) => {
         e.preventDefault();
         if (document.getElementById('filterFechaInicio')) document.getElementById('filterFechaInicio').value = '';
         if (document.getElementById('filterFechaFin')) document.getElementById('filterFechaFin').value = '';
         if (document.getElementById('filterTipoAlerta')) document.getElementById('filterTipoAlerta').value = 'todos';
-        renderRegistrosFirebase(latestRegistros);
+        renderRegistrosMySQL(latestRegistros);
     });
 }
 
@@ -202,11 +204,15 @@ async function guardarRegistroEstructurado(lectura) {
     try { await ref.set(registro); } catch (err) { console.error('Error guardando en RTDB:', err); }
 
     try {
-        await fetch('/api/registros', {
+        const respuesta = await fetch('/api/registros', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(registro)
         });
+        const resultado = await respuesta.json();
+        if (resultado.estado === 'guardado' || resultado.estado === 'nuevo intervalo') {
+            await cargarRegistrosMySQL(pacienteId);
+        }
     } catch (err) { console.error('Error enviando registro al servidor:', err); }
 }
 
@@ -331,7 +337,12 @@ async function descargarPDFHistorico(fechaISO, fechaTexto) {
                 startY: currentY + 10,
                 head: [['Hora', 'SpO2', 'BPM', 'Estado']],
                 body: rowsRegistros,
-                styles: { fontSize: 9 }
+                styles: { fontSize: 9 },
+                didParseCell: (data) => {
+                    if (data.column.index === 3 && data.cell.text[0] === 'Peligro') {
+                        data.cell.styles.fillColor = [255, 204, 204];
+                    }
+                }
             });
             currentY = doc.lastAutoTable.finalY + 25;
         } else {
@@ -432,7 +443,7 @@ async function iniciarRegistroDiario() {
     cargarNotasBackend(pacienteId);
     cargarHistorialFechas(pacienteId); // <- ¡Carga automática del historial de 30 días!
 
-    suscribirRegistrosRTDB(pacienteId);
+    cargarRegistrosMySQL(pacienteId);
     suscribirLecturasRT(true);
     initRegistroFilters();
 
@@ -535,7 +546,12 @@ async function generarPDF() {
         startY: infoY + 25,
         head: [['#', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
         body: rows,
-        styles: { fontSize: 9 }
+        styles: { fontSize: 9 },
+        didParseCell: (data) => {
+            if (data.column.index === 4 && data.cell.text[0] === 'Peligro') {
+                data.cell.styles.fillColor = [255, 204, 204];
+            }
+        }
     });
 
     let currentY = doc.lastAutoTable.finalY + 25;
