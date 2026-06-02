@@ -242,7 +242,7 @@ function actualizarBadgePaciente() {
     const pacienteRol = localStorage.getItem('selectedPatientRole');
     
     // Validación: Si no hay paciente, mostrar mensaje específico
-    const display = pacienteNombre 
+    const display = (pacienteNombre && pacienteNombre !== '' && pacienteNombre !== 'null' && pacienteNombre !== 'undefined')
         ? `${pacienteNombre}${pacienteRol ? ' | ' + pacienteRol : ''}` 
         : 'No hay pacientes seleccionados';
 
@@ -268,6 +268,7 @@ function actualizarBadgePaciente() {
 function actualizarTooltipUsuario() {
     const nombreUsuario = localStorage.getItem('nombrePaciente') || 'Usuario anónimo';
     const userTooltipElement = document.getElementById('userTooltip');
+    const avatarIcon = userTooltipElement ? userTooltipElement.querySelector('.avatar-icon') : null;
     
     if (userTooltipElement) {
         userTooltipElement.setAttribute('data-bs-title', `${nombreUsuario}`);
@@ -278,6 +279,11 @@ function actualizarTooltipUsuario() {
             tooltipInstance.dispose();
         }
         new bootstrap.Tooltip(userTooltipElement);
+    }
+    
+    // Agregar title attribute al ícono para tooltip nativo
+    if (avatarIcon) {
+        avatarIcon.setAttribute('title', nombreUsuario);
     }
 }
 
@@ -479,6 +485,10 @@ async function inyectarComponentesDinamicos() {
             const response = await fetch('header.html');
             if(response.ok) {
                 contenedorHeader.innerHTML = await response.text();
+                // Actualizar tooltip del usuario después de inyectar header
+                setTimeout(() => {
+                    actualizarTooltipUsuario();
+                }, 100);
             } else {
                 console.error("Seroa Error: header.html no encontrado.");
             }

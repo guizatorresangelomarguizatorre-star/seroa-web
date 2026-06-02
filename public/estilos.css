@@ -687,15 +687,13 @@ body {
     max-width: 100%;
     word-break: break-word;
     white-space: normal;
+    text-align: left;
     overflow-wrap: break-word;
 }
 
 [data-paciente-actual] strong {
-    text-truncate;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: inline-block;
+    display: inline;
+    word-break: break-word;
 }
 
 @media (max-width: 768px) {
