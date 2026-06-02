@@ -237,10 +237,14 @@ function validarSesionUsuario() {
 }
 
 function actualizarBadgePaciente() {
-    // Busca si hay un paciente seleccionado y su rol
-    const pacienteNombre = localStorage.getItem('selectedPatientName') || localStorage.getItem('pacienteActivoSeroa') || "Sin selección";
-    const pacienteRol = localStorage.getItem('selectedPatientRole') || '---';
-    const display = `${pacienteNombre} | ${pacienteRol}`;
+    // Busca si hay un paciente seleccionado
+    const pacienteNombre = localStorage.getItem('selectedPatientName') || localStorage.getItem('pacienteActivoSeroa');
+    const pacienteRol = localStorage.getItem('selectedPatientRole');
+    
+    // Validación: Si no hay paciente, mostrar mensaje específico
+    const display = pacienteNombre 
+        ? `${pacienteNombre}${pacienteRol ? ' | ' + pacienteRol : ''}` 
+        : 'No hay pacientes seleccionados';
 
     // Actualiza todos los badges que usan el atributo data-paciente-actual
     const badgesPaciente = document.querySelectorAll('[data-paciente-actual]');
@@ -255,6 +259,26 @@ function actualizarBadgePaciente() {
 
     // Aplicar restricciones UI según rol
     try { aplicarRestriccionesDeRol(); } catch (e) { console.error('Error aplicando restricciones de rol:', e); }
+    
+    // Actualizar tooltip del usuario
+    actualizarTooltipUsuario();
+}
+
+// Nueva función para actualizar y inicializar el tooltip
+function actualizarTooltipUsuario() {
+    const nombreUsuario = localStorage.getItem('nombrePaciente') || 'Usuario anónimo';
+    const userTooltipElement = document.getElementById('userTooltip');
+    
+    if (userTooltipElement) {
+        userTooltipElement.setAttribute('data-bs-title', `${nombreUsuario}`);
+        
+        // Reinicializar el tooltip de Bootstrap 5
+        const tooltipInstance = bootstrap.Tooltip.getInstance(userTooltipElement);
+        if (tooltipInstance) {
+            tooltipInstance.dispose();
+        }
+        new bootstrap.Tooltip(userTooltipElement);
+    }
 }
 
 // Oculta o deshabilita controles sensibles cuando el rol es 'Invitado'
@@ -478,6 +502,12 @@ async function inyectarComponentesDinamicos() {
     // Validamos sesión de nuevo una vez que los elementos existen en el DOM
     validarSesionUsuario();
     actualizarReloj();
+    
+    // Inicializar tooltips de Bootstrap 5
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 }
 
 function resaltarMenuActivo() {

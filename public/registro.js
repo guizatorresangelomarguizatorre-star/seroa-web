@@ -445,6 +445,26 @@ async function iniciarRegistroDiario() {
     } catch (e) { console.warn('No se pudo inyectar estilos de resaltado:', e); }
 }
 
+// Función auxiliar para convertir imagen a base64
+async function obtenerImagenBase64(rutaImagen) {
+    return new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = function() {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL('image/png');
+            resolve(dataUrl);
+        };
+        
+        img.onerror = () => reject(new Error('No se pudo cargar la imagen'));
+        img.src = rutaImagen;
+    });
+}
+
 // ---------- Generar PDF de reporte médico (Hoy) ----------
 async function generarPDF() {
     const { jsPDF } = window.jspdf;

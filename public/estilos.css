@@ -678,6 +678,79 @@ body {
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* Badge Responsive - Prevenir desbordamiento en móviles */
+[data-paciente-actual] {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    max-width: 100%;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+[data-paciente-actual] strong {
+    text-truncate;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+}
+
+@media (max-width: 768px) {
+    [data-paciente-actual] {
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.85rem !important;
+    }
+    
+    [data-paciente-actual] i {
+        flex-shrink: 0;
+    }
+    
+    [data-paciente-actual] strong {
+        max-width: 120px;
+    }
+}
+
+/* Botón Circular de Guía */
+.btn-guia-header-circular {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(32, 201, 151, 0.1);
+    color: var(--color-seroa-teal);
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-size: 1.3rem;
+}
+
+.btn-guia-header-circular:hover {
+    background-color: var(--color-seroa-teal);
+    color: white;
+    box-shadow: 0 4px 10px rgba(59, 139, 136, 0.3);
+    transform: scale(1.05);
+}
+
+/* Tooltip Personalizado de Bootstrap 5 */
+.bs-tooltip-auto[data-popper-placement^="bottom"] > .tooltip-arrow::before,
+.bs-tooltip-bottom > .tooltip-arrow::before {
+    border-bottom-color: var(--color-seroa-teal);
+}
+
+.tooltip-inner {
+    background-color: var(--color-seroa-teal);
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(59, 139, 136, 0.3);
+}
+
 /* --- UTILIDADES --- */
 .border-teal { border-bottom: 3px solid var(--color-accent-green); }
 .text-teal { color: var(--color-seroa-teal); }

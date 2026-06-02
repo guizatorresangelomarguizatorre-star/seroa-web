@@ -14,9 +14,8 @@
 
     <div class="header-controls">
         
-        <a href="guia.html" class="btn-guia-header" title="Ver Guía de Inicio">
-            <i class="bi bi-info-circle-fill me-2"></i>
-            <span>Guía Seroa</span>
+        <a href="guia.html" class="btn-guia-header-circular" title="Ver Guía de Inicio">
+            <i class="bi bi-info-circle-fill"></i>
         </a>
 
         <button id="btnInstallApp" type="button" class="btn-guia-header btn-install-app d-none" title="Instalar Seroa en tu dispositivo">
@@ -24,7 +23,7 @@
             <span>Instalar</span>
         </button>
 
-        <div class="user-profile-badge">
+        <div class="user-profile-badge" data-bs-toggle="tooltip" data-bs-placement="bottom" id="userTooltip">
             <div class="user-info-text me-2">
                 <div class="user-name" id="nombreUsuarioHeader">Usuario</div>
                 <div class="user-date" id="fecha"></div>
