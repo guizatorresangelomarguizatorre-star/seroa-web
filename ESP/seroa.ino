@@ -16,6 +16,10 @@
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
 
+// ========== NUEVAS LIBRERIAS PARA RAILWAY ==========
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+
 // ========== FIREBASE ==========
 #define API_KEY "AIzaSyD8GcNRjouSlrlNSKXcNrjl0gjAYuXvTMQ"
 #define DATABASE_URL "https://seroa-e8606-default-rtdb.firebaseio.com"
@@ -177,12 +181,8 @@ float leerPresionBar() {
   int lecturaADC = analogRead(PIN_PRESION);
 
   float voltajeADC = (lecturaADC / 4095.0) * 3.3;
-
-  // Esto depende del divisor de voltaje que usamos.
-  // Si usas otro divisor, se calibra aqui.
   float voltajeSensor = voltajeADC * 1.5;
 
-  // Sensor 0.5V a 4.5V = 0 a 12 bar
   float presion = ((voltajeSensor - 0.5) * 12.0) / 4.0;
 
   if (presion < 0) presion = 0;
@@ -197,7 +197,7 @@ String estadoTanque(float presionBar) {
   return "TANQUE_OK";
 }
 
-// ========== FIREBASE ==========
+// ========== FIREBASE Y RAILWAY ==========
 void enviarFirebase(int spo2Final, int bpmFinal, String estado, float presionBar) {
   if (!Firebase.ready() || id_paciente == "") return;
 
@@ -211,6 +211,35 @@ void enviarFirebase(int spo2Final, int bpmFinal, String estado, float presionBar
   Firebase.RTDB.setBool(&fbdo, rutaBase + "/valvulaActiva", valvulaActiva);
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/limiteSpo2Bajo", LIMITE_SPO2_BAJO);
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/ultimaActualizacion", millis());
+}
+
+// NUEVA FUNCIÓN PARA ENVIAR DIRECTO AL BACKEND
+void enviarRailway(String idPac, int spo2, int bpm) {
+  if(WiFi.status() == WL_CONNECTED) {
+    WiFiClientSecure *client = new WiFiClientSecure;
+    client->setInsecure(); // Ignora el certificado SSL
+    HTTPClient https;
+
+    https.begin(*client, "https://seroa-web-production.up.railway.app/api/registros");
+    https.addHeader("Content-Type", "application/json");
+
+    String jsonPayload = "{\"id_paciente\": " + idPac + 
+                         ", \"saturacion_oxigeno\": " + String(spo2) + 
+                         ", \"ritmo_cardiaco\": " + String(bpm) + "}";
+
+    int httpResponseCode = https.POST(jsonPayload);
+    
+    if(httpResponseCode > 0) {
+      Serial.print("Railway respondio OK: ");
+      Serial.println(httpResponseCode);
+    } else {
+      Serial.print("Error conectando a Railway: ");
+      Serial.println(https.errorToString(httpResponseCode).c_str());
+    }
+
+    https.end();
+    delete client;
+  }
 }
 
 // ========== BLUETOOTH ==========
@@ -524,7 +553,12 @@ void loop() {
           estadoActual = "ACTIVO";
         }
 
+        // Envía a Firebase (para interfaz en vivo)
         enviarFirebase(spo2Actual, bpmActual, estadoActual, presionActual);
+        
+        // LLAMADA NUEVA AL BACKEND RAILWAY
+        enviarRailway(id_paciente, spo2Actual, bpmActual);
+        
         mostrarOLED(estadoActual, spo2Actual, bpmActual, presionActual, valvulaActiva);
 
         Serial.println("============== SEROA ==============");

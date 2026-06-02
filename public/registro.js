@@ -230,10 +230,9 @@ function suscribirLecturasRT(leerGuardar = true) {
 
         const clas = clasificarLectura(spo2, bpm);
         const lectura = { spo2, bpm, nivel: clas.nivel, accion: clas.accion };
-        if (leerGuardar) guardarRegistroEstructurado(lectura);
+        
     });
 }
-
 function actualizarResumenDiario(registros) {
     const hoy = new Date();
     const registrosHoy = (registros || []).filter(r => r.fecha_hora && window.esHoy(r.fecha_hora));
