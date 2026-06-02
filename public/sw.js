@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'seroa-pwa-v1.6.5';
+const CACHE_NAME = 'seroa-pwa-v1.6.6';
 const urlsToCache = [
   './',
   './index.html',
