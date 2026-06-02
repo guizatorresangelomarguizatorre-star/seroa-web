@@ -469,7 +469,7 @@ async function obtenerImagenBase64(rutaImagen) {
 async function generarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-
+    const rolUsuario = localStorage.getItem('selectedPatientRole') || 'Invitado';
     const logoUrl = 'img/logo-icono.png';
     let logoData = null;
     try { logoData = await obtenerImagenBase64(logoUrl); } catch (e) { console.warn('No se pudo cargar logo para PDF', e); }
@@ -488,6 +488,7 @@ async function generarPDF() {
     doc.setFontSize(12);
     doc.text(`Paciente: ${paciente}`, 40, 110);
     doc.text(`Usuario en turno: ${usuario}`, 40, 130);
+    doc.text(`Rol de acceso: ${rolUsuario}`, 40, 136);
 
     const pacienteEdad = localStorage.getItem('selectedPatientEdad');
     const pacientePeso = localStorage.getItem('selectedPatientPeso');

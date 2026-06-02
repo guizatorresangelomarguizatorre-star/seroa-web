@@ -427,7 +427,7 @@ function aplicarRestriccionesDeRol() {
                             el.setAttribute('aria-disabled', 'true');
                             el.setAttribute('data-bs-toggle', 'tooltip');
                             el.setAttribute('data-bs-placement', 'bottom');
-                            el.setAttribute('title', 'Acceso restringido: agrega un paciente o solicita un permiso');
+                            el.setAttribute('title', 'Acceso restringido: agrega un paciente o solicita un permiso de administrador o doctor');
                         } else {
                             target.classList.remove('nav-disabled');
                             el.removeAttribute('aria-disabled');
