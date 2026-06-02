@@ -680,34 +680,36 @@ body {
 
 /* Badge Responsive - Prevenir desbordamiento en móviles */
 [data-paciente-actual] {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    display: inline-block; /* Usamos inline-block para manejar mejor los saltos de línea */
     max-width: 100%;
     word-break: break-word;
     white-space: normal;
     text-align: left;
     overflow-wrap: break-word;
+    line-height: 1.4; /* Mejora la lectura al tener dos líneas */
 }
 
 [data-paciente-actual] strong {
-    display: inline;
+    display: block; /* Esto es MAGIA: obliga al nombre a irse siempre a su propia línea abajo */
     word-break: break-word;
+    margin-top: 3px; /* Separación sutil entre "Paciente Actual:" y el nombre */
+    font-weight: 600; /* Le bajamos un tono al grosor en PC para que se vea más elegante */
 }
 
 @media (max-width: 768px) {
     [data-paciente-actual] {
-        padding: 0.4rem 0.6rem !important;
+        padding: 0.6rem 1rem !important; /* Ajustamos el padding para que se vea bien en dos líneas */
         font-size: 0.85rem !important;
+        border-radius: 16px !important; /* Suavizamos el borde tipo píldora al ser más alto */
     }
     
     [data-paciente-actual] i {
-        flex-shrink: 0;
+        margin-right: 2px;
     }
     
     [data-paciente-actual] strong {
-        max-width: 120px;
+        font-weight: 500; /* AQUÍ ESTÁ LA SOLUCIÓN: Texto más delgado y estilizado en móviles */
+        max-width: 100%; /* Le damos permiso de usar todo el ancho de la pantalla sin salirse */
     }
 }
 
