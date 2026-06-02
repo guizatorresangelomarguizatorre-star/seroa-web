@@ -547,7 +547,7 @@ app.get('/api/invitado', (req, res) => {
 
         const guestBindUserId = req.query.userId ? Number(req.query.userId) : null;
         const pacienteQuery = `SELECT p.id_paciente, p.nombre, p.peso_kg, p.edad, p.sexo, p.padecimiento, p.rango_spo2_min, p.rango_spo2_max
-                              FROM pacientes p WHERE p.id_paciente = ?`;
+                               FROM pacientes p WHERE p.id_paciente = ?`;
 
         const enviarPaciente = () => {
             db.query(pacienteQuery, [acceso.id_paciente], (pacErr, pacResults) => {
@@ -709,7 +709,9 @@ function flushAggregateForPatient(id_paciente) {
     const avgSpo2 = Math.round(agg.sumSpo2 / agg.count);
     const avgBpm = Math.round(agg.sumBpm / agg.count);
     const id_registro = crypto.randomBytes(12).toString('hex');
-    const fecha_hora = new Date().toISOString();
+    
+    // FORMATO CORREGIDO PARA MYSQL
+    const fecha_hora = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     const query = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
     db.query(query, [id_registro, id_paciente, null, avgSpo2, avgBpm, 0, fecha_hora], (err) => {
@@ -779,7 +781,10 @@ app.post('/api/registros', (req, res) => {
     if (isAnomaly) {
         // Insert immediately as incident + create alert
         const idr = id_registro || crypto.randomBytes(12).toString('hex');
-        const fecha = fecha_hora || new Date().toISOString();
+        
+        // FORMATO CORREGIDO PARA MYSQL
+        const fecha = (fecha_hora ? new Date(fecha_hora) : new Date()).toISOString().slice(0, 19).replace('T', ' ');
+        
         const esCrit = (nivel === 'Peligro') ? 2 : (nivel === 'Precaución' ? 1 : 0);
 
         const queryRegistro = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
@@ -806,7 +811,7 @@ app.post('/api/registros', (req, res) => {
                     bpm: bpm,
                     nivel: nivel,
                     es_critico: esCrit,
-                    timestamp: fecha,
+                    timestamp: fecha_hora || new Date().toISOString(), // Mantenemos ISO para Firebase
                     estado: 'ACTIVO'
                 };
                 writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error (incidente):', e));
@@ -891,7 +896,10 @@ app.get('/api/historial-fechas', (req, res) => {
                    WHERE id_paciente = ? AND fecha_hora >= ?
                    ORDER BY fecha_guardada DESC`;
     
-    db.query(query, [id_paciente, hace30dias.toISOString()], (err, results) => {
+    // FORMATO CORREGIDO PARA MYSQL (Búsqueda por fecha límite)
+    const fechaFiltroISO = hace30dias.toISOString().slice(0, 19).replace('T', ' ');
+
+    db.query(query, [id_paciente, fechaFiltroISO], (err, results) => {
         if (err) {
             console.error('Error en historial-fechas:', err);
             return res.status(500).json({ error: 'Error en consulta' });
@@ -999,7 +1007,9 @@ app.get('/', (req, res) => {
 function limpiarDatosAntiguos() {
     const ahora = new Date();
     const hace30dias = new Date(ahora.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const fechaLimite = hace30dias.toISOString();
+    
+    // FORMATO CORREGIDO PARA MYSQL
+    const fechaLimite = hace30dias.toISOString().slice(0, 19).replace('T', ' ');
 
     // Borrar registros biométricos más antiguos de 30 días
     const queryRegistros = `DELETE FROM registros_biomedicos WHERE fecha_hora < ?`;
