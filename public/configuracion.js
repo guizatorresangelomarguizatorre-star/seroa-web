@@ -263,9 +263,24 @@ function solicitarPermisoNotificaciones() {
 }
 
 function cargarPreferenciasNotificaciones() {
-    const activo = localStorage.getItem('seroaNotificaciones') === 'true';
-    const switchNoti = document.getElementById('toggleNotificaciones');
-    if (switchNoti) switchNoti.checked = activo;
+    // Master y los 6 tipos — default: todos activados
+    const claves = ['master', 'spo2_peligro', 'spo2_precaucion', 'bpm_peligro', 'bpm_precaucion', 'tanque_mitad', 'tanque_critico'];
+    claves.forEach(key => {
+        const val = localStorage.getItem('seroaNotif_' + key);
+        const el  = document.querySelector(`.notif-toggle[data-key="${key}"]`);
+        if (el) el.checked = val === null ? true : val === 'true';
+    });
+}
+
+function iniciarEventosNotificaciones() {
+    document.querySelectorAll('.notif-toggle').forEach(toggle => {
+        toggle.addEventListener('change', () => {
+            const key = toggle.dataset.key;
+            if (!key) return;
+            localStorage.setItem('seroaNotif_' + key, toggle.checked ? 'true' : 'false');
+            if (window.SeroaNotif) window.SeroaNotif.setPreferencia(key, toggle.checked);
+        });
+    });
 }
 
 function notificar(titulo, cuerpo) {
@@ -501,6 +516,7 @@ function iniciarConfiguracion() {
     cargarDispositivoVinculado();
     cargarDispositivos();
     cargarPreferenciasNotificaciones();
+    iniciarEventosNotificaciones();
     cargarPacienteDatos();
     cargarAccesos();
     suscribirEstadoNube();

@@ -321,6 +321,13 @@ function mostrarDatosValidos(spo2, bpm, presionBar, valvulaActiva, datos) {
 
     var alerta = document.getElementById('alertaGlobalSeroa');
     if (spo2 < 90 && alerta) alerta.classList.remove('d-none');
+
+    // Motor de notificaciones sonoras
+    if (window.SeroaNotif) {
+        var spo2min = Number(localStorage.getItem('selectedPatientSpo2Min')) || 90;
+        window.SeroaNotif.alertarSpo2(spo2, spo2min);
+        window.SeroaNotif.alertarBpm(bpm);
+    }
 }
 
 aplicarEstadoDesconectado();

@@ -53,6 +53,9 @@ function actualizarCilindro(porcentaje, presionBar, estadoTanqueStr) {
 
     txtPct.innerHTML = pct + '<span class="fs-5">%</span>';
 
+    // Notificaciones sonoras del tanque
+    if (window.SeroaNotif) window.SeroaNotif.alertarTanque(pct);
+
     // Presión
     if (pBar) pBar.textContent = presionBar != null ? presionBar.toFixed(2) + ' bar' : '--';
     if (pPsi) {

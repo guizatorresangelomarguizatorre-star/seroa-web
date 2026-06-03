@@ -141,7 +141,33 @@
   </div>
 </div>`;
 
+    const bottomNavHTML = `
+<nav class="seroa-bottom-nav d-md-none" aria-label="Navegación principal">
+  <a href="index.html"         class="seroa-bnav-item" data-page="index.html">
+    <i class="bi bi-house-fill"></i><span>Inicio</span>
+  </a>
+  <a href="pacientes.html"     class="seroa-bnav-item" data-page="pacientes.html">
+    <i class="bi bi-people-fill"></i><span>Pacientes</span>
+  </a>
+  <a href="dosificacion.html"  class="seroa-bnav-item" data-page="dosificacion.html">
+    <i class="bi bi-lungs-fill"></i><span>Dosis</span>
+  </a>
+  <a href="tanque.html"        class="seroa-bnav-item" data-page="tanque.html">
+    <i class="bi bi-speedometer2"></i><span>Tanque</span>
+  </a>
+  <a href="configuracion.html" class="seroa-bnav-item" data-page="configuracion.html">
+    <i class="bi bi-gear-fill"></i><span>Config</span>
+  </a>
+</nav>`;
+
     document.addEventListener('DOMContentLoaded', function () {
         document.body.insertAdjacentHTML('beforeend', footerHTML);
+        document.body.insertAdjacentHTML('beforeend', bottomNavHTML);
+
+        // Resaltar el ítem activo según la página actual
+        const pagina = window.location.pathname.split('/').pop() || 'index.html';
+        document.querySelectorAll('.seroa-bnav-item').forEach(a => {
+            if (a.dataset.page === pagina) a.classList.add('bnav-active');
+        });
     });
 })();
