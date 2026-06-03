@@ -1750,17 +1750,6 @@ body {
   position: relative;
   overflow: hidden;
 }
-.rd-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url('img/patron-separador.png');
-  background-repeat: repeat-x;
-  background-size: auto 60px;
-  background-position: 0 bottom;
-  opacity: 0.08;
-  pointer-events: none;
-}
 .rd-hero-icon {
   width: 52px;
   height: 52px;
@@ -1840,7 +1829,7 @@ body {
   background: linear-gradient(135deg, #3b8b88 0%, #4aaa87 100%);
 }
 .rd-stat-bpm {
-  background: linear-gradient(135deg, #1565c0 0%, #42a5f5 100%);
+  background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
 }
 .rd-stat-valvula {
   background: linear-gradient(135deg, #e65100 0%, #ffb300 100%);
