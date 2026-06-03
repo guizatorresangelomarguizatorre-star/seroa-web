@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pacienteActualLabel = document.getElementById('pacienteActualLabel');
     const userId = localStorage.getItem('userId');
     const userName = localStorage.getItem('nombrePaciente');
+    let todosPacientes = [];
     const formNuevoPaciente = document.getElementById('formNuevoPaciente');
     const mensajePaciente = document.getElementById('mensajePaciente');
     const pacientesCardsContainer = document.getElementById('pacientesCardsContainer');
@@ -146,8 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <small class="text-muted">Rango SpO₂</small>
                             <p class="mb-3">${paciente.rango_spo2_min}% - ${paciente.rango_spo2_max}%</p>
                             <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn btn-sm btn-outline-teal rounded-pill flex-grow-1" data-action="select" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}" data-peso="${paciente.peso_kg}" data-edad="${paciente.edad}" data-sexo="${paciente.sexo}" data-padecimiento="${encodeURIComponent(paciente.padecimiento)}" data-spo2min="${paciente.rango_spo2_min}" data-spo2max="${paciente.rango_spo2_max}">
-                                    ${esSeleccionado ? 'Seleccionado' : 'Seleccionar'}
+                                <button class="btn btn-sm ${esSeleccionado ? 'bg-teal text-white border-0' : 'btn-outline-teal'} rounded-pill flex-grow-1" data-action="select" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}" data-peso="${paciente.peso_kg}" data-edad="${paciente.edad}" data-sexo="${paciente.sexo}" data-padecimiento="${encodeURIComponent(paciente.padecimiento)}" data-spo2min="${paciente.rango_spo2_min}" data-spo2max="${paciente.rango_spo2_max}">
+                                    ${esSeleccionado ? '<i class="bi bi-check2 me-1"></i>Seleccionado' : 'Seleccionar'}
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary rounded-pill flex-grow-1" data-action="edit" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}" data-peso="${paciente.peso_kg}" data-edad="${paciente.edad}" data-sexo="${paciente.sexo}" data-padecimiento="${encodeURIComponent(paciente.padecimiento)}" data-spo2min="${paciente.rango_spo2_min}" data-spo2max="${paciente.rango_spo2_max}">
                                     <i class="bi bi-pencil-square me-1"></i> Editar
@@ -191,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // SI SÍ HAY PACIENTES: Ocultamos la alerta agregando el d-none
         if (alertaFaltaPaciente) alertaFaltaPaciente.classList.add('d-none');
 
+        todosPacientes = pacientes;
         pacientesCardsContainer.innerHTML = pacientes.map(crearCardPaciente).join('');
     }
 
@@ -409,6 +411,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Si el paciente editado es el actualmente seleccionado, actualizar localStorage sin requerir re-selección
+            if (String(localStorage.getItem('selectedPatientId')) === String(pacienteEditandoId)) {
+                localStorage.setItem('selectedPatientName', paciente.nombre);
+                localStorage.setItem('selectedPatientPeso', paciente.peso_kg);
+                localStorage.setItem('selectedPatientEdad', paciente.edad);
+                localStorage.setItem('selectedPatientSexo', paciente.sexo);
+                localStorage.setItem('selectedPatientPadecimiento', paciente.padecimiento);
+                localStorage.setItem('selectedPatientSpo2Min', paciente.rango_spo2_min);
+                localStorage.setItem('selectedPatientSpo2Max', paciente.rango_spo2_max);
+                localStorage.setItem('pacienteActivoSeroa', paciente.nombre);
+                if (typeof actualizarBadgePaciente === 'function') actualizarBadgePaciente();
+            }
+
             await cargarPacientes();
             if (mensajeEditarPaciente) {
                 mensajeEditarPaciente.classList.add('d-none');
@@ -478,6 +493,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (formEditarPaciente) {
         formEditarPaciente.addEventListener('submit', guardarPacienteEditado);
+    }
+
+    // Corrección 7: Barra de búsqueda por nombre (parcial) o ID (exacto)
+    const buscador = document.getElementById('buscadorPacientes');
+    if (buscador) {
+        buscador.addEventListener('input', () => {
+            const query = buscador.value.trim().toLowerCase();
+            if (!query) {
+                mostrarPacientes(todosPacientes);
+                return;
+            }
+            const filtrados = todosPacientes.filter(p => {
+                const coincideNombre = p.nombre.toLowerCase().includes(query);
+                const coincideId = String(p.id_paciente) === query;
+                return coincideNombre || coincideId;
+            });
+            mostrarPacientes(filtrados);
+        });
     }
 
     actualizarPacienteActualUI();
