@@ -1744,9 +1744,9 @@ body {
 
 /* Hero Banner */
 .rd-hero {
-  background: #ffffff;
+  background: var(--bg-light-gray);
   padding: 1.4rem 0 1.2rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #e8ecf0;
   position: relative;
   overflow: hidden;
 }
