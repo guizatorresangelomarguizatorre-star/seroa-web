@@ -269,6 +269,27 @@ app.get('/api/pacientes/:id/config', (req, res) => {
     });
 });
 
+app.get('/api/pacientes/:id/dispositivo', (req, res) => {
+    const id_paciente = req.params.id;
+    const query = `SELECT d.id_dispositivo, d.ssid_wifi, d.fecha_registro,
+                          pd.estado_vinculo, pd.fecha_vinculacion
+                   FROM paciente_dispositivo pd
+                   JOIN dispositivos_seroa d ON d.id_dispositivo = pd.id_dispositivo
+                   WHERE pd.id_paciente = ? AND pd.estado_vinculo = 'Activo'
+                   ORDER BY pd.fecha_vinculacion DESC
+                   LIMIT 1`;
+    db.query(query, [id_paciente], (err, results) => {
+        if (err) {
+            console.error('Error MySQL al consultar dispositivo del paciente:', err);
+            return res.status(500).json({ error: 'Error interno al consultar el dispositivo.' });
+        }
+        if (results.length === 0) {
+            return res.json({ vinculado: false });
+        }
+        res.json({ vinculado: true, ...results[0] });
+    });
+});
+
 app.get('/api/pacientes', (req, res) => {
     const id_usuario = req.query.id_usuario;
     const id_paciente = req.query.id_paciente;
@@ -606,19 +627,59 @@ app.get('/api/invitado', (req, res) => {
 });
 
 app.post('/api/dispositivos', (req, res) => {
-    const { ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, id_usuario } = req.body;
+    const { ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, id_usuario, id_paciente } = req.body;
 
-    if (!ssid_wifi || !password_wifi || !id_usuario) {
-        return res.status(400).json({ error: 'SSID, contraseña y usuario son requeridos.' });
+    if (!ssid_wifi || !password_wifi) {
+        return res.status(400).json({ error: 'SSID y contraseña son requeridos.' });
     }
 
-    const query = `INSERT INTO dispositivos_seroa (ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, fecha_registro) VALUES (?, ?, ?, ?, NOW())`;
-    db.query(query, [ssid_wifi, password_wifi, estado_paro_emergencia || 'Desactivado', usuario_paro_emergencia || null], (err, result) => {
-        if (err) {
-            console.error('Error MySQL al agregar dispositivo:', err);
-            return res.status(500).json({ error: 'No se pudo registrar el dispositivo.' });
-        }
-        res.json({ mensaje: 'Dispositivo registrado con éxito.', id_dispositivo: result.insertId });
+    db.getConnection((connErr, connection) => {
+        if (connErr) return res.status(500).json({ error: 'Error de conexión a la base de datos.' });
+
+        connection.beginTransaction((txErr) => {
+            if (txErr) {
+                connection.release();
+                return res.status(500).json({ error: 'Error iniciando transacción.' });
+            }
+
+            const insertDispositivo = `INSERT INTO dispositivos_seroa (ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, fecha_registro) VALUES (?, ?, ?, ?, NOW())`;
+            connection.query(insertDispositivo, [ssid_wifi, password_wifi, estado_paro_emergencia || 'Desactivado', usuario_paro_emergencia || null], (err1, result1) => {
+                if (err1) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        console.error('Error MySQL al agregar dispositivo:', err1);
+                        res.status(500).json({ error: 'No se pudo registrar el dispositivo.' });
+                    });
+                }
+
+                const idDispositivo = result1.insertId;
+
+                if (!id_paciente) {
+                    return connection.commit((commitErr) => {
+                        connection.release();
+                        if (commitErr) return res.status(500).json({ error: 'Error al confirmar la transacción.' });
+                        res.json({ mensaje: 'Dispositivo registrado con éxito.', id_dispositivo: idDispositivo });
+                    });
+                }
+
+                const insertVinculo = `INSERT INTO paciente_dispositivo (id_paciente, id_dispositivo, estado_vinculo, fecha_vinculacion) VALUES (?, ?, 'Activo', NOW())`;
+                connection.query(insertVinculo, [id_paciente, idDispositivo], (err2) => {
+                    if (err2) {
+                        return connection.rollback(() => {
+                            connection.release();
+                            console.error('Error MySQL al vincular dispositivo al paciente:', err2);
+                            res.status(500).json({ error: 'No se pudo vincular el dispositivo al paciente.' });
+                        });
+                    }
+
+                    connection.commit((commitErr) => {
+                        connection.release();
+                        if (commitErr) return res.status(500).json({ error: 'Error al confirmar la transacción.' });
+                        res.json({ mensaje: 'Dispositivo registrado y vinculado con éxito.', id_dispositivo: idDispositivo });
+                    });
+                });
+            });
+        });
     });
 });
 

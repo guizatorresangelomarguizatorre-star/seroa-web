@@ -60,9 +60,28 @@ async function iniciarVinculacionBluetooth() {
 
         await characteristic.writeValue(dataArray);
 
+        msgBox.textContent = 'Registrando dispositivo en el sistema...';
+
+        const backendRes = await fetch('/api/dispositivos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ssid_wifi: ssid,
+                password_wifi: pass,
+                estado_paro_emergencia: 'Desactivado',
+                id_paciente: parseInt(pacienteId, 10)
+            })
+        });
+        const backendData = await backendRes.json();
+        if (!backendRes.ok) {
+            console.warn('Advertencia al registrar dispositivo en BD:', backendData.error);
+        }
+
         msgBox.className = 'alert alert-success fw-bold';
         msgBox.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>¡Sincronización Exitosa! El ESP32 se reiniciará para conectarse.';
-        
+
+        cargarDispositivoVinculado();
+
         setTimeout(() => {
             if (device.gatt.connected) device.gatt.disconnect();
         }, 3000);
@@ -72,6 +91,30 @@ async function iniciarVinculacionBluetooth() {
         msgBox.className = 'alert alert-danger';
         msgBox.textContent = `Error de conexión: ${error.message}`;
         msgBox.classList.remove('d-none');
+    }
+}
+
+async function cargarDispositivoVinculado() {
+    const pacienteId = localStorage.getItem('selectedPatientId');
+    const display = document.getElementById('dispositivoIdDisplay');
+    if (!display) return;
+
+    if (!pacienteId) {
+        display.innerHTML = '<span class="text-muted fst-italic">Sin paciente seleccionado</span>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/pacientes/${pacienteId}/dispositivo`);
+        const data = await response.json();
+
+        if (data.vinculado) {
+            display.innerHTML = `<span class="badge px-3 py-2 fs-6 rounded-pill text-white" style="background:linear-gradient(135deg,#3b8b88,#00b4d8);"><i class="bi bi-cpu-fill me-2"></i>Seroa ID: #${data.id_dispositivo}</span>`;
+        } else {
+            display.innerHTML = `<span class="text-warning fw-semibold"><i class="bi bi-exclamation-circle-fill me-1"></i>Ningún dispositivo vinculado</span><span class="d-block text-muted small mt-1">Usa "Añadir Dispositivo" para vincular tu Seroa ESP32.</span>`;
+        }
+    } catch (error) {
+        display.innerHTML = '<span class="text-muted small">No se pudo verificar el dispositivo.</span>';
     }
 }
 
@@ -455,6 +498,7 @@ function iniciarConfiguracion() {
     document.getElementById('btnGenerarInvitacionConfig')?.addEventListener('click', generarLinkInvitadoConfig);
     document.getElementById('btnVincularBluetooth')?.addEventListener('click', iniciarVinculacionBluetooth);
     
+    cargarDispositivoVinculado();
     cargarDispositivos();
     cargarPreferenciasNotificaciones();
     cargarPacienteDatos();
