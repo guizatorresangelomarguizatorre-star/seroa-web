@@ -13,173 +13,419 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <!-- Precarga solo la primera imagen -->
+  <link rel="preload" as="image" href="img/guia-1.png" media="(min-width: 769px)">
+  <link rel="preload" as="image" href="img/guia-movil-1.png" media="(max-width: 768px)">
   <style>
-    body, html { 
-        height: 100%; 
-        margin: 0; 
-        padding: 0; 
-        overflow: hidden; 
-        background-color: #000; 
-    }
-    
-    #carruselGuiaSeroa, .carousel-inner, .carousel-item { 
-        height: 100vh; 
-        width: 100vw;
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body, html {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #1a2a2a;
     }
 
-    .img-guia {
-        width: 100vw;  
-        height: 100vh; 
-        object-fit: fill; 
-        display: block; 
+    /* ── Splash de carga ─────────────────────────── */
+    #guiaSplash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: linear-gradient(135deg, #2c3e50, #3b8b88);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      transition: opacity 0.4s ease;
+    }
+    #guiaSplash.oculto {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .splash-logo {
+      width: 80px;
+      height: 80px;
+      animation: splashPulse 1.4s ease-in-out infinite;
+    }
+    .splash-bar-track {
+      width: 160px;
+      height: 4px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .splash-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #66bb6a, #3b8b88);
+      border-radius: 4px;
+      animation: splashLoad 1s ease-out forwards;
+    }
+    @keyframes splashPulse {
+      0%, 100% { transform: scale(1);   opacity: 0.85; }
+      50%       { transform: scale(1.08); opacity: 1; }
+    }
+    @keyframes splashLoad {
+      from { width: 0%; }
+      to   { width: 100%; }
     }
 
-    .carousel-indicators {
-        bottom: 20px; 
+    /* ── Barra de progreso superior ─────────────── */
+    .guia-topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.15);
+      z-index: 1060;
     }
-    .carousel-indicators [data-bs-target] { 
-        background-color: #20c997; 
-        width: 14px; 
-        height: 14px; 
-        border-radius: 50%; 
-        opacity: 0.6;
-        border: 2px solid white; 
-    }
-    .carousel-indicators .active {
-        opacity: 1;
-        background-color: #1aa179;
-    }
-
-    .btn-comenzar-container {
-        position: absolute;
-        bottom: 8%; 
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        z-index: 10;
-        padding: 0 20px; 
+    .guia-topbar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #66bb6a, #3b8b88);
+      transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 0 4px 4px 0;
     }
 
-    .btn-seroa { 
-        background-color: #20c997; 
-        color: white; 
-        font-weight: bold; 
-        padding: 18px 50px; 
-        border-radius: 50px; 
-        font-size: 1.4rem; 
-        border: 3px solid white; 
-        transition: 0.3s;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-    .btn-seroa:hover { 
-        background-color: #1aa179; 
-        color: white; 
-        transform: scale(1.05) translateY(-3px); 
-        box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-    }
-
-    .control-btn { 
-        background-color: rgba(0, 0, 0, 0.4); 
-        border-radius: 50%; 
-        width: 60px; 
-        height: 60px; 
-        display: flex; 
-        justify-content: center; 
-        align-items: center; 
-        border: 2px solid white;
-    }
-    .carousel-control-prev, .carousel-control-next {
-        width: 10%; 
-    }
+    /* ── Botón volver ────────────────────────────── */
     .btn-back-header {
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        z-index: 1050; /* Lo mantiene por encima de las imágenes */
-        color: white; 
-        background-color: rgba(0, 0, 0, 0.4); /* Fondo oscuro semitransparente */
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-        font-size: 1.4rem;
-        transition: all 0.3s ease;
-        border: 1px solid transparent;
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 1050;
+      color: white;
+      background: rgba(0,0,0,0.35);
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-size: 1.3rem;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.2);
+      transition: background 0.25s, transform 0.25s;
+    }
+    .btn-back-header:hover {
+      background: #3b8b88;
+      transform: translateX(-3px);
     }
 
-    .btn-back-header:hover {
-        background-color: #3b8b88; /* Verde Seroa */
-        color: white;
-        transform: translateX(-4px); /* El mismo deslizamiento sutil a la izquierda */
-        box-shadow: 0 4px 10px rgba(59, 139, 136, 0.4);
+    /* ── Botón omitir ────────────────────────────── */
+    .btn-guia-skip {
+      position: fixed;
+      top: 20px;
+      right: 18px;
+      z-index: 1050;
+      color: rgba(255,255,255,0.8);
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.25);
+      backdrop-filter: blur(6px);
+      border-radius: 50px;
+      padding: 0.35rem 1rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: background 0.25s, color 0.25s;
     }
+    .btn-guia-skip:hover { background: rgba(0,0,0,0.55); color: white; }
+    .btn-guia-skip.oculto { opacity: 0; pointer-events: none; }
+
+    /* ── Indicadores de paso ─────────────────────── */
+    .guia-steps {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1050;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .guia-step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      border: 2px solid rgba(255,255,255,0.5);
+      cursor: pointer;
+      transition: width 0.3s, background 0.3s, border-radius 0.3s;
+    }
+    .guia-step-dot.activo {
+      width: 28px;
+      border-radius: 5px;
+      background: #66bb6a;
+      border-color: #66bb6a;
+    }
+
+    /* ── Controles prev / next ───────────────────── */
+    .carousel-control-prev,
+    .carousel-control-next {
+      width: 64px;
+      opacity: 1;
+    }
+    .guia-ctrl-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.3);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      color: white;
+      transition: background 0.25s, transform 0.2s;
+    }
+    .guia-ctrl-btn:hover { background: rgba(59,139,136,0.7); transform: scale(1.08); }
+
+    /* ── Carrusel ────────────────────────────────── */
+    #carruselGuiaSeroa,
+    .carousel-inner,
+    .carousel-item {
+      height: 100vh;
+      width: 100vw;
+    }
+    .img-guia {
+      width: 100vw;
+      height: 100vh;
+      object-fit: fill;
+      display: block;
+    }
+    /* Imagen placeholder mientras carga lazy */
+    .img-guia[data-src] {
+      background: #1a2a2a;
+    }
+
+    /* Fade suave en lugar de slide */
+    .carousel-fade .carousel-item { opacity: 0; transition: opacity 0.5s ease; }
+    .carousel-fade .carousel-item.active { opacity: 1; }
+    .carousel-fade .carousel-item-next,
+    .carousel-fade .carousel-item-prev { opacity: 0; }
+    .carousel-fade .active.carousel-item-start,
+    .carousel-fade .active.carousel-item-end { opacity: 0; }
+    .carousel-fade .carousel-item-next.carousel-item-start,
+    .carousel-fade .carousel-item-prev.carousel-item-end { opacity: 1; }
+
+    /* ── Botón Empezar (última slide) ────────────── */
+    .btn-comenzar-wrap {
+      position: absolute;
+      bottom: 9%;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      z-index: 10;
+      padding: 0 20px;
+    }
+    .btn-empezar {
+      background: linear-gradient(135deg, #20c997, #3b8b88);
+      color: white;
+      font-weight: 700;
+      padding: 16px 52px;
+      border-radius: 50px;
+      font-size: 1.25rem;
+      border: 2px solid rgba(255,255,255,0.4);
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 0 rgba(32,201,151,0.5);
+      transition: transform 0.25s, box-shadow 0.25s;
+      animation: empezarPulse 2.5s ease-in-out infinite;
+    }
+    .btn-empezar:hover {
+      color: white;
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5), 0 0 0 8px rgba(32,201,151,0.15);
+      animation: none;
+    }
+    @keyframes empezarPulse {
+      0%, 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 0 rgba(32,201,151,0.4); }
+      50%       { box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 10px rgba(32,201,151,0); }
+    }
+
+    /* ── Swipe hint (solo móvil, desaparece solo) ─── */
+    .swipe-hint {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1040;
+      color: rgba(255,255,255,0.55);
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      animation: hintFade 3s ease 1.5s forwards;
+      opacity: 0;
+    }
+    @keyframes hintFade {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+      20%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+      80%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @media (min-width: 769px) { .swipe-hint { display: none; } }
   </style>
 </head>
 <body>
-<a href="#" onclick="window.history.back(); return false;" class="btn-back-header" title="Volver atrás">
+
+  <!-- Splash de carga -->
+  <div id="guiaSplash">
+    <img src="img/logo-icono.png" class="splash-logo" alt="Seroa">
+    <div class="splash-bar-track">
+      <div class="splash-bar-fill"></div>
+    </div>
+  </div>
+
+  <!-- Barra de progreso superior -->
+  <div class="guia-topbar">
+    <div class="guia-topbar-fill" id="guiaBarFill" style="width: 25%;"></div>
+  </div>
+
+  <!-- Volver -->
+  <a href="#" onclick="window.history.back(); return false;" class="btn-back-header" title="Volver">
     <i class="bi bi-arrow-left"></i>
-</a>
-<div id="carruselGuiaSeroa" class="carousel slide" data-bs-touch="true" data-bs-interval="false">
-  
-  <div class="carousel-indicators mb-4">
-    <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="0" class="active" aria-current="true"></button>
-    <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="1"></button>
-    <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="2"></button>
-    <button type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide-to="3"></button>
-  </div>
+  </a>
 
-  <div class="carousel-inner">
-    
-    <div class="carousel-item active">
-      <picture>
-        <source media="(max-width: 768px)" srcset="img/guia-movil-1.png">
-        <img src="img/guia-1.png" class="img-guia" alt="Bienvenida a Seroa">
-      </picture>
-    </div>
+  <!-- Omitir (se oculta en última slide) -->
+  <a href="login.html" class="btn-guia-skip" id="btnSkipGuia">
+    Omitir <i class="bi bi-chevron-right"></i>
+  </a>
 
-    <div class="carousel-item">
-      <picture>
-        <source media="(max-width: 768px)" srcset="img/guia-movil-2.png">
-        <img src="img/guia-2.png" class="img-guia" alt="Dashboard en tiempo real">
-      </picture>
-    </div>
+  <!-- Carrusel -->
+  <div id="carruselGuiaSeroa" class="carousel carousel-fade" data-bs-touch="true" data-bs-interval="false">
+    <div class="carousel-inner">
 
-    <div class="carousel-item">
-      <picture>
-        <source media="(max-width: 768px)" srcset="img/guia-movil-3.png">
-        <img src="img/guia-3.png" class="img-guia" alt="Gestión de pacientes">
-      </picture>
-    </div>
-
-    <div class="carousel-item">
-      <picture>
-        <source media="(max-width: 768px)" srcset="img/guia-movil-4.png">
-        <img src="img/guia-4.png" class="img-guia" alt="Reportes y Registro Diario">
-      </picture>
-      <div class="btn-comenzar-container">
-        <a href="login.html" class="btn btn-seroa">¡Empezar Ahora!</a>
+      <!-- Slide 1: carga inmediata con alta prioridad -->
+      <div class="carousel-item active">
+        <picture>
+          <source media="(max-width: 768px)" srcset="img/guia-movil-1.png">
+          <img src="img/guia-1.png" class="img-guia" fetchpriority="high" alt="Bienvenida a Seroa">
+        </picture>
       </div>
+
+      <!-- Slides 2-4: carga diferida (data-src) -->
+      <div class="carousel-item">
+        <picture>
+          <source media="(max-width: 768px)" data-srcset="img/guia-movil-2.png">
+          <img data-src="img/guia-2.png" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" class="img-guia" alt="Dashboard en tiempo real">
+        </picture>
+      </div>
+
+      <div class="carousel-item">
+        <picture>
+          <source media="(max-width: 768px)" data-srcset="img/guia-movil-3.png">
+          <img data-src="img/guia-3.png" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" class="img-guia" alt="Gestión de pacientes">
+        </picture>
+      </div>
+
+      <div class="carousel-item">
+        <picture>
+          <source media="(max-width: 768px)" data-srcset="img/guia-movil-4.png">
+          <img data-src="img/guia-4.png" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" class="img-guia" alt="Reportes y Registro Diario">
+        </picture>
+        <div class="btn-comenzar-wrap">
+          <a href="login.html" class="btn-empezar">¡Empezar Ahora!</a>
+        </div>
+      </div>
+
     </div>
 
+    <!-- Controles -->
+    <button class="carousel-control-prev" type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide="prev">
+      <div class="guia-ctrl-btn"><i class="bi bi-chevron-left"></i></div>
+      <span class="visually-hidden">Anterior</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide="next">
+      <div class="guia-ctrl-btn"><i class="bi bi-chevron-right"></i></div>
+      <span class="visually-hidden">Siguiente</span>
+    </button>
   </div>
 
-  <button class="carousel-control-prev" type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide="prev">
-    <div class="control-btn"><i class="bi bi-chevron-left text-white fs-2"></i></div>
-    <span class="visually-hidden">Anterior</span>
-  </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#carruselGuiaSeroa" data-bs-slide="next">
-    <div class="control-btn"><i class="bi bi-chevron-right text-white fs-2"></i></div>
-    <span class="visually-hidden">Siguiente</span>
-  </button>
-</div>
+  <!-- Indicadores de paso (debajo del carrusel) -->
+  <div class="guia-steps" id="guiaSteps">
+    <div class="guia-step-dot activo" data-idx="0"></div>
+    <div class="guia-step-dot" data-idx="1"></div>
+    <div class="guia-step-dot" data-idx="2"></div>
+    <div class="guia-step-dot" data-idx="3"></div>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="footer.js"></script>
+  <!-- Swipe hint en móvil -->
+  <div class="swipe-hint">
+    <i class="bi bi-arrow-left-right"></i> Desliza para continuar
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const TOTAL = 4;
+    const carousel   = document.getElementById('carruselGuiaSeroa');
+    const barFill    = document.getElementById('guiaBarFill');
+    const steps      = document.querySelectorAll('.guia-step-dot');
+    const skipBtn    = document.getElementById('btnSkipGuia');
+    const splash     = document.getElementById('guiaSplash');
+    const items      = carousel.querySelectorAll('.carousel-item');
+
+    // ── Ocultar splash cuando la primera imagen cargue ──────
+    const firstImg = items[0].querySelector('img');
+    function hideSplash() { splash.classList.add('oculto'); }
+    if (firstImg.complete) {
+      hideSplash();
+    } else {
+      firstImg.addEventListener('load',  hideSplash, { once: true });
+      firstImg.addEventListener('error', hideSplash, { once: true });
+      // Seguro de fuga: máximo 2 s de splash
+      setTimeout(hideSplash, 2000);
+    }
+
+    // ── Lazy load de slides diferidas ───────────────────────
+    function loadSlide(idx) {
+      const item = items[idx];
+      if (!item) return;
+      const img    = item.querySelector('img[data-src]');
+      const source = item.querySelector('source[data-srcset]');
+      if (source) { source.srcset = source.dataset.srcset; source.removeAttribute('data-srcset'); }
+      if (img)    { img.src = img.dataset.src; img.removeAttribute('data-src'); }
+    }
+
+    // Precarga slide 2 mientras el usuario lee slide 1
+    setTimeout(() => loadSlide(1), 800);
+
+    // ── UI: barra + dots + skip ──────────────────────────────
+    function updateUI(idx) {
+      barFill.style.width = ((idx + 1) / TOTAL * 100) + '%';
+      steps.forEach((d, i) => d.classList.toggle('activo', i === idx));
+      skipBtn.classList.toggle('oculto', idx === TOTAL - 1);
+    }
+
+    // ── Eventos del carrusel ─────────────────────────────────
+    carousel.addEventListener('slide.bs.carousel', function(e) {
+      updateUI(e.to);
+      // Carga la siguiente + la posterior (adelantada)
+      loadSlide(e.to);
+      loadSlide(e.to + 1);
+    });
+
+    // ── Clicks en dots ───────────────────────────────────────
+    steps.forEach(dot => {
+      dot.addEventListener('click', () => {
+        bootstrap.Carousel.getInstance(carousel).to(Number(dot.dataset.idx));
+      });
+    });
+
+    // ── Navegación por teclado ───────────────────────────────
+    document.addEventListener('keydown', function(e) {
+      const c = bootstrap.Carousel.getInstance(carousel);
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  c.next();
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    c.prev();
+    });
+  </script>
+  <script src="footer.js"></script>
 </body>
 </html>
