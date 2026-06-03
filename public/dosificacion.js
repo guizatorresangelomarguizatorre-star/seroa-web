@@ -32,14 +32,7 @@ async function cargarConfigDosificacion() {
         if (rangoMinInput) rangoMinInput.value = paciente.rango_spo2_min;
         if (rangoMaxInput) rangoMaxInput.value = paciente.rango_spo2_max;
 
-        // Actualizar display del rango
-        const displayMin = document.getElementById('rangoDisplayMin');
-        const displayMax = document.getElementById('rangoDisplayMax');
-        if (displayMin) displayMin.textContent = `${paciente.rango_spo2_min}%`;
-        if (displayMax) displayMax.textContent = `${paciente.rango_spo2_max}%`;
-        if (document.getElementById('panelRangoActual')) {
-            document.getElementById('panelRangoActual').textContent = `${paciente.rango_spo2_min}% - ${paciente.rango_spo2_max}%`;
-        }
+        actualizarTrackRango(paciente.rango_spo2_min, paciente.rango_spo2_max);
     } catch (error) {
         console.error('Error cargando paciente:', error);
     }
@@ -133,7 +126,33 @@ function suscribirLecturas() {
             if (indicador) { indicador.classList.remove('activa'); indicador.classList.add('inactiva'); }
             if (icon) { icon.classList.add('d-none'); }
         }
+
     });
+}
+
+// Actualiza el track visual y las etiquetas del rango SpO2
+function actualizarTrackRango(min, max) {
+    const SCALE_MIN = 80, SCALE_MAX = 100, RANGE = SCALE_MAX - SCALE_MIN;
+    const minPct = Math.max(0, Math.min(100, ((min - SCALE_MIN) / RANGE) * 100));
+    const maxPct = Math.max(0, Math.min(100, ((max - SCALE_MIN) / RANGE) * 100));
+
+    const trackActive  = document.getElementById('rangoTrackActive');
+    const markerMin    = document.getElementById('rangoMarkerMin');
+    const markerMax    = document.getElementById('rangoMarkerMax');
+    const displayMin   = document.getElementById('rangoDisplayMin');
+    const displayMax   = document.getElementById('rangoDisplayMax');
+    const panelActual  = document.getElementById('panelRangoActual');
+    const infoMin      = document.getElementById('rangoInfoMin');
+    const infoMax      = document.getElementById('rangoInfoMax');
+
+    if (trackActive) { trackActive.style.left = minPct + '%'; trackActive.style.width = (maxPct - minPct) + '%'; }
+    if (markerMin)   markerMin.style.left  = minPct + '%';
+    if (markerMax)   markerMax.style.left  = maxPct + '%';
+    if (displayMin)  displayMin.textContent = min + '%';
+    if (displayMax)  displayMax.textContent = max + '%';
+    if (panelActual) panelActual.textContent = `${min}% – ${max}%`;
+    if (infoMin)     infoMin.textContent = min;
+    if (infoMax)     infoMax.textContent = max;
 }
 
 function iniciarDosificacion() {
@@ -141,6 +160,19 @@ function iniciarDosificacion() {
     suscribirLecturas();
     const form = document.getElementById('formDosificacion');
     form?.addEventListener('submit', guardarRangos);
+
+    // Preview en vivo mientras el usuario escribe
+    const inMin = document.getElementById('rangoSpo2Min');
+    const inMax = document.getElementById('rangoSpo2Max');
+    const onInput = () => {
+        const min = parseInt(inMin?.value, 10);
+        const max = parseInt(inMax?.value, 10);
+        if (Number.isFinite(min) && Number.isFinite(max) && min <= max) {
+            actualizarTrackRango(min, max);
+        }
+    };
+    inMin?.addEventListener('input', onInput);
+    inMax?.addEventListener('input', onInput);
 
     // Cargar promedio de la última hora
     cargarPromedioHora();

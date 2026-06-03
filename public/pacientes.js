@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pacienteActualLabel = document.getElementById('pacienteActualLabel');
     const userId = localStorage.getItem('userId');
     const userName = localStorage.getItem('nombrePaciente');
+    let todosPacientes = [];
     const formNuevoPaciente = document.getElementById('formNuevoPaciente');
     const mensajePaciente = document.getElementById('mensajePaciente');
     const pacientesCardsContainer = document.getElementById('pacientesCardsContainer');
@@ -110,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const permisoBadge = paciente.tipo_permiso === 'Administrador' ? 'bg-teal text-white' : paciente.tipo_permiso === 'Doctor' ? 'bg-primary text-white' : 'bg-secondary text-white';
 
         return `
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-4" data-pid="${paciente.id_paciente}" data-nombre="${paciente.nombre.toLowerCase()}">
                 <div class="card patient-card shadow-sm border-0 h-100 ${esSeleccionado ? 'border-success' : ''}">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-3">
@@ -146,8 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <small class="text-muted">Rango SpO₂</small>
                             <p class="mb-3">${paciente.rango_spo2_min}% - ${paciente.rango_spo2_max}%</p>
                             <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn btn-sm btn-outline-teal rounded-pill flex-grow-1" data-action="select" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}" data-peso="${paciente.peso_kg}" data-edad="${paciente.edad}" data-sexo="${paciente.sexo}" data-padecimiento="${encodeURIComponent(paciente.padecimiento)}" data-spo2min="${paciente.rango_spo2_min}" data-spo2max="${paciente.rango_spo2_max}">
-                                    ${esSeleccionado ? 'Seleccionado' : 'Seleccionar'}
+                                <button class="btn btn-sm ${esSeleccionado ? 'bg-teal text-white border-0' : 'btn-outline-teal'} rounded-pill flex-grow-1" data-action="select" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}" data-peso="${paciente.peso_kg}" data-edad="${paciente.edad}" data-sexo="${paciente.sexo}" data-padecimiento="${encodeURIComponent(paciente.padecimiento)}" data-spo2min="${paciente.rango_spo2_min}" data-spo2max="${paciente.rango_spo2_max}">
+                                    ${esSeleccionado ? '<i class="bi bi-check2 me-1"></i>Seleccionado' : 'Seleccionar'}
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary rounded-pill flex-grow-1" data-action="edit" data-id="${paciente.id_paciente}" data-name="${encodeURIComponent(paciente.nombre)}" data-role="${paciente.tipo_permiso}" data-peso="${paciente.peso_kg}" data-edad="${paciente.edad}" data-sexo="${paciente.sexo}" data-padecimiento="${encodeURIComponent(paciente.padecimiento)}" data-spo2min="${paciente.rango_spo2_min}" data-spo2max="${paciente.rango_spo2_max}">
                                     <i class="bi bi-pencil-square me-1"></i> Editar
@@ -191,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // SI SÍ HAY PACIENTES: Ocultamos la alerta agregando el d-none
         if (alertaFaltaPaciente) alertaFaltaPaciente.classList.add('d-none');
 
+        todosPacientes = pacientes;
         pacientesCardsContainer.innerHTML = pacientes.map(crearCardPaciente).join('');
     }
 
@@ -409,6 +411,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Si el paciente editado es el actualmente seleccionado, actualizar localStorage sin requerir re-selección
+            if (String(localStorage.getItem('selectedPatientId')) === String(pacienteEditandoId)) {
+                localStorage.setItem('selectedPatientName', paciente.nombre);
+                localStorage.setItem('selectedPatientPeso', paciente.peso_kg);
+                localStorage.setItem('selectedPatientEdad', paciente.edad);
+                localStorage.setItem('selectedPatientSexo', paciente.sexo);
+                localStorage.setItem('selectedPatientPadecimiento', paciente.padecimiento);
+                localStorage.setItem('selectedPatientSpo2Min', paciente.rango_spo2_min);
+                localStorage.setItem('selectedPatientSpo2Max', paciente.rango_spo2_max);
+                localStorage.setItem('pacienteActivoSeroa', paciente.nombre);
+                if (typeof actualizarBadgePaciente === 'function') actualizarBadgePaciente();
+            }
+
             await cargarPacientes();
             if (mensajeEditarPaciente) {
                 mensajeEditarPaciente.classList.add('d-none');
@@ -480,6 +495,74 @@ document.addEventListener('DOMContentLoaded', () => {
         formEditarPaciente.addEventListener('submit', guardarPacienteEditado);
     }
 
-    actualizarPacienteActualUI();
+    // Buscador en vivo con animacion FLIP: prioriza coincidencias a la izquierda
+    const buscador = document.getElementById('buscadorPacientes');
+    const btnLimpiarBusqueda = document.getElementById('btnLimpiarBusqueda');
+    const busquedaInfo = document.getElementById('busquedaInfo');
+
+    function matchCol(col, query) {
+        return (col.dataset.nombre || '').includes(query) || (col.dataset.pid || '') === query;
+    }
+
+    function aplicarBusqueda() {
+        const query = buscador.value.trim().toLowerCase();
+        const cols = Array.from(pacientesCardsContainer.querySelectorAll('[data-pid]'));
+        if (!cols.length) return;
+
+        const snapshots = new Map();
+        cols.forEach(col => snapshots.set(col, col.getBoundingClientRect()));
+
+        const matches = query ? cols.filter(c => matchCol(c, query)) : cols;
+        const resto   = query ? cols.filter(c => !matchCol(c, query)) : [];
+        [...matches, ...resto].forEach(col => pacientesCardsContainer.appendChild(col));
+
+        cols.forEach(col => {
+            const old = snapshots.get(col);
+            const nw  = col.getBoundingClientRect();
+            const dx  = old.left - nw.left;
+            const dy  = old.top  - nw.top;
+            const esMatch = !query || matchCol(col, query);
+
+            col.style.transition = 'none';
+            col.style.transform  = (dx || dy) ? 'translate(' + dx + 'px,' + dy + 'px)' : '';
+
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                col.style.transition = 'transform 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease';
+                col.style.transform  = '';
+                col.style.opacity    = esMatch ? '1' : '0.28';
+                const card = col.querySelector('.card');
+                if (card) card.style.boxShadow = (query && esMatch)
+                    ? '0 0 0 2px var(--color-seroa-teal), 0 4px 12px rgba(59,139,136,0.15)'
+                    : '';
+            }));
+        });
+
+        if (btnLimpiarBusqueda) btnLimpiarBusqueda.classList.toggle('d-none', !query);
+        if (busquedaInfo) {
+            if (!query) {
+                busquedaInfo.textContent = '';
+            } else if (matches.length === 0) {
+                busquedaInfo.textContent = 'Sin resultados para "' + buscador.value.trim() + '"';
+                busquedaInfo.className = 'text-danger ms-2 mt-1 d-block';
+            } else {
+                busquedaInfo.innerHTML = '<span style="color:var(--color-seroa-teal);font-weight:600;">' + matches.length + ' coincidencia' + (matches.length !== 1 ? 's' : '') + '</span> de ' + cols.length + ' pacientes';
+                busquedaInfo.className = 'text-muted ms-2 mt-1 d-block';
+            }
+        }
+    }
+
+    if (buscador) {
+        buscador.addEventListener('input', aplicarBusqueda);
+        if (btnLimpiarBusqueda) {
+            btnLimpiarBusqueda.addEventListener('click', () => {
+                buscador.value = '';
+                aplicarBusqueda();
+                buscador.focus();
+            });
+        }
+    }
+
+
+        actualizarPacienteActualUI();
     cargarPacientes();
 });

@@ -7,19 +7,14 @@ let latestRegistrosFiltered = [];
 function clasificarLectura(spo2, bpm) {
     const spo2Num = Number(spo2);
     const bpmNum = Number(bpm);
-    // Obtener umbrales según paciente seleccionado (si existen)
     const pacienteMinStored = Number(localStorage.getItem('selectedPatientSpo2Min'));
-    const tienePacienteMin = Number.isFinite(pacienteMinStored) && pacienteMinStored > 0;
+    const spo2Min = (Number.isFinite(pacienteMinStored) && pacienteMinStored > 0) ? pacienteMinStored : 90;
 
-    let dangerThreshold = 85;
-    let precautionThreshold = 90;
-    if (tienePacienteMin) {
-        precautionThreshold = pacienteMinStored;
-        dangerThreshold = Math.max(0, Math.round(pacienteMinStored - 5));
-    }
-
-    const rojo = (spo2Num < dangerThreshold) || bpmNum < 50 || bpmNum > 140;
-    const naranja = (!rojo && (spo2Num < precautionThreshold || (bpmNum >= 50 && bpmNum <= 59) || (bpmNum >= 101 && bpmNum <= 140)));
+    // Peligro: por debajo del mínimo absoluto del paciente
+    // Precaución: zona de alerta [min, min+4]
+    // Normal: spo2 >= min+5
+    const rojo = (spo2Num < spo2Min) || bpmNum < 50 || bpmNum > 140;
+    const naranja = (!rojo && (spo2Num <= (spo2Min + 4) || (bpmNum >= 50 && bpmNum <= 59) || (bpmNum >= 101 && bpmNum <= 140)));
 
     if (rojo) return { nivel: 'Peligro', color: 'danger', accion: 'Válvula de oxígeno activada' };
     if (naranja) return { nivel: 'Precaución', color: 'warning', accion: 'Monitoreo continuo' };
@@ -82,14 +77,11 @@ function renderNotas(notas) {
     }
 
     listaNotas.innerHTML = notas.map(nota => `
-        <div class="card border-0 shadow-sm mb-3 border-start border-4 border-success">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                        <small class="text-muted fw-bold"><i class="bi bi-clock-history me-1"></i>${formatoFecha(nota.fecha_registro)}</small>
-                    </div>
-                </div>
-                <p class="mb-0 text-dark">${nota.cuerpo_nota}</p>
+        <div class="rd-nota-item">
+            <div class="rd-nota-avatar"><i class="bi bi-person-fill"></i></div>
+            <div class="rd-nota-content">
+                <div class="rd-nota-time"><i class="bi bi-clock-history me-1"></i>${formatoFecha(nota.fecha_registro)}</div>
+                <div class="rd-nota-text">${nota.cuerpo_nota}</div>
             </div>
         </div>
     `).join('');
@@ -126,12 +118,12 @@ function renderRegistrosMySQL(registros) {
 
         return `
             <tr ${rowStyle}>
-                <td>${formatoFecha(registro.fecha_hora)}</td>
-                <td>${registro.saturacion_oxigeno}%</td>
-                <td>${registro.ritmo_cardiaco} bpm</td>
-                <td><span class="${badgeClass}">${nivel}</span></td>
-                <td>${accion}</td>
-                <td>${localStorage.getItem('nombrePaciente') || 'Sistema Automático'}</td>
+                <td class="ps-4 fw-semibold" style="font-size:0.82rem;white-space:nowrap;">${formatoFecha(registro.fecha_hora)}</td>
+                <td class="fw-bold">${registro.saturacion_oxigeno}%</td>
+                <td class="fw-bold">${registro.ritmo_cardiaco} <small class="text-muted fw-normal">bpm</small></td>
+                <td><span class="${badgeClass} rounded-pill px-2">${nivel}</span></td>
+                <td style="font-size:0.82rem;">${accion}</td>
+                <td style="font-size:0.82rem;">${localStorage.getItem('nombrePaciente') || 'Sistema Automático'}</td>
                 <td><small class="text-muted">${tipo}</small></td>
             </tr>
         `;
@@ -279,21 +271,21 @@ async function cargarHistorialFechas(idPaciente) {
         }
 
         container.innerHTML = fechas.map(f => {
-            const dateObj = new Date(f.fecha_guardada + 'T12:00:00'); 
+            const isoDate = String(f.fecha_guardada).substring(0, 10);
+            const dateObj = new Date(isoDate + 'T12:00:00');
             const fechaTexto = dateObj.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            
+
             return `
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm rounded-4 h-100 border-start border-4 border-secondary">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0 fw-bold text-secondary text-capitalize small">${fechaTexto}</h6>
-                            <small class="text-muted"><i class="bi bi-file-earmark-pdf me-1"></i>Reporte Diario</small>
-                        </div>
-                        <button class="btn btn-outline-secondary btn-sm rounded-circle shadow-sm" onclick="descargarPDFHistorico('${f.fecha_guardada}', '${fechaTexto}')" title="Descargar PDF">
-                            <i class="bi bi-download"></i>
-                        </button>
+            <div class="col-sm-6 col-md-4">
+                <div class="rd-hist-card">
+                    <div class="rd-hist-icon"><i class="bi bi-file-earmark-pdf-fill"></i></div>
+                    <div class="flex-fill min-width-0">
+                        <div class="fw-bold text-capitalize" style="font-size:0.82rem; color:#2c3e50;">${fechaTexto}</div>
+                        <div style="font-size:0.72rem; color:#aaa;">Reporte diario PDF</div>
                     </div>
+                    <button class="rd-hist-btn" onclick="descargarPDFHistorico('${f.fecha_guardada}', '${fechaTexto}')">
+                        <i class="bi bi-download me-1"></i>PDF
+                    </button>
                 </div>
             </div>`;
         }).join('');
@@ -305,7 +297,9 @@ async function cargarHistorialFechas(idPaciente) {
 async function descargarPDFHistorico(fechaISO, fechaTexto) {
     const idPaciente = localStorage.getItem('selectedPatientId');
     const pacienteNombre = localStorage.getItem('selectedPatientName') || 'Paciente';
-    
+    const usuario = localStorage.getItem('nombrePaciente') || 'Usuario anónimo';
+    const rolUsuario = localStorage.getItem('selectedPatientRole') || 'Invitado';
+
     try {
         const res = await fetch(`/api/reporte-dia?id_paciente=${idPaciente}&fecha=${fechaISO}`);
         const dataDia = await res.json();
@@ -313,61 +307,97 @@ async function descargarPDFHistorico(fechaISO, fechaTexto) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'pt', format: 'a4' });
 
-        // Header
+        const logoUrl = 'img/logo-icono.png';
+        let logoData = null;
+        try { logoData = await obtenerImagenBase64(logoUrl); } catch (e) { console.warn('No se pudo cargar logo para PDF', e); }
+
+        // Header idéntico al reporte diario
+        if (logoData) doc.addImage(logoData, 'PNG', 40, 30, 60, 60);
         doc.setFontSize(18);
-        doc.text(`Reporte Médico Histórico — Seroa`, 40, 48);
+        doc.text('Reporte Médico — Monitor Seroa', 120, 48);
         doc.setFontSize(10);
-        doc.text(`Fecha del registro: ${fechaTexto}`, 40, 66);
-        doc.text(`Generado el: ${new Date().toLocaleString('es-MX')}`, 40, 80);
+        doc.text(`Fecha del registro: ${fechaTexto}`, 120, 66);
+        doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, 120, 80);
 
         doc.setFontSize(12);
         doc.text(`Paciente: ${pacienteNombre}`, 40, 110);
+        doc.text(`Usuario en turno: ${usuario} (Rol: ${rolUsuario})`, 40, 130);
 
-        let currentY = 130;
+        const pacienteEdad = localStorage.getItem('selectedPatientEdad');
+        const pacientePeso = localStorage.getItem('selectedPatientPeso');
+        const pacienteSexo = localStorage.getItem('selectedPatientSexo');
+        const pacientePadecimiento = localStorage.getItem('selectedPatientPadecimiento');
+        const pacienteSpo2Min = Number(localStorage.getItem('selectedPatientSpo2Min'));
+        const pacienteSpo2Max = Number(localStorage.getItem('selectedPatientSpo2Max'));
 
-        // Tabla de Registros del día solicitado
+        let infoY = 150;
         doc.setFontSize(11);
-        doc.text('Lecturas Biométricas del Día:', 40, currentY);
-        
-        const rowsRegistros = dataDia.registros.map(r => [
-            (new Date(r.fecha_hora)).toLocaleTimeString('es-MX'), 
-            `${r.saturacion_oxigeno}%`, 
-            `${r.ritmo_cardiaco} bpm`, 
-            r.es_critico === 2 ? 'Peligro' : (r.es_critico === 1 ? 'Precaución' : 'Normal')
-        ]);
 
-        if (rowsRegistros.length > 0) {
+        if (pacienteEdad || pacientePeso || pacienteSexo || pacientePadecimiento) {
+            doc.text('Datos del Paciente:', 40, infoY);
+            infoY += 14;
+            if (pacienteEdad) doc.text(`Edad: ${pacienteEdad}`, 50, infoY);
+            if (pacientePeso) doc.text(`Peso: ${pacientePeso} kg`, 200, infoY);
+            infoY += 14;
+            if (pacienteSexo) doc.text(`Sexo: ${pacienteSexo}`, 50, infoY);
+            if (pacientePadecimiento) doc.text(`Padecimiento: ${pacientePadecimiento}`, 200, infoY);
+            infoY += 18;
+            if (Number.isFinite(pacienteSpo2Min) && Number.isFinite(pacienteSpo2Max)) {
+                doc.text(`Rango SpO2 configurado: ${pacienteSpo2Min}% - ${pacienteSpo2Max}%`, 50, infoY);
+                infoY += 18;
+            }
+        }
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Promediado por horas', 40, infoY + 10);
+        doc.setFont('helvetica', 'normal');
+
+        const rows = dataDia.registros.map((r, index) => {
+            const esCritico = Number(r.es_critico);
+            const nivel = esCritico === 2 ? 'Peligro' : (esCritico === 1 ? 'Precaución' : 'Normal');
+            const accion = esCritico === 2 ? 'Válvula de oxígeno activada' : 'Monitoreo continuo';
+            return [
+                (index + 1).toString(),
+                (new Date(r.fecha_hora)).toLocaleString('es-MX'),
+                `${r.saturacion_oxigeno}%`,
+                `${r.ritmo_cardiaco} bpm`,
+                nivel,
+                accion,
+                usuario
+            ];
+        });
+
+        if (rows.length > 0) {
             doc.autoTable({
-                startY: currentY + 10,
-                head: [['Hora', 'SpO2', 'BPM', 'Estado']],
-                body: rowsRegistros,
+                startY: infoY + 25,
+                head: [['#', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
+                body: rows,
                 styles: { fontSize: 9 },
                 didParseCell: function(data) {
-                    if (data.row.raw[3] === 'Peligro') {
-                        data.cell.styles.fillColor = [255, 204, 204]; // Rojo claro
-                    } else if (data.row.raw[3] === 'Precaución') {
-                        data.cell.styles.fillColor = [255, 243, 205]; // Amarillo claro
+                    if (data.row.raw[4] === 'Peligro') {
+                        data.cell.styles.fillColor = [255, 204, 204];
+                    } else if (data.row.raw[4] === 'Precaución') {
+                        data.cell.styles.fillColor = [255, 243, 205];
                     }
                 }
             });
-            currentY = doc.lastAutoTable.finalY + 25;
         } else {
-            currentY += 20;
+            infoY += 35;
             doc.setFontSize(9);
-            doc.text('No hubo lecturas biométricas este día.', 40, currentY);
-            currentY += 25;
+            doc.text('No hubo lecturas biométricas este día.', 40, infoY);
         }
 
-        // Tabla de Notas de ese día
+        let currentY = (rows.length > 0 ? doc.lastAutoTable.finalY : infoY) + 25;
+
         doc.setFontSize(11);
         doc.text('Notas del Cuidador:', 40, currentY);
 
         if (dataDia.notas.length > 0) {
             const rowsNotas = dataDia.notas.map(n => [
-                (new Date(n.fecha_registro)).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }), 
+                (new Date(n.fecha_registro)).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
                 n.cuerpo_nota
             ]);
-
             doc.autoTable({
                 startY: currentY + 10,
                 head: [['Hora', 'Observación']],
@@ -375,11 +405,37 @@ async function descargarPDFHistorico(fechaISO, fechaTexto) {
                 styles: { fontSize: 9 },
                 columnStyles: { 0: { cellWidth: 50 } }
             });
+            currentY = doc.lastAutoTable.finalY + 25;
         } else {
             currentY += 20;
             doc.setFontSize(9);
             doc.text('No se escribieron notas clínicas este día.', 40, currentY);
+            currentY += 25;
         }
+
+        if (currentY > doc.internal.pageSize.height - 150) {
+            doc.addPage();
+            currentY = 40;
+        }
+
+        doc.setFontSize(11);
+        doc.text('Tabla de Umbrales Críticos', 40, currentY);
+
+        const pacienteMin = Number.isFinite(pacienteSpo2Min) && pacienteSpo2Min > 0 ? pacienteSpo2Min : 90;
+        const normalTexto = `${pacienteMin + 5}% a 100%`;
+        const precaucionTexto = `${pacienteMin}% a ${pacienteMin + 4}%`;
+        const peligroTexto = `< ${pacienteMin}%`;
+
+        doc.autoTable({
+            startY: currentY + 10,
+            head: [['Estado', 'SpO2', 'BPM', 'Significado']],
+            body: [
+                ['Normal', normalTexto, '60 a 100', 'Valores estables. Monitoreo silencioso.'],
+                ['Precaución', precaucionTexto, '50-59 o 101-140', 'Signos inestables. Atención y monitoreo continuo.'],
+                ['Peligro', peligroTexto, '<50 o >140', 'Hipoxemia severa o crisis. Activar alertas y válvula.']
+            ],
+            styles: { fontSize: 10 }
+        });
 
         doc.save(`Reporte_Seroa_${pacienteNombre.replace(/\s+/g,'_')}_${fechaISO}.pdf`);
 
@@ -636,10 +692,9 @@ async function generarPDF() {
     doc.text('Tabla de Umbrales Críticos', 40, currentY);
 
     const pacienteMin = Number.isFinite(pacienteSpo2Min) && pacienteSpo2Min > 0 ? pacienteSpo2Min : 90;
-    const peligroUmbral = Math.max(0, Math.round(pacienteMin - 5));
-    const normalTexto = `${pacienteMin}% a 100%`;
-    const precaucionTexto = `${peligroUmbral}% a ${Math.max(pacienteMin - 1, peligroUmbral)}%`;
-    const peligroTexto = `< ${peligroUmbral}%`;
+    const normalTexto = `${pacienteMin + 5}% a 100%`;
+    const precaucionTexto = `${pacienteMin}% a ${pacienteMin + 4}%`;
+    const peligroTexto = `< ${pacienteMin}%`;
 
     doc.autoTable({
         startY: currentY + 10,

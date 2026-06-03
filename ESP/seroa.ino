@@ -29,7 +29,7 @@
 #define SCL_PIN 22
 
 #define PIN_RELAY 26
-#define PIN_PRESION 25
+#define PIN_PRESION 34
 
 #define RELAY_ACTIVE_LOW true
 

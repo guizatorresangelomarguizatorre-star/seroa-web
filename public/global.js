@@ -200,11 +200,11 @@ window.confirmarConexion = function() {
     clearTimeout(temporizadorDesconexion);
     temporizadorDesconexion = setTimeout(() => {
         if (luzConexion && textoConexion) {
-            luzConexion.style.backgroundColor = '#dc3545'; // Rojo
+            luzConexion.style.backgroundColor = '#dc3545';
             luzConexion.style.boxShadow = '0 0 8px #dc3545';
             textoConexion.innerText = 'Dispositivo Seroa: Desconectado';
         }
-    }, 10000);
+    }, 15000);
 };
 
 // ==========================================
@@ -243,8 +243,8 @@ function actualizarBadgePaciente() {
     
     // Validación: Si no hay paciente, mostrar mensaje específico
     const display = (pacienteNombre && pacienteNombre !== '' && pacienteNombre !== 'null' && pacienteNombre !== 'undefined')
-        ? `${pacienteNombre}${pacienteRol ? ' | ' + pacienteRol : ''}` 
-        : 'No hay pacientes seleccionados';
+        ? `${pacienteNombre}${pacienteRol ? ' | ' + pacienteRol : ''}`
+        : 'No seleccionado';
 
     // Actualiza todos los badges que usan el atributo data-paciente-actual
     const badgesPaciente = document.querySelectorAll('[data-paciente-actual]');

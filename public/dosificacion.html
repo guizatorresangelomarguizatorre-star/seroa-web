@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Seroa - Dosificación</title>
-  <title>Seroa - Inicio</title>
   <script src="seguridad_head.js"></script>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="img/logo-icono.png" type="image/png">
@@ -16,138 +15,389 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <link rel="stylesheet" href="estilos.css">
+  <style>
+    .indicador-valvula.inactiva {
+      background-color: rgba(59, 139, 136, 0.1) !important;
+      border-color: var(--color-seroa-teal) !important;
+      color: var(--color-seroa-teal) !important;
+    }
+
+    /* ── TARJETA DE RANGO SPO2 ── */
+    .rango-track-wrap {
+      position: relative;
+      height: 14px;
+      border-radius: 7px;
+      margin: 10px 0 30px;
+    }
+    .rango-track-bg {
+      position: absolute;
+      inset: 0;
+      border-radius: 7px;
+      background: linear-gradient(to right,
+        rgba(220,53,69,.18) 0%,  rgba(220,53,69,.18) 25%,
+        rgba(255,193,7,.18) 25%, rgba(255,193,7,.18) 50%,
+        rgba(102,187,106,.18) 50%, rgba(102,187,106,.18) 100%
+      );
+    }
+    .rango-track-active {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      border-radius: 7px;
+      background: linear-gradient(90deg, var(--color-seroa-teal), var(--color-accent-green));
+      transition: left .45s ease, width .45s ease;
+      box-shadow: 0 2px 8px rgba(59,139,136,.35);
+    }
+    .rango-marker {
+      position: absolute;
+      top: -5px;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: left .45s ease;
+      z-index: 2;
+    }
+    .rango-marker-pin {
+      width: 4px;
+      height: 24px;
+      border-radius: 2px;
+      box-shadow: 0 2px 5px rgba(0,0,0,.2);
+    }
+    .rango-marker-min .rango-marker-pin { background: var(--color-seroa-teal); }
+    .rango-marker-max .rango-marker-pin { background: var(--color-accent-green); }
+    .rango-marker-label {
+      font-size: .64rem;
+      font-weight: 800;
+      margin-top: 3px;
+      white-space: nowrap;
+      background: white;
+      padding: 1px 5px;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+      letter-spacing: -.3px;
+    }
+    .rango-marker-min .rango-marker-label { color: var(--color-seroa-teal); }
+    .rango-marker-max .rango-marker-label { color: var(--color-accent-green); }
+
+    /* Tarjetas de input */
+    .rango-cfg-card {
+      border-radius: 16px;
+      padding: 1.2rem 1.3rem;
+      border: 1.5px solid;
+      transition: box-shadow .2s, border-color .2s;
+    }
+    .rango-cfg-card:focus-within {
+      box-shadow: 0 0 0 3px rgba(59,139,136,.12);
+    }
+    .rango-cfg-min {
+      background: rgba(59,139,136,.05);
+      border-color: rgba(59,139,136,.2);
+    }
+    .rango-cfg-min:focus-within { border-color: var(--color-seroa-teal); }
+    .rango-cfg-max {
+      background: rgba(102,187,106,.05);
+      border-color: rgba(102,187,106,.25);
+    }
+    .rango-cfg-max:focus-within { border-color: var(--color-accent-green); }
+    .rango-cfg-header {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-size: .72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #888;
+      margin-bottom: .65rem;
+    }
+    .rango-cfg-min .rango-cfg-header i { color: var(--color-seroa-teal); font-size: .9rem; }
+    .rango-cfg-max .rango-cfg-header i { color: var(--color-accent-green); font-size: .9rem; }
+    .rango-cfg-input-row { display: flex; align-items: baseline; gap: .3rem; }
+    .rango-cfg-num {
+      width: 76px;
+      font-size: 2.6rem;
+      font-weight: 800;
+      line-height: 1;
+      border: none;
+      background: transparent;
+      padding: 0;
+      outline: none;
+    }
+    .rango-cfg-num::-webkit-inner-spin-button { opacity: .35; cursor: pointer; }
+    .rango-cfg-min .rango-cfg-num  { color: var(--color-seroa-teal); }
+    .rango-cfg-max .rango-cfg-num  { color: var(--color-accent-green); }
+    .rango-cfg-unit { font-size: 1.1rem; font-weight: 700; color: #bbb; }
+    .rango-cfg-hint { display: block; font-size: .71rem; color: #aaa; margin-top: .45rem; line-height: 1.35; }
+
+    /* Info pill */
+    .rango-info-pill {
+      background: rgba(59,139,136,.07);
+      border: 1px solid rgba(59,139,136,.18);
+      border-radius: 50px;
+      padding: .4rem 1rem;
+      font-size: .79rem;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .rango-info-pill i { color: var(--color-seroa-teal); flex-shrink: 0; }
+    .btn-guardar-rango {
+      background: linear-gradient(135deg, var(--color-seroa-teal), var(--color-accent-green));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: .65rem 2rem;
+      font-weight: 700;
+      font-size: .9rem;
+      box-shadow: 0 4px 12px rgba(59,139,136,.28);
+      transition: all .25s;
+      white-space: nowrap;
+    }
+    .btn-guardar-rango:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(59,139,136,.38);
+      color: white;
+    }
+  </style>
 </head>
 <body>
   <div id="alertaGlobalSeroa" class="alerta-critica-flotante d-none" role="alert">
-  <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
-    
-    <div class="d-flex align-items-center mb-3 mb-md-0">
-      <i class="bi bi-exclamation-triangle-fill icono-alerta me-4"></i>
-      <div>
-        <h2 class="fw-bold mb-1 text-white text-uppercase" style="letter-spacing: 1px;">¡Alerta Crítica: SpO2 Bajo!</h2>
-        <p class="mb-0 fs-5 text-white">La saturación de <strong>Angel Guiza</strong> cayó al <strong class="fs-4 bg-dark px-2 rounded">88%</strong>. Válvula activada.</p>
+    <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
+      <div class="d-flex align-items-center mb-3 mb-md-0">
+        <i class="bi bi-exclamation-triangle-fill icono-alerta me-4"></i>
+        <div>
+          <h2 class="fw-bold mb-1 text-white text-uppercase" style="letter-spacing: 1px;">¡Alerta Crítica: SpO2 Bajo!</h2>
+          <p class="mb-0 fs-5 text-white">La saturación cayó a niveles críticos. Válvula activada.</p>
+        </div>
       </div>
+      <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3" onclick="ocultarAlertaSeroa()">
+        <i class="bi bi-check2-circle me-2"></i> ENTERADO
+      </button>
     </div>
-    
-    <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3" onclick="ocultarAlertaSeroa()">
-      <i class="bi bi-check2-circle me-2"></i> ENTERADO
-    </button>
-    
   </div>
-</div>
 
   <div id="header-container"></div>
-
   <div class="pattern-separator"></div>
 
- <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
     <div class="container-fluid">
       <button class="navbar-toggler border-0 ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuSeroa" aria-controls="menuSeroa">
         <span class="navbar-toggler-icon"></span>
       </button>
-
       <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa" aria-labelledby="menuSeroaLabel">
         <div class="offcanvas-header border-bottom border-light">
           <h5 class="offcanvas-title text-white" id="menuSeroaLabel">Seroa Menú</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-        
         <div class="offcanvas-body w-100">
           <div id="menu-container" class="w-100"></div>
         </div>
-        
       </div>
     </div>
-</nav>
+  </nav>
 
   <div class="container mt-4 mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h4 class="text-teal fw-bold">Control de Dosificación</h4>
+
+    <!-- ── ENCABEZADO ── -->
+    <div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-3">
+      <div>
+        <h4 class="fw-bold mb-1" style="color:var(--color-seroa-teal);">
+          <i class="bi bi-lungs-fill me-2"></i>Control de Dosificación
+        </h4>
+        <small class="text-muted">Estado en tiempo real del sistema de oxígeno medicinal</small>
+      </div>
       <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
         <i class="bi bi-person-fill text-teal me-1"></i> Paciente Actual: <strong>Sin selección</strong>
       </span>
     </div>
-    <div class="row g-4">
-      
-      <div class="col-md-12 col-lg-4 order-lg-2">
-        <div id="estadoSistemaCard" class="card shadow-sm border-0 h-100 text-center p-4 card-lg" style="border-radius: 20px;">
-          <h5 class="fw-bold mb-4">Estado del Sistema</h5>
 
-          <div class="d-flex justify-content-center align-items-center mb-4">
-            <div id="indicadorValvula" class="indicador-valvula inactiva">
-              <i id="iconValvula" class="bi bi-wind fs-1"></i>
+    <!-- ── FILA 1: Válvula · SpO2 · BPM · Promedio ── -->
+    <div class="row g-4 mb-4">
+
+      <!-- Estado del Sistema (Válvula) -->
+      <div class="col-sm-6 col-lg-3">
+        <div id="estadoSistemaCard" class="card border-0 shadow-sm h-100 text-center" style="border-radius:16px;">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center py-4 px-3">
+            <div class="mb-3">
+              <div id="indicadorValvula" class="indicador-valvula inactiva mx-auto">
+                <i id="iconValvula" class="bi bi-wind fs-2 d-none"></i>
+              </div>
             </div>
+            <h6 id="estadoSistemaTitulo" class="fw-bold text-secondary mb-1">NO SUMINISTRANDO</h6>
+            <p id="estadoSistemaTexto" class="text-secondary small mb-4">Válvula Cerrada</p>
+            <button id="btnForzarApagado" class="btn btn-sm btn-outline-secondary rounded-pill w-100 fw-bold rol-editar">
+              <i class="bi bi-stop-circle-fill me-1"></i> Forzar Apagado
+            </button>
           </div>
-
-          <h3 id="estadoSistemaTitulo" class="fw-bold text-secondary mb-1">NO SUMINISTRANDO</h3>
-          <p id="estadoSistemaTexto" class="text-secondary mb-0">Válvula Cerrada</p>
-          <hr class="border-light my-4">
-          <button id="btnForzarApagado" class="btn btn-outline-secondary rounded-pill w-100 fw-bold">
-            <i class="bi bi-stop-circle-fill me-1"></i> Forzar Apagado
-          </button>
         </div>
       </div>
 
-      <div class="col-md-12 col-lg-8 order-lg-1">
-        <div class="row g-4 h-100">
-          
-          <div class="col-md-6">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-body d-flex flex-column justify-content-center text-center p-4">
-                <h6 class="text-muted fw-bold mb-3">SpO2 Actual</h6>
-                  <div id="valorSpo2Dosificacion" class="display-1 fw-bold text-success mb-2">--<span class="fs-4">%</span></div>
-                
-                <div class="bg-light rounded-3 p-3 mt-3 border">
-                  <small class="text-muted d-block mb-1">Rango Objetivo Configurado:</small>
-                  <div id="panelRangoDisplay" class="d-flex justify-content-center align-items-center">
-                    <span id="rangoDisplayMin" class="badge bg-secondary fs-6">--</span>
-                    <i class="bi bi-arrow-left-right mx-2 text-muted"></i>
-                    <span id="rangoDisplayMax" class="badge bg-secondary fs-6">--</span>
-                  </div>
-                  <button id="btnAjustarRango" class="btn btn-link text-teal btn-sm mt-2 text-decoration-none rol-editar">
-                    <i class="bi bi-pencil-square"></i> Ajustar rango
-                  </button>
-                </div>
-              </div>
+      <!-- SpO2 Actual -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+          <div class="card-body d-flex flex-column justify-content-center text-center py-4 px-3">
+            <i class="bi bi-lungs-fill fs-3 mb-2" style="color:var(--color-seroa-teal);"></i>
+            <small class="text-muted fw-bold text-uppercase mb-1" style="letter-spacing:.5px;font-size:.7rem;">SpO2 Actual</small>
+            <div id="valorSpo2Dosificacion" class="fw-bold lh-1 my-2"
+                 style="font-size:3.2rem;color:var(--color-seroa-teal);">
+              --<span class="fs-5">%</span>
             </div>
-            <div class="mt-3">
-              <form id="formDosificacion" class="d-flex gap-2 align-items-center">
-                <label class="mb-0">Rango:</label>
-                <input id="rangoSpo2Min" type="number" min="50" max="100" class="form-control form-control-sm" style="width:80px;" />
-                <span>-</span>
-                <input id="rangoSpo2Max" type="number" min="50" max="100" class="form-control form-control-sm" style="width:80px;" />
-                <button class="btn btn-teal text-white btn-sm rol-editar" type="submit">Guardar</button>
-              </form>
-              <div id="panelRangoActual" class="text-muted small mt-2">--</div>
-            </div>
+            <span id="dosificacionNivel" class="fw-bold text-secondary small">--</span>
+            <small id="dosificacionAccion" class="text-muted mt-1">--</small>
           </div>
-
-          <div class="col-md-6">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-body d-flex flex-column justify-content-center text-center p-4">
-                <h6 class="text-muted fw-bold mb-3">Promedio SpO2 (Última hora)</h6>
-                <div id="promedioHoraSpo2" class="display-3 fw-bold text-success mb-3">--<span class="fs-5">%</span></div>
-                
-                <div class="w-100 px-3">
-                  <div class="d-flex justify-content-between mb-1">
-                    <small class="text-danger fw-bold">Crítico</small>
-                    <small class="text-success fw-bold">Óptimo</small>
-                  </div>
-                  <div class="progress" style="height: 10px;">
-                    <div id="promedioProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                  </div>
-                </div>
-                <p class="text-muted small mt-4 mb-0"><i class="bi bi-info-circle"></i> El promedio se mantiene dentro del rango seguro establecido.</p>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
 
-    </div>
-  </div>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+      <!-- Frecuencia Cardíaca -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+          <div class="card-body d-flex flex-column justify-content-center text-center py-4 px-3">
+            <i class="bi bi-heart-pulse-fill fs-3 mb-2 text-danger"></i>
+            <small class="text-muted fw-bold text-uppercase mb-1" style="letter-spacing:.5px;font-size:.7rem;">Frecuencia Cardíaca</small>
+            <div id="valorBpmDosificacion" class="fw-bold text-danger lh-1 my-2" style="font-size:3.2rem;">
+              --<span class="fs-5"> bpm</span>
+            </div>
+            <small class="text-muted">Latidos por minuto</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Promedio SpO2 (última hora) -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+          <div class="card-body d-flex flex-column justify-content-center text-center py-4 px-3">
+            <i class="bi bi-graph-up-arrow fs-3 mb-2" style="color:var(--color-seroa-teal);"></i>
+            <small class="text-muted fw-bold text-uppercase mb-1" style="letter-spacing:.5px;font-size:.7rem;">Promedio SpO2 (1 hora)</small>
+            <div id="promedioHoraSpo2" class="fw-bold lh-1 my-2"
+                 style="font-size:2.8rem;color:var(--color-seroa-teal);">
+              --<span class="fs-5">%</span>
+            </div>
+            <div class="w-100 px-2">
+              <div class="d-flex justify-content-between mb-1">
+                <small class="text-danger fw-bold" style="font-size:.68rem;">Crítico</small>
+                <small class="fw-bold" style="font-size:.68rem;color:var(--color-seroa-teal);">Óptimo</small>
+              </div>
+              <div class="progress" style="height:10px;border-radius:8px;">
+                <div id="promedioProgressBar"
+                     class="progress-bar"
+                     role="progressbar"
+                     style="width:0%;background-color:var(--color-seroa-teal);border-radius:8px;"
+                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /row 1 -->
+
+    <!-- ── FILA 2: Configuración de Rango ── -->
+    <div class="card border-0 shadow-sm" style="border-radius:16px;">
+      <div class="card-body p-4">
+
+        <!-- Encabezado -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+          <div>
+            <h5 class="fw-bold mb-0" style="color:var(--color-seroa-teal);">
+              <i class="bi bi-sliders2 me-2"></i>Rango de Dosificación SpO2
+            </h5>
+            <small class="text-muted">Define cuándo el sistema activa y regula el suministro de oxígeno</small>
+          </div>
+          <span class="badge rounded-pill px-3 py-2 fw-semibold"
+                style="background:rgba(59,139,136,.1);color:var(--color-seroa-teal);border:1px solid rgba(59,139,136,.2);font-size:.82rem;">
+            <i class="bi bi-activity me-1"></i>Activo:
+            <span id="panelRangoActual" class="fw-bold ms-1">-- %</span>
+          </span>
+        </div>
+
+        <!-- Track visual 80 → 100% -->
+        <div class="px-1">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="fw-bold" style="font-size:.68rem;color:#dc3545;">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>Crítico (80%)
+            </small>
+            <small class="fw-bold" style="font-size:.68rem;color:var(--color-seroa-teal);">
+              Óptimo (100%) <i class="bi bi-check-circle-fill ms-1"></i>
+            </small>
+          </div>
+
+          <div class="rango-track-wrap">
+            <div class="rango-track-bg"></div>
+            <div id="rangoTrackActive" class="rango-track-active" style="left:50%;width:45%;"></div>
+            <div id="rangoMarkerMin" class="rango-marker rango-marker-min" style="left:50%;">
+              <div class="rango-marker-pin"></div>
+              <span id="rangoDisplayMin" class="rango-marker-label">--</span>
+            </div>
+            <div id="rangoMarkerMax" class="rango-marker rango-marker-max" style="left:95%;">
+              <div class="rango-marker-pin"></div>
+              <span id="rangoDisplayMax" class="rango-marker-label">--</span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <small class="text-muted" style="font-size:.68rem;">80%</small>
+            <small class="text-muted" style="font-size:.68rem;">85%</small>
+            <small class="text-muted" style="font-size:.68rem;">90%</small>
+            <small class="text-muted" style="font-size:.68rem;">95%</small>
+            <small class="text-muted" style="font-size:.68rem;">100%</small>
+          </div>
+        </div>
+
+        <!-- Inputs + Guardar (solo rol editor) -->
+        <form id="formDosificacion" class="rol-editar mt-4">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <div class="rango-cfg-card rango-cfg-min">
+                <div class="rango-cfg-header">
+                  <i class="bi bi-arrow-down-circle-fill"></i>
+                  SpO2 Mínimo — Activar válvula
+                </div>
+                <div class="rango-cfg-input-row">
+                  <input id="rangoSpo2Min" type="number" min="50" max="100"
+                         class="rango-cfg-num" placeholder="--">
+                  <span class="rango-cfg-unit">%</span>
+                </div>
+                <small class="rango-cfg-hint">La válvula se abre cuando SpO2 cae por debajo de este valor</small>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="rango-cfg-card rango-cfg-max">
+                <div class="rango-cfg-header">
+                  <i class="bi bi-arrow-up-circle-fill"></i>
+                  SpO2 Máximo — Cerrar válvula
+                </div>
+                <div class="rango-cfg-input-row">
+                  <input id="rangoSpo2Max" type="number" min="50" max="100"
+                         class="rango-cfg-num" placeholder="--">
+                  <span class="rango-cfg-unit">%</span>
+                </div>
+                <small class="rango-cfg-hint">La válvula se cierra cuando SpO2 alcanza este valor</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="rango-info-pill">
+              <i class="bi bi-lightbulb-fill"></i>
+              Dosificación activa cuando SpO2 &lt; <strong id="rangoInfoMin">--</strong>%
+              &nbsp;·&nbsp; se detiene al llegar a <strong id="rangoInfoMax">--</strong>%
+            </div>
+            <button type="submit" class="btn-guardar-rango">
+              <i class="bi bi-check-circle me-2"></i>Guardar configuración
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div><!-- /config card -->
+
+  </div><!-- /container -->
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="global.js"></script>
@@ -160,5 +410,6 @@
     });
   </script>
   <script src="dosificacion.js"></script>
+  <script src="footer.js"></script>
 </body>
 </html>

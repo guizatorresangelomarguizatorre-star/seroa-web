@@ -266,6 +266,37 @@ app.post('/api/pacientes', (req, res) => {
     });
 });
 
+app.get('/api/pacientes/:id/config', (req, res) => {
+    const id_paciente = req.params.id;
+    db.query('SELECT rango_spo2_min FROM pacientes WHERE id_paciente = ?', [id_paciente], (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(404).json({ error: 'Paciente no encontrado.' });
+        }
+        res.json({ rango_spo2_min: results[0].rango_spo2_min });
+    });
+});
+
+app.get('/api/pacientes/:id/dispositivo', (req, res) => {
+    const id_paciente = req.params.id;
+    const query = `SELECT d.id_dispositivo, d.ssid_wifi, d.fecha_registro,
+                          pd.estado_vinculo, pd.fecha_vinculacion
+                   FROM paciente_dispositivo pd
+                   JOIN dispositivos_seroa d ON d.id_dispositivo = pd.id_dispositivo
+                   WHERE pd.id_paciente = ? AND pd.estado_vinculo = 'Activo'
+                   ORDER BY pd.fecha_vinculacion DESC
+                   LIMIT 1`;
+    db.query(query, [id_paciente], (err, results) => {
+        if (err) {
+            console.error('Error MySQL al consultar dispositivo del paciente:', err);
+            return res.status(500).json({ error: 'Error interno al consultar el dispositivo.' });
+        }
+        if (results.length === 0) {
+            return res.json({ vinculado: false });
+        }
+        res.json({ vinculado: true, ...results[0] });
+    });
+});
+
 app.get('/api/pacientes', (req, res) => {
     const id_usuario = req.query.id_usuario;
     const id_paciente = req.query.id_paciente;
@@ -603,19 +634,59 @@ app.get('/api/invitado', (req, res) => {
 });
 
 app.post('/api/dispositivos', (req, res) => {
-    const { ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, id_usuario } = req.body;
+    const { ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, id_usuario, id_paciente } = req.body;
 
-    if (!ssid_wifi || !password_wifi || !id_usuario) {
-        return res.status(400).json({ error: 'SSID, contraseña y usuario son requeridos.' });
+    if (!ssid_wifi || !password_wifi) {
+        return res.status(400).json({ error: 'SSID y contraseña son requeridos.' });
     }
 
-    const query = `INSERT INTO dispositivos_seroa (ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, fecha_registro) VALUES (?, ?, ?, ?, NOW())`;
-    db.query(query, [ssid_wifi, password_wifi, estado_paro_emergencia || 'Desactivado', usuario_paro_emergencia || null], (err, result) => {
-        if (err) {
-            console.error('Error MySQL al agregar dispositivo:', err);
-            return res.status(500).json({ error: 'No se pudo registrar el dispositivo.' });
-        }
-        res.json({ mensaje: 'Dispositivo registrado con éxito.', id_dispositivo: result.insertId });
+    db.getConnection((connErr, connection) => {
+        if (connErr) return res.status(500).json({ error: 'Error de conexión a la base de datos.' });
+
+        connection.beginTransaction((txErr) => {
+            if (txErr) {
+                connection.release();
+                return res.status(500).json({ error: 'Error iniciando transacción.' });
+            }
+
+            const insertDispositivo = `INSERT INTO dispositivos_seroa (ssid_wifi, password_wifi, estado_paro_emergencia, usuario_paro_emergencia, fecha_registro) VALUES (?, ?, ?, ?, NOW())`;
+            connection.query(insertDispositivo, [ssid_wifi, password_wifi, estado_paro_emergencia || 'Desactivado', usuario_paro_emergencia || null], (err1, result1) => {
+                if (err1) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        console.error('Error MySQL al agregar dispositivo:', err1);
+                        res.status(500).json({ error: 'No se pudo registrar el dispositivo.' });
+                    });
+                }
+
+                const idDispositivo = result1.insertId;
+
+                if (!id_paciente) {
+                    return connection.commit((commitErr) => {
+                        connection.release();
+                        if (commitErr) return res.status(500).json({ error: 'Error al confirmar la transacción.' });
+                        res.json({ mensaje: 'Dispositivo registrado con éxito.', id_dispositivo: idDispositivo });
+                    });
+                }
+
+                const insertVinculo = `INSERT INTO paciente_dispositivo (id_paciente, id_dispositivo, estado_vinculo, fecha_vinculacion) VALUES (?, ?, 'Activo', NOW())`;
+                connection.query(insertVinculo, [id_paciente, idDispositivo], (err2) => {
+                    if (err2) {
+                        return connection.rollback(() => {
+                            connection.release();
+                            console.error('Error MySQL al vincular dispositivo al paciente:', err2);
+                            res.status(500).json({ error: 'No se pudo vincular el dispositivo al paciente.' });
+                        });
+                    }
+
+                    connection.commit((commitErr) => {
+                        connection.release();
+                        if (commitErr) return res.status(500).json({ error: 'Error al confirmar la transacción.' });
+                        res.json({ mensaje: 'Dispositivo registrado y vinculado con éxito.', id_dispositivo: idDispositivo });
+                    });
+                });
+            });
+        });
     });
 });
 
@@ -649,6 +720,8 @@ app.post('/api/dispositivos/:id/configurar', (req, res) => {
     });
 });
 
+// POST /api/tanques — UPSERT: un único registro activo por dispositivo
+// Acepta id_paciente como proxy de id_dispositivo (ESP32 solo conoce el paciente)
 app.post('/api/tanques', (req, res) => {
     const { id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
     if (!id_dispositivo || presion_actual === undefined || porcentaje === undefined || tiempo_restante_minutos === undefined) {
@@ -661,27 +734,138 @@ app.post('/api/tanques', (req, res) => {
             console.error('Error MySQL al agregar tanque:', err);
             return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
         }
-        res.json({ mensaje: 'Tanque registrado con éxito.', id_tanque: result.insertId });
+    });
+
+    lookupBaseline((baseline) => {
+        let pct = porcentaje;
+        if (baseline && baseline > 0) {
+            pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / baseline) * 100)));
+        } else if (pct === undefined || pct === null) {
+            pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / 12.0) * 100)));
+        }
+
+        const tiempoMin = tiempo_restante_minutos !== undefined ? tiempo_restante_minutos
+                         : Math.round((pct / 100) * 680 / 2); // 680 L / 2 L·min⁻¹
+
+        // UPSERT: actualiza el registro existente o inserta uno nuevo
+        const updateQ = `UPDATE tanques
+                         SET presion_actual = ?, porcentaje = ?,
+                             tiempo_restante_minutos = ?, ultima_actualizacion = ?
+                         WHERE id_dispositivo = ?`;
+        db.query(updateQ, [presion_actual, pct, tiempoMin, ts, deviceId], (err, result) => {
+            if (err) {
+                console.error('Error MySQL UPDATE tanques:', err);
+                return res.status(500).json({ error: 'No se pudo actualizar el tanque.' });
+            }
+            if (result.affectedRows > 0) {
+                return res.json({ mensaje: 'Tanque actualizado.', porcentaje: pct });
+            }
+            // No existe: INSERT
+            const insertQ = `INSERT INTO tanques (id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion)
+                             VALUES (?, ?, ?, ?, ?)`;
+            db.query(insertQ, [deviceId, presion_actual, pct, tiempoMin, ts], (err2, res2) => {
+                if (err2) {
+                    console.error('Error MySQL INSERT tanques:', err2);
+                    return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
+                }
+                res.json({ mensaje: 'Tanque registrado.', id_tanque: res2.insertId, porcentaje: pct });
+            });
+        });
     });
 });
 
+// GET /api/tanques — filtrado por id_dispositivo o id_paciente (usando paciente como proxy)
 app.get('/api/tanques', (req, res) => {
     const { id_dispositivo, id_paciente } = req.query;
     let query = 'SELECT * FROM tanques';
     const params = [];
 
-    if (id_dispositivo) {
+    const deviceId = id_dispositivo || id_paciente;
+    if (deviceId) {
         query += ' WHERE id_dispositivo = ?';
-        params.push(id_dispositivo);
+        params.push(deviceId);
     }
 
-    query += ' ORDER BY id_tanque DESC LIMIT 10';
+    query += ' ORDER BY ultima_actualizacion DESC LIMIT 1';
     db.query(query, params, (err, results) => {
         if (err) {
             console.error('Error MySQL al cargar tanques:', err);
             return res.status(500).json({ error: 'Error interno al leer tanques.' });
         }
         res.json(results);
+    });
+});
+
+// ============================================================
+// === CALIBRACIÓN DINÁMICA DE TANQUES                      ===
+// ============================================================
+
+// Crear tabla si no existe al arrancar
+db.query(`CREATE TABLE IF NOT EXISTS calibraciones_tanque (
+    id_calibracion    INT AUTO_INCREMENT PRIMARY KEY,
+    id_paciente       INT NOT NULL,
+    max_psi_baseline  FLOAT NOT NULL,
+    fecha_calibracion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_paciente (id_paciente)
+)`, (err) => {
+    if (err) console.error('Error creando tabla calibraciones_tanque:', err);
+    else console.log('✓ Tabla calibraciones_tanque verificada.');
+});
+
+// POST /api/tanques/calibrar/iniciar — envía flag a Firebase para que ESP32 empiece
+app.post('/api/tanques/calibrar/iniciar', (req, res) => {
+    const { id_paciente } = req.body;
+    if (!id_paciente) {
+        return res.status(400).json({ error: 'id_paciente es requerido.' });
+    }
+    writeRealtimePaciente(String(id_paciente), { calibracion_pendiente: true })
+        .then(() => res.json({ mensaje: 'Señal de calibración enviada al dispositivo.' }))
+        .catch(() => res.status(500).json({ error: 'No se pudo enviar la señal al dispositivo.' }));
+});
+
+// POST /api/tanques/calibrar — guarda el baseline enviado por el ESP32
+app.post('/api/tanques/calibrar', (req, res) => {
+    const { id_paciente, max_psi_baseline } = req.body;
+    if (!id_paciente || !max_psi_baseline || isNaN(parseFloat(max_psi_baseline))) {
+        return res.status(400).json({ error: 'id_paciente y max_psi_baseline son requeridos.' });
+    }
+    const baseline = parseFloat(max_psi_baseline);
+    const query = `INSERT INTO calibraciones_tanque (id_paciente, max_psi_baseline)
+                   VALUES (?, ?)
+                   ON DUPLICATE KEY UPDATE max_psi_baseline = ?, fecha_calibracion = NOW()`;
+    db.query(query, [id_paciente, baseline, baseline], (err) => {
+        if (err) {
+            console.error('Error guardando calibración de tanque:', err);
+            return res.status(500).json({ error: 'No se pudo guardar la calibración.' });
+        }
+        // Limpiar flag en Firebase
+        writeRealtimePaciente(String(id_paciente), { calibracion_pendiente: false })
+            .catch(() => {});
+        console.log(`✓ Calibración tanque guardada: paciente ${id_paciente}, baseline ${baseline} bar`);
+        res.json({ mensaje: 'Calibración guardada exitosamente.', max_psi_baseline: baseline });
+    });
+});
+
+// GET /api/tanques/calibracion/paciente/:id_paciente — devuelve baseline activo
+app.get('/api/tanques/calibracion/paciente/:id_paciente', (req, res) => {
+    const { id_paciente } = req.params;
+    const query = `SELECT max_psi_baseline, fecha_calibracion
+                   FROM calibraciones_tanque
+                   WHERE id_paciente = ?
+                   ORDER BY fecha_calibracion DESC LIMIT 1`;
+    db.query(query, [id_paciente], (err, results) => {
+        if (err) {
+            console.error('Error obteniendo calibración de tanque:', err);
+            return res.status(500).json({ error: 'Error interno.' });
+        }
+        if (!results.length) {
+            return res.json({ calibrado: false, max_psi_baseline: null });
+        }
+        res.json({
+            calibrado: true,
+            max_psi_baseline: results[0].max_psi_baseline,
+            fecha: results[0].fecha_calibracion
+        });
     });
 });
 
@@ -703,13 +887,14 @@ function flushAggregateForPatient(id_paciente) {
     const avgSpo2 = Math.round(agg.sumSpo2 / agg.count);
     const avgBpm = Math.round(agg.sumBpm / agg.count);
     const id_registro = crypto.randomBytes(4).toString('hex').toUpperCase();
-    
+    const esCritico = agg.maxCritico || 0;
+
     const fecha_hora = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     const query = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    db.query(query, [id_registro, id_paciente, null, avgSpo2, avgBpm, 0, fecha_hora], (err) => {
+    db.query(query, [id_registro, id_paciente, null, avgSpo2, avgBpm, esCritico, fecha_hora], (err) => {
         if (err) console.error('Error al guardar resumen horario en BD:', err);
-        else console.log(`Resumen horario guardado paciente ${id_paciente} -> SpO2 ${avgSpo2}, BPM ${avgBpm} (count ${agg.count})`);
+        else console.log(`Resumen horario guardado paciente ${id_paciente} -> SpO2 ${avgSpo2}, BPM ${avgBpm} (count ${agg.count}, critico ${esCritico})`);
     });
 
     delete hourAggregates[id_paciente];
@@ -754,7 +939,7 @@ function writeRealtimePaciente(id_paciente, payload) {
     });
 }
 
-// === ENDPOINT CORREGIDO PARA AUTONOMÍA TOTAL ===
+// === ENDPOINT CON ACUMULACIÓN ESTRICTA POR HORA PARA TODAS LAS LECTURAS ===
 app.post('/api/registros', (req, res) => {
     const { id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, fecha_hora } = req.body;
 
@@ -765,95 +950,67 @@ app.post('/api/registros', (req, res) => {
     const spo2 = Number(saturacion_oxigeno);
     const bpm = Number(ritmo_cardiaco);
 
-    // El servidor ahora consulta los umbrales del paciente para tomar la decisión
     db.query('SELECT rango_spo2_min FROM pacientes WHERE id_paciente = ?', [id_paciente], (err, results) => {
         if (err) {
             console.error('Error al consultar umbrales del paciente:', err);
             return res.status(500).json({ error: 'Error interno verificando al paciente.' });
         }
 
-        let pacienteMin = 90; // Default de seguridad
+        let pacienteMin = 90;
         if (results && results.length > 0 && results[0].rango_spo2_min) {
             pacienteMin = Number(results[0].rango_spo2_min);
         }
 
-        const dangerThreshold = Math.max(0, pacienteMin - 5);
-        const precautionThreshold = pacienteMin;
-
         let esCrit = 0;
         let nivel = 'Normal';
 
-        if (spo2 < dangerThreshold || bpm < 50 || bpm > 140) {
+        // Peligro: por debajo del mínimo absoluto del paciente
+        // Precaución: zona de alerta inmediata [min, min+4]
+        // Normal: spo2 >= min+5
+        if (spo2 < pacienteMin || bpm < 50 || bpm > 140) {
             esCrit = 2;
             nivel = 'Peligro';
-        } else if (spo2 < precautionThreshold || (bpm >= 50 && bpm <= 59) || (bpm >= 101 && bpm <= 140)) {
+        } else if (spo2 <= (pacienteMin + 4) || (bpm >= 50 && bpm <= 59) || (bpm >= 101 && bpm <= 140)) {
             esCrit = 1;
             nivel = 'Precaución';
         }
 
-        const isAnomaly = (esCrit > 0);
-
-        if (isAnomaly) {
+        // Solo alertas se disparan inmediatamente en caso de Peligro; el registro biométrico siempre va al promedio horario
+        if (esCrit === 2) {
             const idr = id_registro || crypto.randomBytes(4).toString('hex').toUpperCase();
             const fecha = (fecha_hora ? new Date(fecha_hora) : new Date()).toISOString().slice(0, 19).replace('T', ' ');
-
-            const queryRegistro = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-            db.query(queryRegistro, [idr, id_paciente, id_dispositivo || null, spo2, bpm, esCrit, fecha], (err) => {
-                if (err) {
-                    console.error('Error MySQL al guardar incidente:', err);
-                    return res.status(500).json({ error: 'No se pudo guardar el incidente.' });
-                }
-                
-                const descripcionAlerta = `SpO2: ${spo2}%, BPM: ${bpm} - Nivel: ${nivel}`;
-                const queryAlerta = `INSERT INTO alertas (id_paciente, id_registro, tipo_alerta, descripcion, fecha_alerta) VALUES (?, ?, ?, ?, ?)`;
-                db.query(queryAlerta, [id_paciente, idr, nivel, descripcionAlerta, fecha], (errAlerta) => {
-                    if (errAlerta) console.error('Error al guardar alerta:', errAlerta);
-                    else console.log(`Alerta creada: paciente=${id_paciente}, tipo=${nivel}, registro=${idr}`);
-                });
-                
-                if (hourAggregates[id_paciente]) delete hourAggregates[id_paciente];
-                
-                try {
-                    const payload = { spo2, bpm, nivel, es_critico: esCrit, timestamp: fecha_hora || new Date().toISOString(), estado: 'ACTIVO' };
-                    writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error:', e));
-                } catch (wErr) { console.error('Error publicando a Realtime:', wErr); }
-
-                return res.json({ mensaje: 'Incidente evaluado autónomamente y guardado.' });
+            const descripcionAlerta = `SpO2: ${spo2}%, BPM: ${bpm} - Nivel: ${nivel}`;
+            const queryAlerta = `INSERT INTO alertas (id_paciente, id_registro, tipo_alerta, descripcion, fecha_alerta) VALUES (?, ?, ?, ?, ?)`;
+            db.query(queryAlerta, [id_paciente, idr, nivel, descripcionAlerta, fecha], (errAlerta) => {
+                if (errAlerta) console.error('Error al guardar alerta:', errAlerta);
+                else console.log(`Alerta creada: paciente=${id_paciente}, tipo=${nivel}, registro=${idr}`);
             });
-            return;
         }
 
+        // TODAS las lecturas (Normal, Precaución, Peligro) se acumulan en hourAggregates
         const now = new Date(fecha_hora || Date.now());
         const label = hourLabelForDate(now);
         const agg = hourAggregates[id_paciente];
 
         if (!agg) {
-            hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1 };
-            try {
-                const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
-                writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime error:', e));
-            } catch (wErr) {}
-            return res.json({ mensaje: 'Lectura normal acumulada.' });
-        }
-
-        if (agg.hourLabel !== label) {
+            hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1, maxCritico: esCrit };
+        } else if (agg.hourLabel !== label) {
             flushAggregateForPatient(id_paciente);
-            hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1 };
-            try {
-                const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
-                writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime error:', e));
-            } catch (wErr) {}
-            return res.json({ mensaje: 'Lectura normal acumulada (nuevo intervalo).' });
+            hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1, maxCritico: esCrit };
+        } else {
+            agg.sumSpo2 += spo2;
+            agg.sumBpm += bpm;
+            agg.count += 1;
+            if (esCrit > agg.maxCritico) agg.maxCritico = esCrit;
         }
 
-        agg.sumSpo2 += spo2;
-        agg.sumBpm += bpm;
-        agg.count += 1;
+        // Firebase RTDB recibe cada lectura en tiempo real
         try {
-            const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
-            writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime error:', e));
-        } catch (wErr) {}
-        return res.json({ mensaje: 'Lectura normal acumulada.' });
+            const payload = { spo2, bpm, nivel, es_critico: esCrit, timestamp: fecha_hora || now.toISOString(), estado: 'ACTIVO' };
+            writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error:', e));
+        } catch (wErr) { console.error('Error publicando a Realtime:', wErr); }
+
+        return res.json({ mensaje: 'Lectura acumulada correctamente.' });
     });
 });
 
