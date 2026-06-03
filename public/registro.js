@@ -77,14 +77,11 @@ function renderNotas(notas) {
     }
 
     listaNotas.innerHTML = notas.map(nota => `
-        <div class="card border-0 shadow-sm mb-3 border-start border-4 border-success">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                        <small class="text-muted fw-bold"><i class="bi bi-clock-history me-1"></i>${formatoFecha(nota.fecha_registro)}</small>
-                    </div>
-                </div>
-                <p class="mb-0 text-dark">${nota.cuerpo_nota}</p>
+        <div class="rd-nota-item">
+            <div class="rd-nota-avatar"><i class="bi bi-person-fill"></i></div>
+            <div class="rd-nota-content">
+                <div class="rd-nota-time"><i class="bi bi-clock-history me-1"></i>${formatoFecha(nota.fecha_registro)}</div>
+                <div class="rd-nota-text">${nota.cuerpo_nota}</div>
             </div>
         </div>
     `).join('');
@@ -121,12 +118,12 @@ function renderRegistrosMySQL(registros) {
 
         return `
             <tr ${rowStyle}>
-                <td>${formatoFecha(registro.fecha_hora)}</td>
-                <td>${registro.saturacion_oxigeno}%</td>
-                <td>${registro.ritmo_cardiaco} bpm</td>
-                <td><span class="${badgeClass}">${nivel}</span></td>
-                <td>${accion}</td>
-                <td>${localStorage.getItem('nombrePaciente') || 'Sistema Automático'}</td>
+                <td class="ps-4 fw-semibold" style="font-size:0.82rem;white-space:nowrap;">${formatoFecha(registro.fecha_hora)}</td>
+                <td class="fw-bold">${registro.saturacion_oxigeno}%</td>
+                <td class="fw-bold">${registro.ritmo_cardiaco} <small class="text-muted fw-normal">bpm</small></td>
+                <td><span class="${badgeClass} rounded-pill px-2">${nivel}</span></td>
+                <td style="font-size:0.82rem;">${accion}</td>
+                <td style="font-size:0.82rem;">${localStorage.getItem('nombrePaciente') || 'Sistema Automático'}</td>
                 <td><small class="text-muted">${tipo}</small></td>
             </tr>
         `;
@@ -277,19 +274,18 @@ async function cargarHistorialFechas(idPaciente) {
             const isoDate = String(f.fecha_guardada).substring(0, 10);
             const dateObj = new Date(isoDate + 'T12:00:00');
             const fechaTexto = dateObj.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            
+
             return `
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm rounded-4 h-100 border-start border-4 border-secondary">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0 fw-bold text-secondary text-capitalize small">${fechaTexto}</h6>
-                            <small class="text-muted"><i class="bi bi-file-earmark-pdf me-1"></i>Reporte Diario</small>
-                        </div>
-                        <button class="btn btn-outline-secondary btn-sm rounded-circle shadow-sm" onclick="descargarPDFHistorico('${f.fecha_guardada}', '${fechaTexto}')" title="Descargar PDF">
-                            <i class="bi bi-download"></i>
-                        </button>
+            <div class="col-sm-6 col-md-4">
+                <div class="rd-hist-card">
+                    <div class="rd-hist-icon"><i class="bi bi-file-earmark-pdf-fill"></i></div>
+                    <div class="flex-fill min-width-0">
+                        <div class="fw-bold text-capitalize" style="font-size:0.82rem; color:#2c3e50;">${fechaTexto}</div>
+                        <div style="font-size:0.72rem; color:#aaa;">Reporte diario PDF</div>
                     </div>
+                    <button class="rd-hist-btn" onclick="descargarPDFHistorico('${f.fecha_guardada}', '${fechaTexto}')">
+                        <i class="bi bi-download me-1"></i>PDF
+                    </button>
                 </div>
             </div>`;
         }).join('');

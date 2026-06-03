@@ -56,112 +56,177 @@
     </div>
 </nav>
 
-  <div class="container mt-4 mb-5">
-    
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h4 class="text-success fw-bold mb-0" style="color: var(--color-seroa-teal) !important;">Registro Diario</h4>
-        <p class="text-muted small mb-0">Resumen de lecturas de hoy, filtrado de resultados y notas de cuidado.</p>
-      </div>
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <button class="btn btn-outline-success btn-sm" id="btnDescargarPDF">
-          <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte Hoy
-        </button>
-        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
-          <i class="bi bi-person-fill text-teal me-1"></i> Paciente: <strong>Sin selección</strong>
-        </span>
+  <!-- Hero Banner -->
+  <div class="rd-hero">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-3 mb-1">
+            <div class="rd-hero-icon">
+              <i class="bi bi-clipboard2-pulse-fill"></i>
+            </div>
+            <div>
+              <h4 class="fw-bold mb-0 text-white">Registro Diario</h4>
+              <p class="mb-0 rd-hero-sub">Resumen de lecturas de hoy, notas del cuidador y filtros de resultados</p>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <button class="btn rd-btn-pdf" id="btnDescargarPDF">
+            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Descargar Reporte
+          </button>
+          <span class="badge rd-badge-paciente" data-paciente-actual>
+            <i class="bi bi-person-fill me-1"></i> Paciente: <strong>Sin selección</strong>
+          </span>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div class="mb-3">
-      <h5 class="fw-semibold text-secondary">Resumen del Día</h5>
-      <p class="text-muted small mb-0">Promedios reales con datos del día actual, sin valores simulados.</p>
+  <div class="container mt-4 mb-5">
+
+    <!-- Resumen del Día -->
+    <div class="rd-section-label mb-3">
+      <i class="bi bi-bar-chart-line-fill rd-section-icon"></i>
+      <span>Resumen del Día</span>
+      <small class="text-muted ms-2 fw-normal">Promedios en tiempo real — sin valores simulados</small>
     </div>
 
     <div class="row g-3 mb-4">
       <div class="col-md-4">
-        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
-          <small class="text-muted d-block fw-bold">Promedio SpO2 (Hoy)</small>
-          <span id="valorPromedioSpO2" class="fs-3 fw-bold text-success">--</span>
+        <div class="rd-stat-card rd-stat-spo2">
+          <div class="rd-stat-icon-wrap">
+            <i class="bi bi-lungs-fill"></i>
+          </div>
+          <div class="rd-stat-body">
+            <div class="rd-stat-label">Promedio SpO2</div>
+            <div class="rd-stat-value" id="valorPromedioSpO2">--</div>
+            <div class="rd-stat-sub">Saturación de oxígeno (hoy)</div>
+          </div>
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
-          <small class="text-muted d-block fw-bold">Promedio BPM (Hoy)</small>
-          <span id="valorPromedioBpm" class="fs-3 fw-bold text-teal">--</span>
+        <div class="rd-stat-card rd-stat-bpm">
+          <div class="rd-stat-icon-wrap">
+            <i class="bi bi-heart-pulse-fill"></i>
+          </div>
+          <div class="rd-stat-body">
+            <div class="rd-stat-label">Promedio BPM</div>
+            <div class="rd-stat-value" id="valorPromedioBpm">--</div>
+            <div class="rd-stat-sub">Ritmo cardíaco (hoy)</div>
+          </div>
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card border-0 bg-light text-center p-3 shadow-sm rounded-4">
-          <small class="text-muted d-block fw-bold">Activaciones de Válvula</small>
-          <span id="valorActivaciones" class="fs-3 fw-bold text-warning">0 veces</span>
+        <div class="rd-stat-card rd-stat-valvula">
+          <div class="rd-stat-icon-wrap">
+            <i class="bi bi-moisture"></i>
+          </div>
+          <div class="rd-stat-body">
+            <div class="rd-stat-label">Activaciones de Válvula</div>
+            <div class="rd-stat-value" id="valorActivaciones">0 veces</div>
+            <div class="rd-stat-sub">Suministro de O₂ activo</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="card mb-4 shadow-sm border-0">
+    <!-- Filtros -->
+    <div class="rd-section-label mb-3">
+      <i class="bi bi-funnel-fill rd-section-icon"></i>
+      <span>Filtrar Registros</span>
+    </div>
+
+    <div class="card mb-4 shadow-sm border-0 rd-filter-card">
       <div class="card-body">
-        <h5 class="fw-semibold text-secondary mb-3"><i class="bi bi-funnel-fill me-2"></i>Filtrar registros</h5>
         <div class="row g-3 align-items-end">
-          <div class="col-md-3">
-            <label class="form-label small text-muted">Fecha Inicio</label>
-            <input type="date" id="filterFechaInicio" class="form-control">
+          <div class="col-sm-6 col-md-3">
+            <label class="form-label small fw-semibold text-secondary">
+              <i class="bi bi-calendar-event me-1"></i>Fecha Inicio
+            </label>
+            <input type="date" id="filterFechaInicio" class="form-control rd-input">
           </div>
-          <div class="col-md-3">
-            <label class="form-label small text-muted">Fecha Fin</label>
-            <input type="date" id="filterFechaFin" class="form-control">
+          <div class="col-sm-6 col-md-3">
+            <label class="form-label small fw-semibold text-secondary">
+              <i class="bi bi-calendar-check me-1"></i>Fecha Fin
+            </label>
+            <input type="date" id="filterFechaFin" class="form-control rd-input">
           </div>
-          <div class="col-md-3">
-            <label class="form-label small text-muted">Tipo de Alerta</label>
-            <select id="filterTipoAlerta" class="form-select">
-              <option value="todos">Todos</option>
+          <div class="col-sm-6 col-md-3">
+            <label class="form-label small fw-semibold text-secondary">
+              <i class="bi bi-shield-exclamation me-1"></i>Nivel de Alerta
+            </label>
+            <select id="filterTipoAlerta" class="form-select rd-input">
+              <option value="todos">Todos los niveles</option>
               <option value="Peligro">Solo Peligro</option>
               <option value="Precaución">Solo Precaución</option>
               <option value="Normal">Solo Normal</option>
             </select>
           </div>
-          <div class="col-md-3 text-end">
-            <button id="btnAplicarFiltros" class="btn btn-teal">Aplicar filtros</button>
-            <button id="btnLimpiarFiltros" class="btn btn-outline-secondary ms-2">Limpiar</button>
+          <div class="col-sm-6 col-md-3 d-flex gap-2">
+            <button id="btnAplicarFiltros" class="btn rd-btn-apply flex-fill">
+              <i class="bi bi-funnel me-1"></i>Aplicar
+            </button>
+            <button id="btnLimpiarFiltros" class="btn rd-btn-clear">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-body">
-        <h5 class="fw-semibold text-secondary mb-3"><i class="bi bi-journal-text me-2"></i>Notas del Cuidador</h5>
-        <form id="formNotas" class="row g-3">
-          <input type="hidden" id="inputIdPaciente" value="">
+    <!-- Notas del Cuidador -->
+    <div class="rd-section-label mb-3">
+      <i class="bi bi-journal-text rd-section-icon"></i>
+      <span>Notas del Cuidador</span>
+    </div>
 
-          <div class="col-md-3">
-            <label class="form-label small text-muted">Hora</label>
-            <input type="time" class="form-control" id="notaHora" required>
-          </div>
-          <div class="col-md-7">
-            <label class="form-label small text-muted">Observaciones del paciente</label>
-            <input type="text" class="form-control" id="notaTexto" placeholder="Ej: El paciente reportó fatiga después de comer..." required>
-          </div>
-          <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary bg-teal border-0 w-100"><i class="bi bi-send"></i> Guardar</button>
+    <div class="card shadow-sm border-0 mb-4 rd-notas-card">
+      <div class="card-body">
+        <form id="formNotas">
+          <input type="hidden" id="inputIdPaciente" value="">
+          <div class="row g-3 align-items-end">
+            <div class="col-sm-4 col-md-3">
+              <label class="form-label small fw-semibold text-secondary">
+                <i class="bi bi-clock me-1"></i>Hora
+              </label>
+              <input type="time" class="form-control rd-input" id="notaHora" required>
+            </div>
+            <div class="col-sm-8 col-md-7">
+              <label class="form-label small fw-semibold text-secondary">
+                <i class="bi bi-pencil-square me-1"></i>Observaciones
+              </label>
+              <input type="text" class="form-control rd-input" id="notaTexto"
+                placeholder="Ej: El paciente reportó fatiga después de comer..." required>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end">
+              <button type="submit" class="btn rd-btn-nota w-100">
+                <i class="bi bi-send-fill me-1"></i>Guardar
+              </button>
+            </div>
           </div>
         </form>
-        <hr class="mt-4 mb-3 border-light">
+        <hr class="rd-divider mt-4 mb-3">
         <div id="listaNotasDiarias"></div>
       </div>
     </div>
 
-    <h5 class="fw-semibold text-secondary mb-3">Registro Diario</h5>
-    <p class="text-muted small mb-3">Historial de lecturas guardadas en la base de datos del día actual.</p>
-    <div class="card shadow-sm border-0 mb-4">
+    <!-- Tabla de Registros -->
+    <div class="rd-section-label mb-3">
+      <i class="bi bi-table rd-section-icon"></i>
+      <span>Lecturas del Día</span>
+      <small class="text-muted ms-2 fw-normal">Historial biométrico desde la base de datos</small>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-5 rd-table-card">
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0 small">
-            <thead class="table-light">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="rd-thead">
               <tr>
-                <th class="ps-3">Fecha y Hora</th>
-                <th>SpO2</th>
-                <th>BPM</th>
+                <th class="ps-4"><i class="bi bi-clock me-1 opacity-75"></i>Fecha y Hora</th>
+                <th><i class="bi bi-lungs me-1 opacity-75"></i>SpO2</th>
+                <th><i class="bi bi-heart-pulse me-1 opacity-75"></i>BPM</th>
                 <th>Nivel de Alerta</th>
                 <th>Acción del Sistema</th>
                 <th>Usuario</th>
@@ -169,20 +234,32 @@
               </tr>
             </thead>
             <tbody id="tablaRegistros">
-              <tr><td colspan="7" class="text-center text-muted py-4">Cargando registros biométricos...</td></tr>
+              <tr>
+                <td colspan="7" class="text-center text-muted py-5">
+                  <div class="spinner-border spinner-border-sm text-teal me-2" role="status"></div>
+                  Cargando registros biométricos...
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <hr class="my-5 border-light">
-    <div class="mb-3">
-      <h5 class="fw-semibold text-secondary mb-0"><i class="bi bi-archive me-2"></i>Historial de Reportes (Último mes)</h5>
-      <p class="text-muted small mb-0">Descarga los reportes diarios en PDF de los días en que hubo lecturas.</p>
+    <!-- Historial de Reportes -->
+    <div class="rd-section-label mb-3">
+      <i class="bi bi-archive-fill rd-section-icon"></i>
+      <span>Historial de Reportes</span>
+      <small class="text-muted ms-2 fw-normal">Último mes — descarga en PDF</small>
     </div>
+
     <div id="listaHistorialReportes" class="row g-3 mb-5">
-      <div class="col-12"><p class="text-muted text-center py-3">Buscando reportes anteriores...</p></div>
+      <div class="col-12">
+        <div class="text-center py-4 text-muted">
+          <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+          Buscando reportes anteriores...
+        </div>
+      </div>
     </div>
 
   </div>
