@@ -1744,53 +1744,53 @@ body {
 
 /* Hero Banner */
 .rd-hero {
-  background: linear-gradient(135deg, #2c3e50 0%, #3b8b88 55%, #4aaa87 100%);
-  padding: 1.6rem 0 1.4rem;
-  border-bottom: none;
+  background: #ffffff;
+  padding: 1.4rem 0 1.2rem;
+  border-bottom: 1px solid #f0f0f0;
   position: relative;
   overflow: hidden;
 }
 .rd-hero-icon {
   width: 52px;
   height: 52px;
-  background: rgba(255,255,255,0.18);
+  background: rgba(59,139,136,0.1);
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.6rem;
-  color: white;
+  color: var(--color-seroa-teal);
   flex-shrink: 0;
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid rgba(59,139,136,0.2);
 }
 .rd-hero-sub {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.75);
+  color: #888;
 }
 .rd-btn-pdf {
-  background: rgba(255,255,255,0.15);
-  color: white;
-  border: 1px solid rgba(255,255,255,0.4);
+  background: transparent;
+  color: var(--color-seroa-teal);
+  border: 1.5px solid var(--color-seroa-teal);
   border-radius: 50px;
   font-size: 0.85rem;
   font-weight: 600;
   padding: 0.45rem 1.1rem;
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s;
   white-space: nowrap;
 }
 .rd-btn-pdf:hover {
-  background: rgba(255,255,255,0.28);
+  background: var(--color-seroa-teal);
   color: white;
 }
 .rd-badge-paciente {
-  background: rgba(255,255,255,0.12) !important;
-  color: white !important;
-  border: 1px solid rgba(255,255,255,0.35) !important;
+  background: #f5f5f5 !important;
+  color: #333 !important;
+  border: 1px solid #e0e0e0 !important;
   padding: 0.5rem 1rem;
   border-radius: 50px;
   font-size: 0.82rem;
 }
-.rd-badge-paciente strong { display: block; }
+.rd-badge-paciente strong { display: block; color: var(--color-seroa-dark); }
 
 /* Section Labels */
 .rd-section-label {

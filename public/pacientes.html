@@ -85,10 +85,14 @@
   </div>
   <div class="row mb-4">
     <div class="col-md-8 col-lg-6">
-      <div class="input-group shadow-sm rounded-pill overflow-hidden">
+      <div class="input-group shadow-sm rounded-pill overflow-hidden border border-light">
         <span class="input-group-text bg-white border-0 text-muted ps-4"><i class="bi bi-search"></i></span>
-        <input type="text" id="buscadorPacientes" class="form-control border-0 bg-white shadow-none" placeholder="Buscar por nombre o por numero de ID...">
+        <input type="text" id="buscadorPacientes" class="form-control border-0 bg-white shadow-none" placeholder="Buscar por nombre o número de ID..." autocomplete="off">
+        <button type="button" id="btnLimpiarBusqueda" class="btn bg-white border-0 text-muted pe-3 d-none" title="Limpiar búsqueda">
+          <i class="bi bi-x-lg" style="font-size: 0.8rem;"></i>
+        </button>
       </div>
+      <small id="busquedaInfo" class="text-muted ms-2 mt-1 d-block" style="min-height: 1.1em; font-size: 0.8rem;"></small>
     </div>
   </div>
 
