@@ -652,39 +652,161 @@ app.post('/api/dispositivos/:id/configurar', (req, res) => {
     });
 });
 
+// POST /api/tanques — UPSERT: un único registro activo por dispositivo
+// Acepta id_paciente como proxy de id_dispositivo (ESP32 solo conoce el paciente)
 app.post('/api/tanques', (req, res) => {
-    const { id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
-    if (!id_dispositivo || presion_actual === undefined || porcentaje === undefined || tiempo_restante_minutos === undefined) {
-        return res.status(400).json({ error: 'ID de dispositivo, presión, porcentaje y tiempo restante son requeridos.' });
+    let { id_dispositivo, id_paciente, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
+
+    // Usar id_paciente como id_dispositivo si el ESP32 no tiene device ID
+    const deviceId = id_dispositivo || id_paciente;
+    if (!deviceId || presion_actual === undefined) {
+        return res.status(400).json({ error: 'Se requiere id_dispositivo (o id_paciente) y presion_actual.' });
     }
 
-    const query = `INSERT INTO tanques (id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion) VALUES (?, ?, ?, ?, ?)`;
-    db.query(query, [id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion || new Date()], (err, result) => {
-        if (err) {
-            console.error('Error MySQL al agregar tanque:', err);
-            return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
+    const ts = ultima_actualizacion || new Date();
+
+    // Recalcular porcentaje con baseline calibrado si está disponible
+    const lookupBaseline = (cb) => {
+        if (id_paciente) {
+            db.query('SELECT max_psi_baseline FROM calibraciones_tanque WHERE id_paciente = ? LIMIT 1',
+                [id_paciente], (err, rows) => {
+                    cb(err ? null : (rows[0] ? rows[0].max_psi_baseline : null));
+                });
+        } else {
+            cb(null);
         }
-        res.json({ mensaje: 'Tanque registrado con éxito.', id_tanque: result.insertId });
+    };
+
+    lookupBaseline((baseline) => {
+        let pct = porcentaje;
+        if (baseline && baseline > 0) {
+            pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / baseline) * 100)));
+        } else if (pct === undefined || pct === null) {
+            pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / 12.0) * 100)));
+        }
+
+        const tiempoMin = tiempo_restante_minutos !== undefined ? tiempo_restante_minutos
+                         : Math.round((pct / 100) * 680 / 2); // 680 L / 2 L·min⁻¹
+
+        // UPSERT: actualiza el registro existente o inserta uno nuevo
+        const updateQ = `UPDATE tanques
+                         SET presion_actual = ?, porcentaje = ?,
+                             tiempo_restante_minutos = ?, ultima_actualizacion = ?
+                         WHERE id_dispositivo = ?`;
+        db.query(updateQ, [presion_actual, pct, tiempoMin, ts, deviceId], (err, result) => {
+            if (err) {
+                console.error('Error MySQL UPDATE tanques:', err);
+                return res.status(500).json({ error: 'No se pudo actualizar el tanque.' });
+            }
+            if (result.affectedRows > 0) {
+                return res.json({ mensaje: 'Tanque actualizado.', porcentaje: pct });
+            }
+            // No existe: INSERT
+            const insertQ = `INSERT INTO tanques (id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion)
+                             VALUES (?, ?, ?, ?, ?)`;
+            db.query(insertQ, [deviceId, presion_actual, pct, tiempoMin, ts], (err2, res2) => {
+                if (err2) {
+                    console.error('Error MySQL INSERT tanques:', err2);
+                    return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
+                }
+                res.json({ mensaje: 'Tanque registrado.', id_tanque: res2.insertId, porcentaje: pct });
+            });
+        });
     });
 });
 
+// GET /api/tanques — filtrado por id_dispositivo o id_paciente (usando paciente como proxy)
 app.get('/api/tanques', (req, res) => {
     const { id_dispositivo, id_paciente } = req.query;
     let query = 'SELECT * FROM tanques';
     const params = [];
 
-    if (id_dispositivo) {
+    const deviceId = id_dispositivo || id_paciente;
+    if (deviceId) {
         query += ' WHERE id_dispositivo = ?';
-        params.push(id_dispositivo);
+        params.push(deviceId);
     }
 
-    query += ' ORDER BY id_tanque DESC LIMIT 10';
+    query += ' ORDER BY ultima_actualizacion DESC LIMIT 1';
     db.query(query, params, (err, results) => {
         if (err) {
             console.error('Error MySQL al cargar tanques:', err);
             return res.status(500).json({ error: 'Error interno al leer tanques.' });
         }
         res.json(results);
+    });
+});
+
+// ============================================================
+// === CALIBRACIÓN DINÁMICA DE TANQUES                      ===
+// ============================================================
+
+// Crear tabla si no existe al arrancar
+db.query(`CREATE TABLE IF NOT EXISTS calibraciones_tanque (
+    id_calibracion    INT AUTO_INCREMENT PRIMARY KEY,
+    id_paciente       INT NOT NULL,
+    max_psi_baseline  FLOAT NOT NULL,
+    fecha_calibracion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_paciente (id_paciente)
+)`, (err) => {
+    if (err) console.error('Error creando tabla calibraciones_tanque:', err);
+    else console.log('✓ Tabla calibraciones_tanque verificada.');
+});
+
+// POST /api/tanques/calibrar/iniciar — envía flag a Firebase para que ESP32 empiece
+app.post('/api/tanques/calibrar/iniciar', (req, res) => {
+    const { id_paciente } = req.body;
+    if (!id_paciente) {
+        return res.status(400).json({ error: 'id_paciente es requerido.' });
+    }
+    writeRealtimePaciente(String(id_paciente), { calibracion_pendiente: true })
+        .then(() => res.json({ mensaje: 'Señal de calibración enviada al dispositivo.' }))
+        .catch(() => res.status(500).json({ error: 'No se pudo enviar la señal al dispositivo.' }));
+});
+
+// POST /api/tanques/calibrar — guarda el baseline enviado por el ESP32
+app.post('/api/tanques/calibrar', (req, res) => {
+    const { id_paciente, max_psi_baseline } = req.body;
+    if (!id_paciente || !max_psi_baseline || isNaN(parseFloat(max_psi_baseline))) {
+        return res.status(400).json({ error: 'id_paciente y max_psi_baseline son requeridos.' });
+    }
+    const baseline = parseFloat(max_psi_baseline);
+    const query = `INSERT INTO calibraciones_tanque (id_paciente, max_psi_baseline)
+                   VALUES (?, ?)
+                   ON DUPLICATE KEY UPDATE max_psi_baseline = ?, fecha_calibracion = NOW()`;
+    db.query(query, [id_paciente, baseline, baseline], (err) => {
+        if (err) {
+            console.error('Error guardando calibración de tanque:', err);
+            return res.status(500).json({ error: 'No se pudo guardar la calibración.' });
+        }
+        // Limpiar flag en Firebase
+        writeRealtimePaciente(String(id_paciente), { calibracion_pendiente: false })
+            .catch(() => {});
+        console.log(`✓ Calibración tanque guardada: paciente ${id_paciente}, baseline ${baseline} bar`);
+        res.json({ mensaje: 'Calibración guardada exitosamente.', max_psi_baseline: baseline });
+    });
+});
+
+// GET /api/tanques/calibracion/paciente/:id_paciente — devuelve baseline activo
+app.get('/api/tanques/calibracion/paciente/:id_paciente', (req, res) => {
+    const { id_paciente } = req.params;
+    const query = `SELECT max_psi_baseline, fecha_calibracion
+                   FROM calibraciones_tanque
+                   WHERE id_paciente = ?
+                   ORDER BY fecha_calibracion DESC LIMIT 1`;
+    db.query(query, [id_paciente], (err, results) => {
+        if (err) {
+            console.error('Error obteniendo calibración de tanque:', err);
+            return res.status(500).json({ error: 'Error interno.' });
+        }
+        if (!results.length) {
+            return res.json({ calibrado: false, max_psi_baseline: null });
+        }
+        res.json({
+            calibrado: true,
+            max_psi_baseline: results[0].max_psi_baseline,
+            fecha: results[0].fecha_calibracion
+        });
     });
 });
 

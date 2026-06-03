@@ -134,59 +134,7 @@ function suscribirLecturas() {
             if (icon) { icon.classList.add('d-none'); }
         }
 
-        // Actualizar panel del tanque con presión real de Firebase
-        const presionBar = Number(datos.presionBar || 0);
-        const estadoTanqueStr = datos.estadoTanque || '--';
-        if (Number.isFinite(presionBar)) {
-            actualizarPanelTanque(presionBar, estadoTanqueStr);
-        }
     });
-}
-
-function actualizarPanelTanque(presionBar, estadoTanqueStr) {
-    const MAX_PRESION = 12;
-    const porcentaje = Math.min(Math.round((presionBar / MAX_PRESION) * 100), 100);
-    const psi = Math.round(presionBar * 14.5038);
-    const horasRest = ((presionBar / MAX_PRESION) * 8).toFixed(1);
-    const esBajo = porcentaje < 20;
-
-    const presionElem  = document.getElementById('presionActualValor');
-    const psiElem      = document.getElementById('presionPsiValor');
-    const porcElem     = document.getElementById('tanquePorcentajeValor');
-    const barraElem    = document.getElementById('tanqueProgressBar');
-    const tiempoElem   = document.getElementById('tiempoRestanteValor');
-    const alertaElem   = document.getElementById('alertaTanqueBajo');
-    const tanqueCard   = document.getElementById('tanqueCard');
-    const estadoElem   = document.getElementById('estadoTanqueValor');
-
-    if (presionElem) presionElem.innerHTML = `${presionBar.toFixed(2)}<span class="fs-6 fw-normal"> bar</span>`;
-    if (psiElem)     psiElem.textContent = `${psi} PSI`;
-    if (porcElem)    porcElem.textContent = `${porcentaje}%`;
-    if (tiempoElem)  tiempoElem.textContent = parseFloat(horasRest) > 0 ? `${horasRest} h aprox.` : 'Sin gas';
-    if (estadoElem)  estadoElem.textContent = estadoTanqueStr || '--';
-
-    if (barraElem) {
-        barraElem.style.width = `${porcentaje}%`;
-        barraElem.setAttribute('aria-valuenow', porcentaje);
-        barraElem.textContent = `${porcentaje}%`;
-        if (esBajo) {
-            barraElem.style.backgroundColor = '#dc3545';
-        } else if (porcentaje < 50) {
-            barraElem.style.backgroundColor = '#fd7e14';
-        } else {
-            barraElem.style.backgroundColor = 'var(--color-seroa-teal)';
-        }
-    }
-
-    if (alertaElem) {
-        esBajo ? alertaElem.classList.remove('d-none') : alertaElem.classList.add('d-none');
-    }
-    if (tanqueCard) {
-        esBajo ? tanqueCard.classList.add('tank-danger') : tanqueCard.classList.remove('tank-danger');
-    }
-    if (porcElem) {
-        porcElem.style.color = esBajo ? '#dc3545' : 'var(--color-seroa-teal)';
-    }
 }
 
 function iniciarDosificacion() {

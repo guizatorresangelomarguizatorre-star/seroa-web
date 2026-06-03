@@ -95,6 +95,16 @@ String estadoActual = "ACTIVO";
 
 bool onDisconnectConfigurado = false;
 
+// ========== CALIBRACIÓN DE TANQUE ==========
+float maxPsiBaseline = 0.0;   // 0 = sin calibrar (usa MAX_BAR_DEFAULT)
+bool  calibracionActiva = false;
+unsigned long tiempoCalibCheck = 0;
+const unsigned long INTERVALO_CALIB_CHECK = 4000; // ms entre chequeos del flag
+
+// ========== PERSISTENCIA DE TANQUE EN BD ==========
+unsigned long tiempoUltimoTanqueDB = 0;
+const unsigned long INTERVALO_TANQUE_DB = 30000; // escribe en tanques cada 30 s
+
 // ========== FUNCIONES OLED ==========
 void mostrarOLED(String estado, int spo2Val, int bpmVal, float presionBar, bool valvula) {
   if (!oledConectada) return;
@@ -199,16 +209,135 @@ String estadoTanque(float presionBar) {
   return "TANQUE_OK";
 }
 
+// Calcula el porcentaje usando baseline calibrado; si no hay baseline usa 12 bar
+float calcularPorcentajeTanque(float presionBar) {
+  float ref = (maxPsiBaseline > 0.1f) ? maxPsiBaseline : 12.0f;
+  float pct = (presionBar / ref) * 100.0f;
+  if (pct < 0.0f) pct = 0.0f;
+  if (pct > 100.0f) pct = 100.0f;
+  return pct;
+}
+
+// Escribe el estado actual del tanque en la tabla `tanques` (UPSERT)
+void enviarDatosTanque(float presionBar) {
+  if (WiFi.status() != WL_CONNECTED || id_paciente == "") return;
+
+  float pct     = calcularPorcentajeTanque(presionBar);
+  int   tiempoM = (int)((pct / 100.0f) * 680.0f / 2.0f); // 680 L / 2 L·min⁻¹
+
+  WiFiClientSecure *client = new WiFiClientSecure;
+  client->setInsecure();
+  HTTPClient https;
+
+  https.begin(*client, "https://seroa-web-production.up.railway.app/api/tanques");
+  https.addHeader("Content-Type", "application/json");
+
+  // id_paciente se usa como proxy de id_dispositivo (el ESP32 no almacena device ID)
+  String payload = "{\"id_paciente\":" + id_paciente +
+                   ",\"presion_actual\":"          + String(presionBar, 3) +
+                   ",\"porcentaje\":"              + String((int)pct) +
+                   ",\"tiempo_restante_minutos\":" + String(tiempoM) + "}";
+
+  int httpCode = https.POST(payload);
+  if (httpCode > 0) {
+    Serial.print("Tanque DB actualizado. HTTP: "); Serial.println(httpCode);
+  } else {
+    Serial.print("Error enviando tanque DB: "); Serial.println(https.errorToString(httpCode).c_str());
+  }
+
+  https.end();
+  delete client;
+}
+
+// Envía el baseline medido al backend Railway
+void enviarCalibracion(float baseline) {
+  if (WiFi.status() != WL_CONNECTED || id_paciente == "") return;
+
+  WiFiClientSecure *client = new WiFiClientSecure;
+  client->setInsecure();
+  HTTPClient https;
+
+  https.begin(*client, "https://seroa-web-production.up.railway.app/api/tanques/calibrar");
+  https.addHeader("Content-Type", "application/json");
+
+  String payload = "{\"id_paciente\":" + id_paciente +
+                   ",\"max_psi_baseline\":" + String(baseline, 3) + "}";
+  int httpCode = https.POST(payload);
+
+  Serial.print("Calibracion enviada al backend. HTTP: ");
+  Serial.println(httpCode);
+
+  https.end();
+  delete client;
+}
+
+// Toma lecturas de presión durante 3 segundos y calcula el promedio (baseline)
+void realizarCalibracion() {
+  if (calibracionActiva) return;
+  calibracionActiva = true;
+
+  Serial.println("=== CALIBRACIÓN DE TANQUE INICIADA ===");
+  mostrarMensajeOLED("Calibrando", "tanque O2...", "Espere 3s");
+
+  float suma  = 0.0f;
+  int conteo  = 0;
+  unsigned long inicio = millis();
+
+  while (millis() - inicio < 3000) {
+    float p = leerPresionBar();
+    if (p > 0.1f) { suma += p; conteo++; }
+    delay(100);
+  }
+
+  if (conteo > 0) {
+    maxPsiBaseline = suma / (float)conteo;
+
+    // Persistir en flash
+    preferencias.begin("seroa-cred", false);
+    preferencias.putFloat("psiBaseline", maxPsiBaseline);
+    preferencias.end();
+
+    Serial.print("Baseline calibrado: ");
+    Serial.print(maxPsiBaseline, 3);
+    Serial.println(" bar = 100%");
+
+    // Enviar al backend
+    enviarCalibracion(maxPsiBaseline);
+
+    // Informar en OLED
+    mostrarMensajeOLED("Calibrado OK",
+                       String(maxPsiBaseline, 1) + " bar",
+                       "= 100%");
+    delay(2000);
+
+    // Limpiar flag en Firebase
+    if (Firebase.ready() && id_paciente != "") {
+      String rutaCalib = "Seroa/Pacientes/" + id_paciente + "/Actual/calibracion_pendiente";
+      Firebase.RTDB.setBool(&fbdo, rutaCalib.c_str(), false);
+    }
+  } else {
+    Serial.println("Calibracion fallida: sin presion detectada.");
+    mostrarMensajeOLED("Error calib.", "Sin presion", "detectada");
+    delay(2000);
+  }
+
+  calibracionActiva = false;
+  Serial.println("=== CALIBRACIÓN FINALIZADA ===");
+}
+
 // ========== FIREBASE Y RAILWAY ==========
 void enviarFirebase(int spo2Final, int bpmFinal, String estado, float presionBar) {
   if (!Firebase.ready() || id_paciente == "") return;
 
   String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
 
+  float pctTanque = calcularPorcentajeTanque(presionBar);
+
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/spo2", spo2Final);
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/bpm", bpmFinal);
   Firebase.RTDB.setString(&fbdo, rutaBase + "/estado", estado);
   Firebase.RTDB.setFloat(&fbdo, rutaBase + "/presionBar", presionBar);
+  Firebase.RTDB.setFloat(&fbdo, rutaBase + "/porcentajeTanque", pctTanque);
   Firebase.RTDB.setString(&fbdo, rutaBase + "/estadoTanque", estadoTanque(presionBar));
   Firebase.RTDB.setBool(&fbdo, rutaBase + "/valvulaActiva", valvulaActiva);
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/limiteSpo2Bajo", LIMITE_SPO2_BAJO);
@@ -385,10 +514,17 @@ void setup() {
   Serial.println("Iniciando SEROA...");
 
   preferencias.begin("seroa-cred", false);
-  wifi_ssid = preferencias.getString("ssid", "");
-  wifi_pass = preferencias.getString("pass", "");
-  id_paciente = preferencias.getString("paciente", "");
+  wifi_ssid      = preferencias.getString("ssid", "");
+  wifi_pass      = preferencias.getString("pass", "");
+  id_paciente    = preferencias.getString("paciente", "");
+  maxPsiBaseline = preferencias.getFloat("psiBaseline", 0.0f);
   preferencias.end();
+
+  if (maxPsiBaseline > 0.1f) {
+    Serial.print("Baseline de calibración cargado: ");
+    Serial.print(maxPsiBaseline, 2);
+    Serial.println(" bar");
+  }
 
   if (wifi_ssid == "" || id_paciente == "") {
     setupBluetooth();
@@ -480,6 +616,24 @@ void loop() {
     Firebase.RTDB.setDisconnectString(&fbdo, rutaEstado.c_str(), "Desconectado");
     onDisconnectConfigurado = true;
     Serial.println("OnDisconnect configurado: Firebase escribirá 'Desconectado' al perder enlace.");
+  }
+
+  // Verificar flag de calibración pendiente desde Firebase (cada 4 s)
+  if (!calibracionActiva && Firebase.ready() && id_paciente != "" &&
+      (millis() - tiempoCalibCheck > INTERVALO_CALIB_CHECK)) {
+    tiempoCalibCheck = millis();
+    String rutaCalib = "Seroa/Pacientes/" + id_paciente + "/Actual/calibracion_pendiente";
+    if (Firebase.RTDB.getBool(&fbdo, rutaCalib.c_str())) {
+      if (fbdo.boolData() == true) {
+        realizarCalibracion();
+      }
+    }
+  }
+
+  // Escribir estado del tanque en la BD MySQL cada 30 s
+  if (!calibracionActiva && (millis() - tiempoUltimoTanqueDB > INTERVALO_TANQUE_DB)) {
+    tiempoUltimoTanqueDB = millis();
+    enviarDatosTanque(presionActual);
   }
 
   if (!sensorConectado) {
