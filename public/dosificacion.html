@@ -21,6 +21,146 @@
       border-color: var(--color-seroa-teal) !important;
       color: var(--color-seroa-teal) !important;
     }
+
+    /* ── TARJETA DE RANGO SPO2 ── */
+    .rango-track-wrap {
+      position: relative;
+      height: 14px;
+      border-radius: 7px;
+      margin: 10px 0 30px;
+    }
+    .rango-track-bg {
+      position: absolute;
+      inset: 0;
+      border-radius: 7px;
+      background: linear-gradient(to right,
+        rgba(220,53,69,.18) 0%,  rgba(220,53,69,.18) 25%,
+        rgba(255,193,7,.18) 25%, rgba(255,193,7,.18) 50%,
+        rgba(102,187,106,.18) 50%, rgba(102,187,106,.18) 100%
+      );
+    }
+    .rango-track-active {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      border-radius: 7px;
+      background: linear-gradient(90deg, var(--color-seroa-teal), var(--color-accent-green));
+      transition: left .45s ease, width .45s ease;
+      box-shadow: 0 2px 8px rgba(59,139,136,.35);
+    }
+    .rango-marker {
+      position: absolute;
+      top: -5px;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: left .45s ease;
+      z-index: 2;
+    }
+    .rango-marker-pin {
+      width: 4px;
+      height: 24px;
+      border-radius: 2px;
+      box-shadow: 0 2px 5px rgba(0,0,0,.2);
+    }
+    .rango-marker-min .rango-marker-pin { background: var(--color-seroa-teal); }
+    .rango-marker-max .rango-marker-pin { background: var(--color-accent-green); }
+    .rango-marker-label {
+      font-size: .64rem;
+      font-weight: 800;
+      margin-top: 3px;
+      white-space: nowrap;
+      background: white;
+      padding: 1px 5px;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+      letter-spacing: -.3px;
+    }
+    .rango-marker-min .rango-marker-label { color: var(--color-seroa-teal); }
+    .rango-marker-max .rango-marker-label { color: var(--color-accent-green); }
+
+    /* Tarjetas de input */
+    .rango-cfg-card {
+      border-radius: 16px;
+      padding: 1.2rem 1.3rem;
+      border: 1.5px solid;
+      transition: box-shadow .2s, border-color .2s;
+    }
+    .rango-cfg-card:focus-within {
+      box-shadow: 0 0 0 3px rgba(59,139,136,.12);
+    }
+    .rango-cfg-min {
+      background: rgba(59,139,136,.05);
+      border-color: rgba(59,139,136,.2);
+    }
+    .rango-cfg-min:focus-within { border-color: var(--color-seroa-teal); }
+    .rango-cfg-max {
+      background: rgba(102,187,106,.05);
+      border-color: rgba(102,187,106,.25);
+    }
+    .rango-cfg-max:focus-within { border-color: var(--color-accent-green); }
+    .rango-cfg-header {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-size: .72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #888;
+      margin-bottom: .65rem;
+    }
+    .rango-cfg-min .rango-cfg-header i { color: var(--color-seroa-teal); font-size: .9rem; }
+    .rango-cfg-max .rango-cfg-header i { color: var(--color-accent-green); font-size: .9rem; }
+    .rango-cfg-input-row { display: flex; align-items: baseline; gap: .3rem; }
+    .rango-cfg-num {
+      width: 76px;
+      font-size: 2.6rem;
+      font-weight: 800;
+      line-height: 1;
+      border: none;
+      background: transparent;
+      padding: 0;
+      outline: none;
+    }
+    .rango-cfg-num::-webkit-inner-spin-button { opacity: .35; cursor: pointer; }
+    .rango-cfg-min .rango-cfg-num  { color: var(--color-seroa-teal); }
+    .rango-cfg-max .rango-cfg-num  { color: var(--color-accent-green); }
+    .rango-cfg-unit { font-size: 1.1rem; font-weight: 700; color: #bbb; }
+    .rango-cfg-hint { display: block; font-size: .71rem; color: #aaa; margin-top: .45rem; line-height: 1.35; }
+
+    /* Info pill */
+    .rango-info-pill {
+      background: rgba(59,139,136,.07);
+      border: 1px solid rgba(59,139,136,.18);
+      border-radius: 50px;
+      padding: .4rem 1rem;
+      font-size: .79rem;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .rango-info-pill i { color: var(--color-seroa-teal); flex-shrink: 0; }
+    .btn-guardar-rango {
+      background: linear-gradient(135deg, var(--color-seroa-teal), var(--color-accent-green));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: .65rem 2rem;
+      font-weight: 700;
+      font-size: .9rem;
+      box-shadow: 0 4px 12px rgba(59,139,136,.28);
+      transition: all .25s;
+      white-space: nowrap;
+    }
+    .btn-guardar-rango:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(59,139,136,.38);
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -158,58 +298,100 @@
     <!-- ── FILA 2: Configuración de Rango ── -->
     <div class="card border-0 shadow-sm" style="border-radius:16px;">
       <div class="card-body p-4">
-        <h5 class="fw-bold mb-3" style="color:var(--color-seroa-teal);">
-          <i class="bi bi-sliders me-2"></i>Rango de Dosificación SpO2
-        </h5>
 
-        <div class="row align-items-start g-4">
+        <!-- Encabezado -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+          <div>
+            <h5 class="fw-bold mb-0" style="color:var(--color-seroa-teal);">
+              <i class="bi bi-sliders2 me-2"></i>Rango de Dosificación SpO2
+            </h5>
+            <small class="text-muted">Define cuándo el sistema activa y regula el suministro de oxígeno</small>
+          </div>
+          <span class="badge rounded-pill px-3 py-2 fw-semibold"
+                style="background:rgba(59,139,136,.1);color:var(--color-seroa-teal);border:1px solid rgba(59,139,136,.2);font-size:.82rem;">
+            <i class="bi bi-activity me-1"></i>Activo:
+            <span id="panelRangoActual" class="fw-bold ms-1">-- %</span>
+          </span>
+        </div>
 
-          <!-- Visualización del rango actual -->
-          <div class="col-md-6">
-            <div id="panelRangoDisplay" class="d-flex align-items-center gap-3 flex-wrap mb-2">
-              <div class="text-center">
-                <small class="text-muted d-block" style="font-size:.75rem;">Mínimo</small>
-                <span id="rangoDisplayMin" class="badge fs-5 px-3 py-2"
-                      style="background-color:var(--color-seroa-teal);">--</span>
-              </div>
-              <i class="bi bi-arrow-left-right text-muted fs-5"></i>
-              <div class="text-center">
-                <small class="text-muted d-block" style="font-size:.75rem;">Máximo</small>
-                <span id="rangoDisplayMax" class="badge fs-5 px-3 py-2"
-                      style="background-color:var(--color-accent-green);">--</span>
-              </div>
-              <div>
-                <small class="text-muted d-block" style="font-size:.75rem;">Rango activo</small>
-                <span id="panelRangoActual" class="text-muted small fw-bold">--</span>
+        <!-- Track visual 80 → 100% -->
+        <div class="px-1">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="fw-bold" style="font-size:.68rem;color:#dc3545;">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>Crítico (80%)
+            </small>
+            <small class="fw-bold" style="font-size:.68rem;color:var(--color-seroa-teal);">
+              Óptimo (100%) <i class="bi bi-check-circle-fill ms-1"></i>
+            </small>
+          </div>
+
+          <div class="rango-track-wrap">
+            <div class="rango-track-bg"></div>
+            <div id="rangoTrackActive" class="rango-track-active" style="left:50%;width:45%;"></div>
+            <div id="rangoMarkerMin" class="rango-marker rango-marker-min" style="left:50%;">
+              <div class="rango-marker-pin"></div>
+              <span id="rangoDisplayMin" class="rango-marker-label">--</span>
+            </div>
+            <div id="rangoMarkerMax" class="rango-marker rango-marker-max" style="left:95%;">
+              <div class="rango-marker-pin"></div>
+              <span id="rangoDisplayMax" class="rango-marker-label">--</span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <small class="text-muted" style="font-size:.68rem;">80%</small>
+            <small class="text-muted" style="font-size:.68rem;">85%</small>
+            <small class="text-muted" style="font-size:.68rem;">90%</small>
+            <small class="text-muted" style="font-size:.68rem;">95%</small>
+            <small class="text-muted" style="font-size:.68rem;">100%</small>
+          </div>
+        </div>
+
+        <!-- Inputs + Guardar (solo rol editor) -->
+        <form id="formDosificacion" class="rol-editar mt-4">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <div class="rango-cfg-card rango-cfg-min">
+                <div class="rango-cfg-header">
+                  <i class="bi bi-arrow-down-circle-fill"></i>
+                  SpO2 Mínimo — Activar válvula
+                </div>
+                <div class="rango-cfg-input-row">
+                  <input id="rangoSpo2Min" type="number" min="50" max="100"
+                         class="rango-cfg-num" placeholder="--">
+                  <span class="rango-cfg-unit">%</span>
+                </div>
+                <small class="rango-cfg-hint">La válvula se abre cuando SpO2 cae por debajo de este valor</small>
               </div>
             </div>
-            <button id="btnAjustarRango" class="btn btn-link btn-sm text-decoration-none p-0 rol-editar"
-                    style="color:var(--color-seroa-teal);">
-              <i class="bi bi-pencil-square me-1"></i>Ajustar rango personalizado
+            <div class="col-sm-6">
+              <div class="rango-cfg-card rango-cfg-max">
+                <div class="rango-cfg-header">
+                  <i class="bi bi-arrow-up-circle-fill"></i>
+                  SpO2 Máximo — Cerrar válvula
+                </div>
+                <div class="rango-cfg-input-row">
+                  <input id="rangoSpo2Max" type="number" min="50" max="100"
+                         class="rango-cfg-num" placeholder="--">
+                  <span class="rango-cfg-unit">%</span>
+                </div>
+                <small class="rango-cfg-hint">La válvula se cierra cuando SpO2 alcanza este valor</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="rango-info-pill">
+              <i class="bi bi-lightbulb-fill"></i>
+              Dosificación activa cuando SpO2 &lt; <strong id="rangoInfoMin">--</strong>%
+              &nbsp;·&nbsp; se detiene al llegar a <strong id="rangoInfoMax">--</strong>%
+            </div>
+            <button type="submit" class="btn-guardar-rango">
+              <i class="bi bi-check-circle me-2"></i>Guardar configuración
             </button>
           </div>
+        </form>
 
-          <!-- Formulario de guardado -->
-          <div class="col-md-6">
-            <form id="formDosificacion" class="d-flex flex-wrap gap-3 align-items-end rol-editar">
-              <div>
-                <label for="rangoSpo2Min" class="form-label small text-muted mb-1">SpO2 Mín</label>
-                <input id="rangoSpo2Min" type="number" min="50" max="100"
-                       class="form-control form-control-sm" style="width:90px;" />
-              </div>
-              <div>
-                <label for="rangoSpo2Max" class="form-label small text-muted mb-1">SpO2 Máx</label>
-                <input id="rangoSpo2Max" type="number" min="50" max="100"
-                       class="form-control form-control-sm" style="width:90px;" />
-              </div>
-              <button type="submit" class="btn btn-sm text-white fw-bold px-4"
-                      style="background-color:var(--color-seroa-teal);border-radius:10px;">
-                <i class="bi bi-check-circle me-1"></i>Guardar
-              </button>
-            </form>
-          </div>
-
-        </div>
       </div>
     </div><!-- /config card -->
 
