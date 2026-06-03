@@ -7,19 +7,14 @@ let latestRegistrosFiltered = [];
 function clasificarLectura(spo2, bpm) {
     const spo2Num = Number(spo2);
     const bpmNum = Number(bpm);
-    // Obtener umbrales según paciente seleccionado (si existen)
     const pacienteMinStored = Number(localStorage.getItem('selectedPatientSpo2Min'));
-    const tienePacienteMin = Number.isFinite(pacienteMinStored) && pacienteMinStored > 0;
+    const spo2Min = (Number.isFinite(pacienteMinStored) && pacienteMinStored > 0) ? pacienteMinStored : 90;
 
-    let dangerThreshold = 85;
-    let precautionThreshold = 90;
-    if (tienePacienteMin) {
-        precautionThreshold = pacienteMinStored;
-        dangerThreshold = Math.max(0, Math.round(pacienteMinStored - 5));
-    }
-
-    const rojo = (spo2Num < dangerThreshold) || bpmNum < 50 || bpmNum > 140;
-    const naranja = (!rojo && (spo2Num < precautionThreshold || (bpmNum >= 50 && bpmNum <= 59) || (bpmNum >= 101 && bpmNum <= 140)));
+    // Peligro: por debajo del mínimo absoluto del paciente
+    // Precaución: zona de alerta [min, min+4]
+    // Normal: spo2 >= min+5
+    const rojo = (spo2Num < spo2Min) || bpmNum < 50 || bpmNum > 140;
+    const naranja = (!rojo && (spo2Num <= (spo2Min + 4) || (bpmNum >= 50 && bpmNum <= 59) || (bpmNum >= 101 && bpmNum <= 140)));
 
     if (rojo) return { nivel: 'Peligro', color: 'danger', accion: 'Válvula de oxígeno activada' };
     if (naranja) return { nivel: 'Precaución', color: 'warning', accion: 'Monitoreo continuo' };
@@ -431,10 +426,9 @@ async function descargarPDFHistorico(fechaISO, fechaTexto) {
         doc.text('Tabla de Umbrales Críticos', 40, currentY);
 
         const pacienteMin = Number.isFinite(pacienteSpo2Min) && pacienteSpo2Min > 0 ? pacienteSpo2Min : 90;
-        const peligroUmbral = Math.max(0, Math.round(pacienteMin - 5));
-        const normalTexto = `${pacienteMin}% a 100%`;
-        const precaucionTexto = `${peligroUmbral}% a ${Math.max(pacienteMin - 1, peligroUmbral)}%`;
-        const peligroTexto = `< ${peligroUmbral}%`;
+        const normalTexto = `${pacienteMin + 5}% a 100%`;
+        const precaucionTexto = `${pacienteMin}% a ${pacienteMin + 4}%`;
+        const peligroTexto = `< ${pacienteMin}%`;
 
         doc.autoTable({
             startY: currentY + 10,
@@ -702,10 +696,9 @@ async function generarPDF() {
     doc.text('Tabla de Umbrales Críticos', 40, currentY);
 
     const pacienteMin = Number.isFinite(pacienteSpo2Min) && pacienteSpo2Min > 0 ? pacienteSpo2Min : 90;
-    const peligroUmbral = Math.max(0, Math.round(pacienteMin - 5));
-    const normalTexto = `${pacienteMin}% a 100%`;
-    const precaucionTexto = `${peligroUmbral}% a ${Math.max(pacienteMin - 1, peligroUmbral)}%`;
-    const peligroTexto = `< ${peligroUmbral}%`;
+    const normalTexto = `${pacienteMin + 5}% a 100%`;
+    const precaucionTexto = `${pacienteMin}% a ${pacienteMin + 4}%`;
+    const peligroTexto = `< ${pacienteMin}%`;
 
     doc.autoTable({
         startY: currentY + 10,

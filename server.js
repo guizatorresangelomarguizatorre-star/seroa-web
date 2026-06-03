@@ -259,6 +259,16 @@ app.post('/api/pacientes', (req, res) => {
     });
 });
 
+app.get('/api/pacientes/:id/config', (req, res) => {
+    const id_paciente = req.params.id;
+    db.query('SELECT rango_spo2_min FROM pacientes WHERE id_paciente = ?', [id_paciente], (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(404).json({ error: 'Paciente no encontrado.' });
+        }
+        res.json({ rango_spo2_min: results[0].rango_spo2_min });
+    });
+});
+
 app.get('/api/pacientes', (req, res) => {
     const id_usuario = req.query.id_usuario;
     const id_paciente = req.query.id_paciente;
@@ -770,16 +780,16 @@ app.post('/api/registros', (req, res) => {
             pacienteMin = Number(results[0].rango_spo2_min);
         }
 
-        const dangerThreshold = Math.max(0, pacienteMin - 5);
-        const precautionThreshold = pacienteMin;
-
         let esCrit = 0;
         let nivel = 'Normal';
 
-        if (spo2 < dangerThreshold || bpm < 50 || bpm > 140) {
+        // Peligro: por debajo del mínimo absoluto del paciente
+        // Precaución: zona de alerta inmediata [min, min+4]
+        // Normal: spo2 >= min+5
+        if (spo2 < pacienteMin || bpm < 50 || bpm > 140) {
             esCrit = 2;
             nivel = 'Peligro';
-        } else if (spo2 < precautionThreshold || (bpm >= 50 && bpm <= 59) || (bpm >= 101 && bpm <= 140)) {
+        } else if (spo2 <= (pacienteMin + 4) || (bpm >= 50 && bpm <= 59) || (bpm >= 101 && bpm <= 140)) {
             esCrit = 1;
             nivel = 'Precaución';
         }

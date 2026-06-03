@@ -242,6 +242,51 @@ void enviarRailway(String idPac, int spo2, int bpm) {
   }
 }
 
+// ========== SINCRONIZACIÓN DE UMBRAL DESDE EL BACKEND ==========
+void sincronizarLimiteSpo2() {
+  if (WiFi.status() != WL_CONNECTED || id_paciente == "") return;
+
+  WiFiClientSecure *client = new WiFiClientSecure;
+  client->setInsecure();
+  HTTPClient https;
+
+  String url = "https://seroa-web-production.up.railway.app/api/pacientes/" + id_paciente + "/config";
+
+  if (https.begin(*client, url)) {
+    int httpCode = https.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+      String payload = https.getString();
+      // Parseo manual: busca "rango_spo2_min":XX
+      int idx = payload.indexOf("rango_spo2_min");
+      if (idx >= 0) {
+        int colonIdx = payload.indexOf(':', idx);
+        if (colonIdx >= 0) {
+          String valorStr = payload.substring(colonIdx + 1);
+          valorStr.trim();
+          int valor = valorStr.toInt();
+          if (valor > 50 && valor <= 100) {
+            LIMITE_SPO2_BAJO = valor;
+            Serial.print("Limite SpO2 sincronizado desde BD: ");
+            Serial.println(LIMITE_SPO2_BAJO);
+            mostrarMensajeOLED("Config OK", "SpO2 min:", String(LIMITE_SPO2_BAJO) + "%");
+            delay(1500);
+          } else {
+            Serial.println("Valor de limite fuera de rango, se mantiene el default.");
+          }
+        }
+      }
+    } else {
+      Serial.print("Error al obtener config del paciente. HTTP: ");
+      Serial.println(httpCode);
+    }
+
+    https.end();
+  }
+
+  delete client;
+}
+
 // ========== BLUETOOTH ==========
 class MyServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
@@ -377,6 +422,11 @@ void setup() {
   }
 
   Serial.println("\nWiFi conectado.");
+  mostrarMensajeOLED("WiFi OK", "Sincronizando", "config...");
+
+  // Descarga el umbral personalizado del paciente desde la BD antes de iniciar
+  sincronizarLimiteSpo2();
+
   mostrarMensajeOLED("WiFi OK", "Conectando", "Firebase");
 
   config.api_key = API_KEY;
