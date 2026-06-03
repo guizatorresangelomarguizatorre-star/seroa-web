@@ -9,6 +9,7 @@ var LIMITE_PUNTOS = 15;
 
 var temporizadorDesconexionIndex;
 var chartSpo2, chartBpm;
+var fechaDiagramaActual = new Date().toLocaleDateString();
 
 function clasificarLectura(spo2, bpm) {
     const pacienteMin = Number(localStorage.getItem('selectedPatientSpo2Min'));
@@ -46,12 +47,11 @@ async function generarPDFIndex() {
             fetch(`/api/registros?id_paciente=${pacienteId}`),
             fetch(`/api/notas?id_paciente=${pacienteId}`)
         ]);
-        const todosRegistros = await resRegs.json();
-        const todasNotas = await resNotas.json();
+        const registros = (await resRegs.json()) || [];
+        const todasNotas = (await resNotas.json()) || [];
 
         const hoyStr = new Date().toLocaleDateString('es-MX');
-        const registros = (todosRegistros || []).filter(r => r.fecha_hora && window.esHoy(r.fecha_hora));
-        const notasHoy = (todasNotas || []).filter(n => new Date(n.fecha_registro).toLocaleDateString('es-MX') === hoyStr);
+        const notasHoy = todasNotas.filter(n => new Date(n.fecha_registro).toLocaleDateString('es-MX') === hoyStr);
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -97,21 +97,18 @@ async function generarPDFIndex() {
             return [(i + 1).toString(), new Date(r.fecha_hora).toLocaleString('es-MX'), `${r.saturacion_oxigeno}%`, `${r.ritmo_cardiaco} bpm`, nivel, accion, usuario];
         });
 
-        if (rows.length > 0) {
-            doc.autoTable({
-                startY: infoY + 25,
-                head: [['#', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
-                body: rows, styles: { fontSize: 9 },
-                didParseCell: (data) => {
-                    if (data.row.raw[4] === 'Peligro') data.cell.styles.fillColor = [255, 204, 204];
-                    else if (data.row.raw[4] === 'Precaución') data.cell.styles.fillColor = [255, 243, 205];
-                }
-            });
-        } else {
-            infoY += 35; doc.setFontSize(9); doc.text('No hay lecturas registradas para el día de hoy.', 40, infoY);
-        }
+        doc.autoTable({
+            startY: infoY + 25,
+            head: [['#', 'Fecha y Hora', 'SpO2', 'BPM', 'Nivel', 'Acción', 'Usuario']],
+            body: rows,
+            styles: { fontSize: 9 },
+            didParseCell: (data) => {
+                if (data.row.raw[4] === 'Peligro') data.cell.styles.fillColor = [255, 204, 204];
+                else if (data.row.raw[4] === 'Precaución') data.cell.styles.fillColor = [255, 243, 205];
+            }
+        });
 
-        let currentY = (rows.length > 0 ? doc.lastAutoTable.finalY : infoY) + 25;
+        let currentY = doc.lastAutoTable.finalY + 25;
 
         doc.setFontSize(11); doc.text('Notas del Cuidador (Día de hoy):', 40, currentY);
         if (notasHoy.length > 0) {
@@ -273,6 +270,14 @@ function mostrarDatosValidos(spo2, bpm, presionBar, valvulaActiva, datos) {
     if (valorBpm) valorBpm.innerText = bpm;
 
     var ahora = new Date().getTime();
+    var hoyLocal = new Date().toLocaleDateString();
+    if (fechaDiagramaActual !== hoyLocal) {
+        fechaDiagramaActual = hoyLocal;
+        historialSpo2 = [];
+        historialBpm = [];
+        if (chartSpo2) chartSpo2.updateSeries([{ name: 'SpO2', data: [] }]);
+        if (chartBpm) chartBpm.updateSeries([{ name: 'BPM', data: [] }]);
+    }
 
     historialSpo2.push({ x: ahora, y: spo2 });
     historialBpm.push({ x: ahora, y: bpm });
@@ -296,7 +301,7 @@ function mostrarDatosValidos(spo2, bpm, presionBar, valvulaActiva, datos) {
             id_dispositivo: datos.dispositivoId || null,
             saturacion_oxigeno: spo2,
             ritmo_cardiaco: bpm,
-            es_critico: lectura.color === 'danger' ? 1 : 0,
+            es_critico: lectura.color === 'danger' ? 2 : lectura.color === 'warning' ? 1 : 0,
             fecha_hora: new Date().toISOString(),
             nivel_alerta: lectura.nivel,
             accion_sistema: lectura.accion,
@@ -319,6 +324,17 @@ function mostrarDatosValidos(spo2, bpm, presionBar, valvulaActiva, datos) {
 }
 
 aplicarEstadoDesconectado();
+
+setInterval(function() {
+    var hoy = new Date().toLocaleDateString();
+    if (fechaDiagramaActual !== hoy) {
+        fechaDiagramaActual = hoy;
+        historialSpo2 = [];
+        historialBpm = [];
+        if (chartSpo2) chartSpo2.updateSeries([{ name: 'SpO2', data: [] }]);
+        if (chartBpm) chartBpm.updateSeries([{ name: 'BPM', data: [] }]);
+    }
+}, 60000);
 
 if (window.SeroaRealtime) {
     window.SeroaRealtime.subscribe((datos) => {
@@ -368,16 +384,16 @@ if (window.SeroaRealtime) {
             if (textoEstado) textoEstado.innerText = "Por favor coloca tu dedo en el sensor.";
             if (valorSpo2) valorSpo2.innerText = "--";
             if (valorBpm) valorBpm.innerText = "--";
-        } else if (estadoSensor === "CALIBRANDO" && !valoresValidos) {
+        } else if (estadoSensor === "CALIBRANDO") {
             if (cartelEstado) cartelEstado.style.display = 'block';
             if (textoEstado) textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
             if (valorSpo2) valorSpo2.innerText = "--";
             if (valorBpm) valorBpm.innerText = "--";
-        } else if (estadoSensor === "ACTIVO" || valoresValidos) {
+        } else if (estadoSensor === "ACTIVO" && valoresValidos) {
             mostrarDatosValidos(actualSpo2, actualBpm, presionBar, valvulaActiva, datos);
         }
 
-        temporizadorDesconexionIndex = setTimeout(aplicarEstadoDesconectado, 15000);
+        temporizadorDesconexionIndex = setTimeout(aplicarEstadoDesconectado, 10000);
     });
 } else {
     console.error("El motor SeroaRealtime no cargó correctamente.");

@@ -93,6 +93,8 @@ int bpmActual = 0;
 float presionActual = 0;
 String estadoActual = "ACTIVO";
 
+bool onDisconnectConfigurado = false;
+
 // ========== FUNCIONES OLED ==========
 void mostrarOLED(String estado, int spo2Val, int bpmVal, float presionBar, bool valvula) {
   if (!oledConectada) return;
@@ -471,6 +473,14 @@ void setup() {
 // ========== LOOP ==========
 void loop() {
   presionActual = leerPresionBar();
+
+  // Registrar onDisconnect la primera vez que Firebase esté listo
+  if (Firebase.ready() && !onDisconnectConfigurado && id_paciente != "") {
+    String rutaEstado = "Seroa/Pacientes/" + id_paciente + "/Actual/estado";
+    Firebase.RTDB.setDisconnectString(&fbdo, rutaEstado.c_str(), "Desconectado");
+    onDisconnectConfigurado = true;
+    Serial.println("OnDisconnect configurado: Firebase escribirá 'Desconectado' al perder enlace.");
+  }
 
   if (!sensorConectado) {
     desactivarValvula();
