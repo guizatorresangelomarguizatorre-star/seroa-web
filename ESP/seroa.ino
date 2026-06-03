@@ -28,8 +28,8 @@
 #define SDA_PIN 21
 #define SCL_PIN 22
 
-#define PIN_RELAY 25
-#define PIN_PRESION 34
+#define PIN_RELAY 26
+#define PIN_PRESION 25
 
 #define RELAY_ACTIVE_LOW true
 
@@ -92,6 +92,13 @@ int spo2Actual = 0;
 int bpmActual = 0;
 float presionActual = 0;
 String estadoActual = "ACTIVO";
+
+// ========== CALIBRACIÓN DE TANQUE ==========
+bool calibrandoTanque = false;
+int indiceCalib = 0;
+float lecturasPresionCalib[10];
+unsigned long tiempoUltimaLecturaCalib = 0;
+unsigned long tiempoCheckCalib = 0;
 
 // ========== FUNCIONES OLED ==========
 void mostrarOLED(String estado, int spo2Val, int bpmVal, float presionBar, bool valvula) {
@@ -195,6 +202,52 @@ String estadoTanque(float presionBar) {
   if (presionBar <= 0.3) return "SIN_PRESION";
   if (presionBar < 2.0) return "TANQUE_BAJO";
   return "TANQUE_OK";
+}
+
+// ========== CALIBRACIÓN DE TANQUE ==========
+void verificarComandoCalibracion() {
+  if (id_paciente == "" || !Firebase.ready() || calibrandoTanque) return;
+
+  String rutaCmd = "Seroa/Pacientes/" + id_paciente + "/Comandos/calibrarTanque";
+
+  if (Firebase.RTDB.getBool(&fbdo, rutaCmd) && fbdo.boolData()) {
+    calibrandoTanque = true;
+    indiceCalib = 0;
+    tiempoUltimaLecturaCalib = millis();
+
+    Firebase.RTDB.setBool(&fbdo, rutaCmd, false);
+    Firebase.RTDB.setString(&fbdo, "Seroa/Pacientes/" + id_paciente + "/Calibracion/estado", "en_proceso");
+
+    mostrarMensajeOLED("Calibrando", "Midiendo", "presion...");
+    Serial.println("Calibracion de tanque iniciada.");
+  }
+}
+
+void procesarCalibracion() {
+  if (!calibrandoTanque) return;
+
+  if (millis() - tiempoUltimaLecturaCalib >= 300 && indiceCalib < 10) {
+    tiempoUltimaLecturaCalib = millis();
+    lecturasPresionCalib[indiceCalib++] = leerPresionBar();
+    Serial.print("Calib lectura "); Serial.print(indiceCalib); Serial.println("/10");
+  }
+
+  if (indiceCalib >= 10) {
+    float suma = 0;
+    for (int i = 0; i < 10; i++) suma += lecturasPresionCalib[i];
+    float presionMax = suma / 10.0;
+
+    String rutaCalib = "Seroa/Pacientes/" + id_paciente + "/Calibracion";
+    Firebase.RTDB.setFloat(&fbdo, rutaCalib + "/presionMaxima", presionMax);
+    Firebase.RTDB.setString(&fbdo, rutaCalib + "/estado", "listo");
+    Firebase.RTDB.setInt(&fbdo, rutaCalib + "/timestamp", (int)(millis() / 1000));
+
+    calibrandoTanque = false;
+    indiceCalib = 0;
+
+    mostrarMensajeOLED("Calibracion", "Completa", String(presionMax, 2) + " bar");
+    Serial.print("Calibracion OK: "); Serial.print(presionMax); Serial.println(" bar");
+  }
 }
 
 // ========== FIREBASE Y RAILWAY ==========
@@ -421,6 +474,13 @@ void setup() {
 // ========== LOOP ==========
 void loop() {
   presionActual = leerPresionBar();
+
+  // Verificar comando de calibración cada 2 s
+  if (millis() - tiempoCheckCalib > 2000 && !calibrandoTanque) {
+    tiempoCheckCalib = millis();
+    verificarComandoCalibracion();
+  }
+  procesarCalibracion();
 
   if (!sensorConectado) {
     desactivarValvula();

@@ -43,6 +43,13 @@ db.getConnection((err, connection) => {
     }
 });
 
+// Migración: agrega presion_maxima si no existe
+db.query("ALTER TABLE tanques ADD COLUMN presion_maxima FLOAT DEFAULT NULL", (err) => {
+    if (err && err.code !== 'ER_DUP_FIELDNAME') {
+        console.warn('Nota migración tanques:', err.message);
+    }
+});
+
 // === RUTAS DEL SISTEMA ===
 const rutasBiometricos = require('./api_biometricos')(db);
 app.use('/api', rutasBiometricos);
@@ -643,13 +650,13 @@ app.post('/api/dispositivos/:id/configurar', (req, res) => {
 });
 
 app.post('/api/tanques', (req, res) => {
-    const { id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
+    const { id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
     if (!id_dispositivo || presion_actual === undefined || porcentaje === undefined || tiempo_restante_minutos === undefined) {
         return res.status(400).json({ error: 'ID de dispositivo, presión, porcentaje y tiempo restante son requeridos.' });
     }
 
-    const query = `INSERT INTO tanques (id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion) VALUES (?, ?, ?, ?, ?)`;
-    db.query(query, [id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion || new Date()], (err, result) => {
+    const query = `INSERT INTO tanques (id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion) VALUES (?, ?, ?, ?, ?, ?)`;
+    db.query(query, [id_dispositivo, presion_actual, presion_maxima || null, porcentaje, tiempo_restante_minutos, ultima_actualizacion || new Date()], (err, result) => {
         if (err) {
             console.error('Error MySQL al agregar tanque:', err);
             return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
