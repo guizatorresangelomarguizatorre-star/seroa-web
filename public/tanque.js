@@ -126,6 +126,15 @@ function suscribirDatosFirebase() {
     window.SeroaRealtime.subscribe((datos) => {
         if (!datos) return;
 
+        // Detección de error de calibración desde ESP32 vía Firebase
+        if (_calibEscuchandoError && datos.calibracion_error === true) {
+            _calibMostrarError(
+                'No se detectó presión en el tanque. Asegúrese de que el cilindro esté ' +
+                'firmemente conectado al regulador y la válvula completamente abierta.'
+            );
+            return;
+        }
+
         const presionBar  = Number(datos.presionBar != null ? datos.presionBar : -1);
         const estadoTanque = datos.estadoTanque || '--';
 
@@ -211,79 +220,133 @@ function inicializarPaciente() {
 // LÓGICA DEL MODAL DE CALIBRACIÓN
 // ============================================================
 
+let _calibPollInterval = null;  // referencia global al intervalo de polling
+let _calibEscuchandoError = false;
+
+// Helpers de UI del modal ─────────────────────────────────────
+function _calibSetPaneles(paso1, paso2, calibrando, exito, error) {
+    document.getElementById('calPaso1').classList.toggle('d-none', !paso1);
+    document.getElementById('calPaso2').classList.toggle('d-none', !paso2);
+    document.getElementById('calCalibrando').classList.toggle('d-none', !calibrando);
+    document.getElementById('calExito').classList.toggle('d-none', !exito);
+    document.getElementById('calError').classList.toggle('d-none', !error);
+}
+function _calibSetPasos(dot1, dot2, dot3, line12, line23) {
+    document.getElementById('stepDot1').className  = 'step-dot ' + dot1;
+    document.getElementById('stepDot2').className  = 'step-dot ' + dot2;
+    document.getElementById('stepDot3').className  = 'step-dot ' + dot3;
+    document.getElementById('stepLine12').className = 'step-line ' + line12;
+    document.getElementById('stepLine23').className = 'step-line ' + line23;
+}
+function _calibCerrarBtn(visible) {
+    document.getElementById('btnCerrarModalCalib').classList.toggle('d-none', !visible);
+}
+function _calibDetenerPoll() {
+    if (_calibPollInterval) { clearInterval(_calibPollInterval); _calibPollInterval = null; }
+    _calibEscuchandoError = false;
+}
+
+// Navegación de pasos ─────────────────────────────────────────
 function calibIrPaso1() {
-    document.getElementById('calPaso1').classList.remove('d-none');
-    document.getElementById('calPaso2').classList.add('d-none');
-    document.getElementById('calCalibrando').classList.add('d-none');
-    document.getElementById('calExito').classList.add('d-none');
-    document.getElementById('calError').classList.add('d-none');
-    document.getElementById('stepDot1').className = 'step-dot active';
-    document.getElementById('stepDot2').className = 'step-dot';
-    document.getElementById('stepDot3').className = 'step-dot';
-    document.getElementById('stepLine12').className = 'step-line';
-    document.getElementById('stepLine23').className = 'step-line';
-    document.getElementById('btnCerrarModalCalib').classList.remove('d-none');
+    _calibDetenerPoll();
+    _calibSetPaneles(true, false, false, false, false);
+    _calibSetPasos('active', '', '', '', '');
+    _calibCerrarBtn(true);
 }
-
 function calibIrPaso2() {
-    document.getElementById('calPaso1').classList.add('d-none');
-    document.getElementById('calPaso2').classList.remove('d-none');
-    document.getElementById('calCalibrando').classList.add('d-none');
-    document.getElementById('calExito').classList.add('d-none');
-    document.getElementById('calError').classList.add('d-none');
-    document.getElementById('stepDot1').className = 'step-dot done';
-    document.getElementById('stepDot2').className = 'step-dot active';
-    document.getElementById('stepDot3').className = 'step-dot';
-    document.getElementById('stepLine12').className = 'step-line done';
-    document.getElementById('stepLine23').className = 'step-line';
-    document.getElementById('btnCerrarModalCalib').classList.remove('d-none');
+    _calibSetPaneles(false, true, false, false, false);
+    _calibSetPasos('done', 'active', '', 'done', '');
+    _calibCerrarBtn(true);
+}
+function calibReset() { setTimeout(calibIrPaso1, 300); }
+
+// Mostrar éxito con valor real ────────────────────────────────
+function _calibMostrarExito(baseline) {
+    _calibDetenerPoll();
+    const psi = Math.round(baseline * 14.5038);
+    const textoBaseline = document.getElementById('calExitoBaseline');
+    if (textoBaseline) {
+        textoBaseline.textContent =
+            `Presión máxima registrada: ${baseline.toFixed(2)} bar (${psi} PSI). Este valor es ahora el 100% de referencia del tanque.`;
+    }
+    maxPsiBaselineLocal = baseline;
+    actualizarBadgeCalib(true, baseline);
+    _calibSetPaneles(false, false, false, true, false);
+    _calibCerrarBtn(true);
+    _calibSetPasos('done', 'done', 'done', 'done', 'done');
 }
 
-function calibReset() {
-    setTimeout(calibIrPaso1, 300);
+// Mostrar error ───────────────────────────────────────────────
+function _calibMostrarError(msg) {
+    _calibDetenerPoll();
+    const elem = document.getElementById('calErrorMsg');
+    if (elem) elem.textContent = msg;
+    _calibSetPaneles(false, false, false, false, true);
+    _calibCerrarBtn(true);
 }
 
+// Calibrar: envía señal + polling hasta recibir baseline real ─
 async function calibrarTanque() {
     const patientId = localStorage.getItem('selectedPatientId');
     if (!patientId) {
-        document.getElementById('calErrorMsg').textContent = 'No hay un paciente seleccionado. Ve a la sección de Pacientes y selecciona uno primero.';
-        document.getElementById('calPaso2').classList.add('d-none');
-        document.getElementById('calError').classList.remove('d-none');
+        _calibMostrarError('No hay paciente seleccionado. Ve a Pacientes y selecciona uno primero.');
         return;
     }
 
-    // Mostrar estado "calibrando"
-    document.getElementById('calPaso2').classList.add('d-none');
-    document.getElementById('calCalibrando').classList.remove('d-none');
-    document.getElementById('btnCerrarModalCalib').classList.add('d-none');
-    document.getElementById('stepDot1').className = 'step-dot done';
-    document.getElementById('stepDot2').className = 'step-dot done';
-    document.getElementById('stepDot3').className = 'step-dot active';
-    document.getElementById('stepLine12').className = 'step-line done';
-    document.getElementById('stepLine23').className = 'step-line done';
+    // Registrar baseline previo (para comparar la fecha después)
+    let fechaAntes = null;
+    try {
+        const r = await fetch(`/api/tanques/calibracion/paciente/${encodeURIComponent(patientId)}`);
+        if (r.ok) { const d = await r.json(); if (d.calibrado) fechaAntes = d.fecha; }
+    } catch (_) {}
 
+    // Mostrar "calibrando..."
+    _calibSetPaneles(false, false, true, false, false);
+    _calibCerrarBtn(false);
+    _calibSetPasos('done', 'done', 'active', 'done', 'done');
+
+    // Enviar señal al backend → Firebase → ESP32
     try {
         const resp = await fetch('/api/tanques/calibrar/iniciar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id_paciente: parseInt(patientId, 10) })
         });
-        const data = await resp.json();
-
-        if (!resp.ok) throw new Error(data.error || 'Error del servidor.');
-
-        // Éxito
-        document.getElementById('calCalibrando').classList.add('d-none');
-        document.getElementById('calExito').classList.remove('d-none');
-        document.getElementById('btnCerrarModalCalib').classList.remove('d-none');
-        document.getElementById('stepDot3').className = 'step-dot done';
-
+        if (!resp.ok) {
+            const d = await resp.json();
+            throw new Error(d.error || 'Error del servidor al enviar la señal.');
+        }
     } catch (err) {
-        document.getElementById('calCalibrando').classList.add('d-none');
-        document.getElementById('calErrorMsg').textContent = err.message || 'No se pudo contactar al servidor.';
-        document.getElementById('calError').classList.remove('d-none');
-        document.getElementById('btnCerrarModalCalib').classList.remove('d-none');
+        _calibMostrarError(err.message);
+        return;
     }
+
+    // Activar escucha de error desde Firebase (via SeroaRealtime)
+    _calibEscuchandoError = true;
+
+    // Polling cada 2 s — timeout 18 s
+    const TIMEOUT_MS = 18000;
+    const inicio = Date.now();
+
+    _calibPollInterval = setInterval(async () => {
+        // Timeout
+        if (Date.now() - inicio > TIMEOUT_MS) {
+            _calibMostrarError(
+                'El dispositivo no respondió a tiempo. Verifique que el dispositivo Seroa esté ' +
+                'encendido, conectado al WiFi y que el tanque esté conectado con la válvula abierta.'
+            );
+            return;
+        }
+        try {
+            const r = await fetch(`/api/tanques/calibracion/paciente/${encodeURIComponent(patientId)}`);
+            if (!r.ok) return;
+            const d = await r.json();
+            if (!d.calibrado || !(d.max_psi_baseline > 0)) return;
+            // Verificar que sea un registro NUEVO (posterior al inicio del proceso)
+            const esNuevo = !fechaAntes || new Date(d.fecha) > new Date(fechaAntes);
+            if (esNuevo) _calibMostrarExito(d.max_psi_baseline);
+        } catch (_) {}
+    }, 2000);
 }
 
 // ─── DOMContentLoaded ────────────────────────────────────────

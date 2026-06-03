@@ -206,21 +206,18 @@
           <i class="bi bi-water me-1"></i>Nivel de Oxígeno
         </h6>
 
-        <!-- Cilindro SVG/CSS -->
-        <div class="o2-cylinder-wrapper mb-3">
-          <div class="cyl-valve"></div>
-          <div class="cyl-neck"></div>
-          <div class="cyl-body">
-            <div id="cylFill" class="cyl-fill fill-optimo" style="height:0%"></div>
-            <div class="cyl-markers">
-              <span class="cyl-marker">100%</span>
-              <span class="cyl-marker">75%</span>
-              <span class="cyl-marker">50%</span>
-              <span class="cyl-marker">25%</span>
-              <span class="cyl-marker">0%</span>
-            </div>
+        <!-- Cilindro minimalista -->
+        <div class="o2-cyl-wrap mb-3">
+          <div class="o2-cyl-track">
+            <div id="cylFill" class="o2-cyl-fill fill-optimo" style="height:0%"></div>
           </div>
-          <div class="cyl-base"></div>
+          <div class="o2-cyl-scale">
+            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">100%</span></span>
+            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">75%</span></span>
+            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">50%</span></span>
+            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">25%</span></span>
+            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">0%</span></span>
+          </div>
         </div>
 
         <!-- Porcentaje y estado textual -->
@@ -417,18 +414,17 @@
 
         <!-- RESULTADO: Éxito -->
         <div id="calExito" class="d-none text-center py-3">
-          <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center
-                      justify-content-center mb-3" style="width:70px;height:70px;">
-            <i class="bi bi-check-circle-fill text-success" style="font-size:2.5rem;"></i>
+          <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle"
+               style="width:70px;height:70px;background:linear-gradient(135deg,#3b8b88,#66bb6a);">
+            <i class="bi bi-check-circle-fill text-white" style="font-size:2rem;"></i>
           </div>
-          <h6 class="fw-bold mb-1 text-success">¡Calibración Iniciada!</h6>
-          <p class="text-muted small mb-3">
-            La señal fue enviada al dispositivo. En los próximos segundos tomará la lectura y
-            registrará la presión máxima como el <strong>100% de referencia</strong>.
-            El nivel del tanque en la pantalla se actualizará automáticamente.
-          </p>
-          <button type="button" class="btn text-white fw-bold px-4 rounded-pill"
-                  style="background-color:var(--color-seroa-teal);"
+          <h6 class="fw-bold mb-2" style="color:var(--color-seroa-teal);">¡Calibración Completada!</h6>
+          <div class="alert alert-success py-2 px-3 text-start" style="border-radius:10px;font-size:.83rem;">
+            <i class="bi bi-info-circle-fill me-1"></i>
+            <span id="calExitoBaseline">Presión máxima registrada correctamente.</span>
+          </div>
+          <button type="button" class="btn text-white fw-bold px-4 rounded-pill mt-2"
+                  style="background:linear-gradient(135deg,var(--color-seroa-teal),var(--color-accent-green));"
                   data-bs-dismiss="modal" onclick="calibReset()">
             <i class="bi bi-check-circle me-1"></i>Cerrar
           </button>

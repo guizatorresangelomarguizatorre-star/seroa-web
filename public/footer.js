@@ -6,21 +6,21 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
       <div>
         <span class="footer-brand">
-          <i class="bi bi-lungs-fill me-1" style="color:var(--color-seroa-teal)"></i>Sistema Seroa
+          <i class="bi bi-lungs-fill me-1"></i>Sistema Seroa
         </span>
-        <small class="d-block mt-1">Prototipo de desarrollo académico y escolar sujeto a mejoras futuras.</small>
+        <small class="d-block mt-1" style="color:rgba(255,255,255,0.75);">Prototipo de desarrollo académico y escolar sujeto a mejoras futuras.</small>
       </div>
       <div class="d-flex flex-wrap gap-3 align-items-center">
-        <small>© 2026 El equipo desarrollador de Seroa. Todos los derechos reservados.</small>
+        <small style="color:rgba(255,255,255,0.8);">© 2026 El equipo desarrollador de Seroa. Todos los derechos reservados.</small>
         <button type="button"
-                class="btn btn-sm btn-outline-light rounded-pill px-3"
+                class="btn-tc-footer"
                 data-bs-toggle="modal" data-bs-target="#modalTerminosSeroa">
           <i class="bi bi-file-earmark-text me-1"></i>Términos y Condiciones
         </button>
       </div>
     </div>
     <hr class="footer-divider">
-    <p class="mb-0 text-center" style="font-size:.74rem;opacity:.55;">
+    <p class="mb-0 text-center" style="font-size:.74rem;color:rgba(255,255,255,0.6);">
       Seroa es un prototipo experimental. No constituye un dispositivo médico certificado.
       Para emergencias, contacte servicios médicos profesionales.
       Fundamentos basados en NOM-178-SSA1-1998.
@@ -71,7 +71,7 @@
         <div class="tc-section-title">3. Ausencia de Garantías Médicas — Disclaimer Médico Estricto</div>
         <div class="tc-disclaimer-box">
           <i class="bi bi-hospital-fill me-2"></i>
-          ⚠️ <strong>AVISO MÉDICO CRÍTICO:</strong> El Sistema Seroa <strong>NO</strong> debe ser
+           <strong>AVISO MÉDICO CRÍTICO:</strong> El Sistema Seroa <strong>NO</strong> debe ser
           interpretado como sustituto del criterio médico profesional, de equipos médicos certificados
           ni de dispositivos de diagnóstico clínico aprobados. Los datos, alertas, lecturas biométricas
           e indicadores de presión de oxígeno que el sistema genera son meramente orientativos y
@@ -128,7 +128,7 @@
       <div class="modal-footer justify-content-between align-items-center">
         <small class="text-muted">
           <i class="bi bi-shield-check me-1 text-success"></i>
-          Documento generado para uso académico exclusivo.
+          Documento generado para uso informativo y de grado académico.
         </small>
         <button type="button"
                 class="btn btn-sm text-white fw-bold px-4"

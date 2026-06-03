@@ -301,7 +301,7 @@ void realizarCalibracion() {
     Serial.print(maxPsiBaseline, 3);
     Serial.println(" bar = 100%");
 
-    // Enviar al backend
+    // Enviar al backend (graba en calibraciones_tanque)
     enviarCalibracion(maxPsiBaseline);
 
     // Informar en OLED
@@ -310,15 +310,23 @@ void realizarCalibracion() {
                        "= 100%");
     delay(2000);
 
-    // Limpiar flag en Firebase
+    // Limpiar flags en Firebase: éxito
     if (Firebase.ready() && id_paciente != "") {
-      String rutaCalib = "Seroa/Pacientes/" + id_paciente + "/Actual/calibracion_pendiente";
-      Firebase.RTDB.setBool(&fbdo, rutaCalib.c_str(), false);
+      String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
+      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_pendiente").c_str(), false);
+      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_error").c_str(), false);
     }
   } else {
+    // Sin presión: notificar error al frontend vía Firebase
     Serial.println("Calibracion fallida: sin presion detectada.");
     mostrarMensajeOLED("Error calib.", "Sin presion", "detectada");
     delay(2000);
+
+    if (Firebase.ready() && id_paciente != "") {
+      String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
+      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_pendiente").c_str(), false);
+      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_error").c_str(), true);
+    }
   }
 
   calibracionActiva = false;
