@@ -696,13 +696,14 @@ function flushAggregateForPatient(id_paciente) {
     const avgSpo2 = Math.round(agg.sumSpo2 / agg.count);
     const avgBpm = Math.round(agg.sumBpm / agg.count);
     const id_registro = crypto.randomBytes(4).toString('hex').toUpperCase();
-    
+    const esCritico = agg.maxCritico || 0;
+
     const fecha_hora = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     const query = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    db.query(query, [id_registro, id_paciente, null, avgSpo2, avgBpm, 0, fecha_hora], (err) => {
+    db.query(query, [id_registro, id_paciente, null, avgSpo2, avgBpm, esCritico, fecha_hora], (err) => {
         if (err) console.error('Error al guardar resumen horario en BD:', err);
-        else console.log(`Resumen horario guardado paciente ${id_paciente} -> SpO2 ${avgSpo2}, BPM ${avgBpm} (count ${agg.count})`);
+        else console.log(`Resumen horario guardado paciente ${id_paciente} -> SpO2 ${avgSpo2}, BPM ${avgBpm} (count ${agg.count}, critico ${esCritico})`);
     });
 
     delete hourAggregates[id_paciente];
@@ -747,7 +748,7 @@ function writeRealtimePaciente(id_paciente, payload) {
     });
 }
 
-// === ENDPOINT CORREGIDO PARA AUTONOMÍA TOTAL ===
+// === ENDPOINT CON ACUMULACIÓN ESTRICTA POR HORA PARA TODAS LAS LECTURAS ===
 app.post('/api/registros', (req, res) => {
     const { id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, fecha_hora } = req.body;
 
@@ -758,14 +759,13 @@ app.post('/api/registros', (req, res) => {
     const spo2 = Number(saturacion_oxigeno);
     const bpm = Number(ritmo_cardiaco);
 
-    // El servidor ahora consulta los umbrales del paciente para tomar la decisión
     db.query('SELECT rango_spo2_min FROM pacientes WHERE id_paciente = ?', [id_paciente], (err, results) => {
         if (err) {
             console.error('Error al consultar umbrales del paciente:', err);
             return res.status(500).json({ error: 'Error interno verificando al paciente.' });
         }
 
-        let pacienteMin = 90; // Default de seguridad
+        let pacienteMin = 90;
         if (results && results.length > 0 && results[0].rango_spo2_min) {
             pacienteMin = Number(results[0].rango_spo2_min);
         }
@@ -784,69 +784,42 @@ app.post('/api/registros', (req, res) => {
             nivel = 'Precaución';
         }
 
-        const isAnomaly = (esCrit > 0);
-
-        if (isAnomaly) {
+        // Solo alertas se disparan inmediatamente en caso de Peligro; el registro biométrico siempre va al promedio horario
+        if (esCrit === 2) {
             const idr = id_registro || crypto.randomBytes(4).toString('hex').toUpperCase();
             const fecha = (fecha_hora ? new Date(fecha_hora) : new Date()).toISOString().slice(0, 19).replace('T', ' ');
-
-            const queryRegistro = `INSERT INTO registros_biomedicos (id_registro, id_paciente, id_dispositivo, saturacion_oxigeno, ritmo_cardiaco, es_critico, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-            db.query(queryRegistro, [idr, id_paciente, id_dispositivo || null, spo2, bpm, esCrit, fecha], (err) => {
-                if (err) {
-                    console.error('Error MySQL al guardar incidente:', err);
-                    return res.status(500).json({ error: 'No se pudo guardar el incidente.' });
-                }
-                
-                const descripcionAlerta = `SpO2: ${spo2}%, BPM: ${bpm} - Nivel: ${nivel}`;
-                const queryAlerta = `INSERT INTO alertas (id_paciente, id_registro, tipo_alerta, descripcion, fecha_alerta) VALUES (?, ?, ?, ?, ?)`;
-                db.query(queryAlerta, [id_paciente, idr, nivel, descripcionAlerta, fecha], (errAlerta) => {
-                    if (errAlerta) console.error('Error al guardar alerta:', errAlerta);
-                    else console.log(`Alerta creada: paciente=${id_paciente}, tipo=${nivel}, registro=${idr}`);
-                });
-                
-                if (hourAggregates[id_paciente]) delete hourAggregates[id_paciente];
-                
-                try {
-                    const payload = { spo2, bpm, nivel, es_critico: esCrit, timestamp: fecha_hora || new Date().toISOString(), estado: 'ACTIVO' };
-                    writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error:', e));
-                } catch (wErr) { console.error('Error publicando a Realtime:', wErr); }
-
-                return res.json({ mensaje: 'Incidente evaluado autónomamente y guardado.' });
+            const descripcionAlerta = `SpO2: ${spo2}%, BPM: ${bpm} - Nivel: ${nivel}`;
+            const queryAlerta = `INSERT INTO alertas (id_paciente, id_registro, tipo_alerta, descripcion, fecha_alerta) VALUES (?, ?, ?, ?, ?)`;
+            db.query(queryAlerta, [id_paciente, idr, nivel, descripcionAlerta, fecha], (errAlerta) => {
+                if (errAlerta) console.error('Error al guardar alerta:', errAlerta);
+                else console.log(`Alerta creada: paciente=${id_paciente}, tipo=${nivel}, registro=${idr}`);
             });
-            return;
         }
 
+        // TODAS las lecturas (Normal, Precaución, Peligro) se acumulan en hourAggregates
         const now = new Date(fecha_hora || Date.now());
         const label = hourLabelForDate(now);
         const agg = hourAggregates[id_paciente];
 
         if (!agg) {
-            hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1 };
-            try {
-                const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
-                writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime error:', e));
-            } catch (wErr) {}
-            return res.json({ mensaje: 'Lectura normal acumulada.' });
-        }
-
-        if (agg.hourLabel !== label) {
+            hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1, maxCritico: esCrit };
+        } else if (agg.hourLabel !== label) {
             flushAggregateForPatient(id_paciente);
-            hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1 };
-            try {
-                const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
-                writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime error:', e));
-            } catch (wErr) {}
-            return res.json({ mensaje: 'Lectura normal acumulada (nuevo intervalo).' });
+            hourAggregates[id_paciente] = { hourLabel: label, sumSpo2: spo2, sumBpm: bpm, count: 1, maxCritico: esCrit };
+        } else {
+            agg.sumSpo2 += spo2;
+            agg.sumBpm += bpm;
+            agg.count += 1;
+            if (esCrit > agg.maxCritico) agg.maxCritico = esCrit;
         }
 
-        agg.sumSpo2 += spo2;
-        agg.sumBpm += bpm;
-        agg.count += 1;
+        // Firebase RTDB recibe cada lectura en tiempo real
         try {
-            const payload = { spo2, bpm, nivel, timestamp: now.toISOString(), estado: 'ACTIVO' };
-            writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime error:', e));
-        } catch (wErr) {}
-        return res.json({ mensaje: 'Lectura normal acumulada.' });
+            const payload = { spo2, bpm, nivel, es_critico: esCrit, timestamp: fecha_hora || now.toISOString(), estado: 'ACTIVO' };
+            writeRealtimePaciente(id_paciente, payload).catch(e => console.error('Realtime write error:', e));
+        } catch (wErr) { console.error('Error publicando a Realtime:', wErr); }
+
+        return res.json({ mensaje: 'Lectura acumulada correctamente.' });
     });
 });
 
