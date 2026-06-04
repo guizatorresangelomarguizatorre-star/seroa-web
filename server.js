@@ -720,58 +720,64 @@ app.post('/api/dispositivos/:id/configurar', (req, res) => {
     });
 });
 
-// POST /api/tanques — UPSERT: un único registro activo por dispositivo
-// Acepta id_paciente como proxy de id_dispositivo (ESP32 solo conoce el paciente)
+// POST /api/tanques — UPSERT: un único registro activo por dispositivo/paciente
+// El ESP32 solo conoce id_paciente; se acepta como proxy de id_dispositivo
 app.post('/api/tanques', (req, res) => {
-    const { id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
-    if (!id_dispositivo || presion_actual === undefined || porcentaje === undefined || tiempo_restante_minutos === undefined) {
-        return res.status(400).json({ error: 'ID de dispositivo, presión, porcentaje y tiempo restante son requeridos.' });
+    const { id_dispositivo, id_paciente, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
+    const deviceKey = id_dispositivo || id_paciente; // id_paciente actúa como proxy cuando no hay dispositivo real
+    const pacKey    = id_paciente    || id_dispositivo;
+
+    if (!deviceKey || presion_actual === undefined) {
+        return res.status(400).json({ error: 'ID de dispositivo o paciente y presión son requeridos.' });
     }
 
-    const query = `INSERT INTO tanques (id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion) VALUES (?, ?, ?, ?, ?, ?)`;
-    db.query(query, [id_dispositivo, presion_actual, presion_maxima || null, porcentaje, tiempo_restante_minutos, ultima_actualizacion || new Date()], (err, result) => {
-        if (err) {
-            console.error('Error MySQL al agregar tanque:', err);
-            return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
-        }
-    });
+    const ts = ultima_actualizacion ? new Date(ultima_actualizacion) : new Date();
 
-    lookupBaseline((baseline) => {
-        let pct = porcentaje;
-        if (baseline && baseline > 0) {
-            pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / baseline) * 100)));
-        } else if (pct === undefined || pct === null) {
-            pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / 12.0) * 100)));
-        }
+    // Obtener baseline de calibración para calcular porcentaje correcto
+    db.query(
+        'SELECT max_psi_baseline FROM calibraciones_tanque WHERE id_paciente = ? ORDER BY fecha_calibracion DESC LIMIT 1',
+        [pacKey],
+        (errB, rowsB) => {
+            const baseline = (rowsB && rowsB.length > 0) ? parseFloat(rowsB[0].max_psi_baseline) : 0;
 
-        const tiempoMin = tiempo_restante_minutos !== undefined ? tiempo_restante_minutos
-                         : Math.round((pct / 100) * 680 / 2); // 680 L / 2 L·min⁻¹
-
-        // UPSERT: actualiza el registro existente o inserta uno nuevo
-        const updateQ = `UPDATE tanques
-                         SET presion_actual = ?, porcentaje = ?,
-                             tiempo_restante_minutos = ?, ultima_actualizacion = ?
-                         WHERE id_dispositivo = ?`;
-        db.query(updateQ, [presion_actual, pct, tiempoMin, ts, deviceId], (err, result) => {
-            if (err) {
-                console.error('Error MySQL UPDATE tanques:', err);
-                return res.status(500).json({ error: 'No se pudo actualizar el tanque.' });
+            let pct;
+            if (baseline > 0) {
+                pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / baseline) * 100)));
+            } else if (porcentaje !== undefined && porcentaje !== null) {
+                pct = Number(porcentaje);
+            } else {
+                pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / 12.0) * 100)));
             }
-            if (result.affectedRows > 0) {
-                return res.json({ mensaje: 'Tanque actualizado.', porcentaje: pct });
-            }
-            // No existe: INSERT
-            const insertQ = `INSERT INTO tanques (id_dispositivo, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion)
-                             VALUES (?, ?, ?, ?, ?)`;
-            db.query(insertQ, [deviceId, presion_actual, pct, tiempoMin, ts], (err2, res2) => {
-                if (err2) {
-                    console.error('Error MySQL INSERT tanques:', err2);
-                    return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
+
+            const tiempoMin = (tiempo_restante_minutos !== undefined && tiempo_restante_minutos !== null)
+                ? Number(tiempo_restante_minutos)
+                : Math.round((pct / 100) * 680 / 2); // 680 L a 2 L/min
+
+            // Intentar UPDATE primero; si no existe fila, INSERT
+            const updateQ = `UPDATE tanques
+                             SET presion_actual = ?, porcentaje = ?,
+                                 tiempo_restante_minutos = ?, ultima_actualizacion = ?
+                             WHERE id_dispositivo = ?`;
+            db.query(updateQ, [parseFloat(presion_actual), pct, tiempoMin, ts, deviceKey], (err, result) => {
+                if (err) {
+                    console.error('Error MySQL UPDATE tanques:', err);
+                    return res.status(500).json({ error: 'No se pudo actualizar el tanque.' });
                 }
-                res.json({ mensaje: 'Tanque registrado.', id_tanque: res2.insertId, porcentaje: pct });
+                if (result.affectedRows > 0) {
+                    return res.json({ mensaje: 'Tanque actualizado.', porcentaje: pct });
+                }
+                const insertQ = `INSERT INTO tanques (id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion)
+                                 VALUES (?, ?, ?, ?, ?, ?)`;
+                db.query(insertQ, [deviceKey, parseFloat(presion_actual), presion_maxima || null, pct, tiempoMin, ts], (err2, res2) => {
+                    if (err2) {
+                        console.error('Error MySQL INSERT tanques:', err2);
+                        return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
+                    }
+                    res.json({ mensaje: 'Tanque registrado.', id_tanque: res2.insertId, porcentaje: pct });
+                });
             });
-        });
-    });
+        }
+    );
 });
 
 // GET /api/tanques — filtrado por id_dispositivo o id_paciente (usando paciente como proxy)
@@ -979,8 +985,8 @@ app.post('/api/registros', (req, res) => {
         if (esCrit === 2) {
             const idr = id_registro || crypto.randomBytes(4).toString('hex').toUpperCase();
             const fecha = (fecha_hora ? new Date(fecha_hora) : new Date()).toISOString().slice(0, 19).replace('T', ' ');
-            const descripcionAlerta = `SpO2: ${spo2}%, BPM: ${bpm} - Nivel: ${nivel}`;
-            const queryAlerta = `INSERT INTO alertas (id_paciente, id_registro, tipo_alerta, descripcion, fecha_alerta) VALUES (?, ?, ?, ?, ?)`;
+            const descripcionAlerta = `Alerta médica: SpO2 al ${spo2}%, BPM ${bpm} - ${nivel}`;
+            const queryAlerta = `INSERT INTO alertas (id_paciente, id_registro, tipo_alerta, mensaje, fecha_alerta) VALUES (?, ?, ?, ?, ?)`;
             db.query(queryAlerta, [id_paciente, idr, nivel, descripcionAlerta, fecha], (errAlerta) => {
                 if (errAlerta) console.error('Error al guardar alerta:', errAlerta);
                 else console.log(`Alerta creada: paciente=${id_paciente}, tipo=${nivel}, registro=${idr}`);

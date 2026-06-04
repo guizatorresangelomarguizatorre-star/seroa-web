@@ -37,30 +37,37 @@ async function iniciarVinculacionBluetooth() {
 
     try {
         msgBox.className = 'alert alert-info';
-        msgBox.textContent = 'Buscando Monitor Seroa... Enciende el dispositivo y acércalo.';
+        msgBox.textContent = 'Buscando dispositivo SEROA_ESP32… Enciéndelo y acércalo al teléfono.';
         msgBox.classList.remove('d-none');
 
+        // Doble filtro: por nombre exacto Y por UUID de servicio.
+        // Chrome en Android requiere 'services' en filters (no solo en optionalServices)
+        // para poder acceder a la característica sin error de seguridad.
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: 'SEROA_ESP32' }],
+            filters: [
+                { name: 'SEROA_ESP32' },
+                { services: [SEROA_SERVICE_UUID] }
+            ],
             optionalServices: [SEROA_SERVICE_UUID]
         });
 
-        msgBox.textContent = `Conectando a ${device.name}...`;
+        msgBox.textContent = `Dispositivo encontrado: ${device.name}. Conectando…`;
 
         const server = await device.gatt.connect();
+        msgBox.textContent = 'Obteniendo servicio BLE…';
+
         const service = await server.getPrimaryService(SEROA_SERVICE_UUID);
         const characteristic = await service.getCharacteristic(SEROA_CHARACTERISTIC_UUID);
 
-        // Formato exacto que espera el ESP32
-        const payload = `${ssid}|${pass}|${pacienteId}`;
-        const encoder = new TextEncoder();
-        const dataArray = encoder.encode(payload);
+        // Payload: "SSID|PASSWORD|ID_PACIENTE"
+        // Se codifica en UTF-8 (TextEncoder garantiza la codificación correcta)
+        const payload   = `${ssid}|${pass}|${pacienteId}`;
+        const dataArray = new TextEncoder().encode(payload);
 
-        msgBox.textContent = 'Transfiriendo credenciales...';
+        msgBox.textContent = 'Transfiriendo credenciales WiFi al dispositivo…';
+        await characteristic.writeValueWithResponse(dataArray);
 
-        await characteristic.writeValue(dataArray);
-
-        msgBox.textContent = 'Registrando dispositivo en el sistema...';
+        msgBox.textContent = 'Registrando dispositivo en el sistema…';
 
         const backendRes = await fetch('/api/dispositivos', {
             method: 'POST',
@@ -78,18 +85,27 @@ async function iniciarVinculacionBluetooth() {
         }
 
         msgBox.className = 'alert alert-success fw-bold';
-        msgBox.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>¡Sincronización Exitosa! El ESP32 se reiniciará para conectarse.';
+        msgBox.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>¡Sincronización Exitosa! El ESP32 se reiniciará y se conectará al WiFi en ~30 segundos.';
 
         cargarDispositivoVinculado();
 
         setTimeout(() => {
-            if (device.gatt.connected) device.gatt.disconnect();
+            try { if (device.gatt.connected) device.gatt.disconnect(); } catch (_) {}
         }, 3000);
 
     } catch (error) {
         console.error('Error Bluetooth:', error);
+        let mensaje = error.message || 'Error desconocido.';
+        if (error.name === 'NotFoundError')
+            mensaje = 'No se encontró "SEROA_ESP32". Asegúrate de que el ESP32 esté encendido y en modo Bluetooth (LED azul parpadeando).';
+        else if (error.name === 'SecurityError')
+            mensaje = 'El navegador bloqueó el Bluetooth. Asegúrate de usar HTTPS o localhost, y de haber dado permiso de ubicación.';
+        else if (error.name === 'NetworkError' || error.name === 'NotSupportedError')
+            mensaje = 'Conexión BLE perdida. Acerca el dispositivo y vuelve a intentarlo.';
+        else if (error.name === 'NotAllowedError')
+            mensaje = 'Permiso de Bluetooth denegado. Actívalo en los ajustes del navegador.';
         msgBox.className = 'alert alert-danger';
-        msgBox.textContent = `Error de conexión: ${error.message}`;
+        msgBox.textContent = mensaje;
         msgBox.classList.remove('d-none');
     }
 }

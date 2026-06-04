@@ -110,14 +110,9 @@
         <p class="mb-0 fs-5 text-white">Saturación crítica detectada. Válvula activada.</p>
       </div>
     </div>
-<<<<<<< HEAD
     <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3"
             onclick="ocultarAlertaSeroa()">
       <i class="bi bi-check2-circle me-2"></i>ENTERADO
-=======
-    <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3" onclick="ocultarAlertaSeroa()">
-      <i class="bi bi-check2-circle me-2"></i> ENTERADO
->>>>>>> b6f9fe4290168a1168ee7ad6c61725c745ee9a0a
     </button>
   </div>
 </div>
@@ -253,10 +248,12 @@
                style="font-size:3.5rem;color:var(--color-seroa-teal);">
             --<span class="fs-5">%</span>
           </div>
-          <div class="mt-4">
-            <span id="txtPorcentaje" class="display-3 fw-bold text-muted">--<span class="fs-5">%</span></span>
-            <p id="txtEstado" class="fw-bold mb-1 text-muted">Esperando datos...</p>
-            <p id="tankAlertMode" class="text-secondary fw-semibold mb-0 small">--</p>
+          <p id="txtEstado" class="fw-bold mb-1 text-muted">Esperando datos...</p>
+          <p id="txtAlerta" class="text-secondary fw-semibold mb-0 small">--</p>
+          <div class="d-flex justify-content-center mt-2">
+            <span id="calibBadge" class="calib-badge sin-calibrar mx-auto">
+              <i class="bi bi-exclamation-circle"></i>Sin calibración base
+            </span>
           </div>
         </div>
       </div>
@@ -274,15 +271,15 @@
           <div class="col-12 col-md-4">
             <div class="bg-light p-3 rounded-4 border">
               <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Presión Actual</small>
-              <span id="txtPresionPSI" class="fs-3 fw-bold text-dark">--</span>
-              <small class="text-muted d-block" id="txtPresionBar">-- PSI</small>
+              <span id="tankPresionPsi" class="fs-3 fw-bold text-dark">--</span>
+              <small class="text-muted d-block" id="tankPresionBar">-- bar</small>
             </div>
           </div>
           <!-- Tiempo restante -->
           <div class="col-12 col-md-4">
             <div class="bg-light p-3 rounded-4 border">
               <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Tiempo Restante Est.</small>
-              <span id="txtTiempoRestante" class="fs-3 fw-bold text-dark">--</span>
+              <span id="tankTiempo" class="fs-3 fw-bold text-dark">--</span>
               <small class="text-muted d-block">basado en flujo promedio</small>
             </div>
           </div>
@@ -290,8 +287,8 @@
           <div class="col-12 col-md-4">
             <div class="bg-light p-3 rounded-4 border">
               <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Estado del Tanque</small>
-              <span id="txtEstadoTanque" class="fs-4 fw-bold text-dark">--</span>
-              <small id="txtSubestado" class="text-muted d-block">--</small>
+              <span id="tankEstadoVal" class="fs-4 fw-bold text-dark">--</span>
+              <small id="tankEstadoSub" class="text-muted d-block">--</small>
             </div>
           </div>
         </div>
@@ -356,7 +353,7 @@
           <small class="opacity-75">Proceso guiado de registro de presión máxima</small>
         </div>
         <button type="button" class="btn-close btn-close-white ms-auto mt-1"
-                data-bs-dismiss="modal" id="btnCerrarModal" aria-label="Cerrar"></button>
+                data-bs-dismiss="modal" id="btnCerrarModalCalib" aria-label="Cerrar"></button>
       </div>
 
       <div class="modal-body p-4">
@@ -434,22 +431,28 @@
           </div>
         </div>
 
-        <!-- ESTADO: Calibrando -->
+        <!-- ESTADO: Calibrando (esperando respuesta del ESP32) -->
         <div id="calCalibrando" class="d-none text-center py-3">
           <div class="spinner-calib mb-3"></div>
           <h6 class="fw-bold mb-1">Tomando muestras de presión...</h6>
           <p class="text-muted small mb-0">
             El dispositivo está tomando 50 lecturas durante 5 segundos y calculará el promedio.
-            Por favor, mantén la válvula completamente abierta.
+            Por favor, mantén la válvula completamente abierta y no muevas el tanque.
           </p>
-          <div class="mb-3">
-            <label class="form-label fw-semibold small" for="calibIdDispositivo">ID del Dispositivo Seroa</label>
-            <input type="number" id="calibIdDispositivo" class="form-control rounded-3"
-                   placeholder="Ej: 1" min="1">
-            <div class="form-text">Encuéntralo en la sección de Configuración.</div>
+        </div>
+
+        <!-- RESULTADO: Éxito -->
+        <div id="calExito" class="d-none text-center py-3">
+          <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center
+                      justify-content-center mb-3" style="width:70px;height:70px;">
+            <i class="bi bi-check-circle-fill text-success" style="font-size:2.5rem;"></i>
           </div>
-          <button class="btn btn-success w-100 rounded-3 fw-semibold" onclick="iniciarCalibracion()">
-            <i class="bi bi-play-circle me-1"></i> Iniciar calibración
+          <h6 class="fw-bold mb-1 text-success">¡Calibración Exitosa!</h6>
+          <p class="text-muted small mb-3" id="calExitoBaseline">Presión máxima registrada como referencia.</p>
+          <button type="button" class="btn text-white rounded-pill px-4"
+                  style="background:var(--color-seroa-teal);"
+                  data-bs-dismiss="modal" onclick="calibReset()">
+            <i class="bi bi-check-lg me-1"></i>Cerrar
           </button>
         </div>
 
