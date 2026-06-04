@@ -266,13 +266,20 @@ app.post('/api/pacientes', (req, res) => {
     });
 });
 
+// Flag en memoria: ESP32 lee calibracion_pendiente desde este endpoint
+// Se setea en /api/tanques/calibrar/iniciar y se limpia en /api/tanques/calibrar
+const calibracionPendienteMap = {};
+
 app.get('/api/pacientes/:id/config', (req, res) => {
     const id_paciente = req.params.id;
     db.query('SELECT rango_spo2_min FROM pacientes WHERE id_paciente = ?', [id_paciente], (err, results) => {
         if (err || results.length === 0) {
             return res.status(404).json({ error: 'Paciente no encontrado.' });
         }
-        res.json({ rango_spo2_min: results[0].rango_spo2_min });
+        res.json({
+            rango_spo2_min: results[0].rango_spo2_min,
+            calibracion_pendiente: calibracionPendienteMap[String(id_paciente)] === true
+        });
     });
 });
 
@@ -763,6 +770,17 @@ app.post('/api/tanques', (req, res) => {
                     console.error('Error MySQL UPDATE tanques:', err);
                     return res.status(500).json({ error: 'No se pudo actualizar el tanque.' });
                 }
+                // Publica en Firebase RTDB para que tanque.js reciba la presión en tiempo real
+                const pBar = parseFloat(presion_actual);
+                const etq  = pBar <= 0.3 ? 'SIN_PRESION' : pBar < 2.0 ? 'TANQUE_BAJO' : 'TANQUE_OK';
+                writeRealtimePaciente(String(pacKey), {
+                    presionBar:            pBar,
+                    presionPSI:            parseFloat((pBar * 14.5038).toFixed(2)),
+                    porcentajeTanque:      pct,
+                    estadoTanque:          etq,
+                    tiempoRestanteMinutos: tiempoMin
+                }).catch(() => {});
+
                 if (result.affectedRows > 0) {
                     return res.json({ mensaje: 'Tanque actualizado.', porcentaje: pct });
                 }
@@ -818,12 +836,15 @@ db.query(`CREATE TABLE IF NOT EXISTS calibraciones_tanque (
     else console.log('✓ Tabla calibraciones_tanque verificada.');
 });
 
-// POST /api/tanques/calibrar/iniciar — envía flag a Firebase para que ESP32 empiece
+// POST /api/tanques/calibrar/iniciar — activa flag para ESP32 (memoria) y frontend (Firebase)
 app.post('/api/tanques/calibrar/iniciar', (req, res) => {
     const { id_paciente } = req.body;
     if (!id_paciente) {
         return res.status(400).json({ error: 'id_paciente es requerido.' });
     }
+    // ESP32 lee este flag desde GET /api/pacientes/:id/config cada 4 s
+    calibracionPendienteMap[String(id_paciente)] = true;
+    // Frontend lo recibe vía Firebase RTDB (SeroaRealtime listener en tanque.js)
     writeRealtimePaciente(String(id_paciente), { calibracion_pendiente: true })
         .then(() => res.json({ mensaje: 'Señal de calibración enviada al dispositivo.' }))
         .catch(() => res.status(500).json({ error: 'No se pudo enviar la señal al dispositivo.' }));
@@ -831,7 +852,19 @@ app.post('/api/tanques/calibrar/iniciar', (req, res) => {
 
 // POST /api/tanques/calibrar — guarda el baseline enviado por el ESP32
 app.post('/api/tanques/calibrar', (req, res) => {
-    const { id_paciente, max_psi_baseline } = req.body;
+    const { id_paciente, max_psi_baseline, error } = req.body;
+
+    // El ESP32 reporta que no había presión suficiente durante la calibración
+    if (error === true) {
+        calibracionPendienteMap[String(id_paciente)] = false;
+        writeRealtimePaciente(String(id_paciente), {
+            calibracion_pendiente: false,
+            calibracion_error: true
+        }).catch(() => {});
+        console.log(`[CALIB] Error reportado por ESP32 para paciente ${id_paciente}`);
+        return res.json({ mensaje: 'Error de calibración registrado.' });
+    }
+
     if (!id_paciente || !max_psi_baseline || isNaN(parseFloat(max_psi_baseline))) {
         return res.status(400).json({ error: 'id_paciente y max_psi_baseline son requeridos.' });
     }
@@ -844,8 +877,9 @@ app.post('/api/tanques/calibrar', (req, res) => {
             console.error('Error guardando calibración de tanque:', err);
             return res.status(500).json({ error: 'No se pudo guardar la calibración.' });
         }
-        // Limpiar flag en Firebase
-        writeRealtimePaciente(String(id_paciente), { calibracion_pendiente: false })
+        // Limpiar flag en memoria y en Firebase
+        calibracionPendienteMap[String(id_paciente)] = false;
+        writeRealtimePaciente(String(id_paciente), { calibracion_pendiente: false, calibracion_error: false })
             .catch(() => {});
         console.log(`✓ Calibración tanque guardada: paciente ${id_paciente}, baseline ${baseline} bar`);
         res.json({ mensaje: 'Calibración guardada exitosamente.', max_psi_baseline: baseline });
