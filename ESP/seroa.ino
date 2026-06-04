@@ -28,7 +28,7 @@
 #define SDA_PIN 21
 #define SCL_PIN 22
 
-#define PIN_RELAY 25
+#define PIN_RELAY 26
 #define PIN_PRESION 34
 
 #define RELAY_ACTIVE_LOW true
@@ -92,8 +92,6 @@ int spo2Actual = 0;
 int bpmActual = 0;
 float presionActual = 0;
 String estadoActual = "ACTIVO";
-
-bool onDisconnectConfigurado = false;
 
 // ========== CALIBRACIÓN DE TANQUE ==========
 float maxPsiBaseline = 0.0;   // 0 = sin calibrar (usa MAX_BAR_DEFAULT)
@@ -210,53 +208,46 @@ String estadoTanque(float presionBar) {
   return "TANQUE_OK";
 }
 
-// Calcula el porcentaje usando baseline calibrado; si no hay baseline usa 12 bar
-float calcularPorcentajeTanque(float presionBar) {
-  float ref = (maxPsiBaseline > 0.1f) ? maxPsiBaseline : 12.0f;
-  float pct = (presionBar / ref) * 100.0f;
-  if (pct < 0.0f) pct = 0.0f;
-  if (pct > 100.0f) pct = 100.0f;
-  return pct;
+// ========== CALIBRACIÓN DE TANQUE ==========
+void verificarComandoCalibracion() {
+  if (id_paciente == "" || !Firebase.ready() || calibrandoTanque) return;
+
+  String rutaCmd = "Seroa/Pacientes/" + id_paciente + "/Comandos/calibrarTanque";
+
+  if (Firebase.RTDB.getBool(&fbdo, rutaCmd) && fbdo.boolData()) {
+    calibrandoTanque = true;
+    indiceCalib = 0;
+    tiempoUltimaLecturaCalib = millis();
+
+    Firebase.RTDB.setBool(&fbdo, rutaCmd, false);
+    Firebase.RTDB.setString(&fbdo, "Seroa/Pacientes/" + id_paciente + "/Calibracion/estado", "en_proceso");
+
+    mostrarMensajeOLED("Calibrando", "Midiendo", "presion...");
+    Serial.println("Calibracion de tanque iniciada.");
+  }
 }
 
-// Escribe el estado actual del tanque en la tabla `tanques` (UPSERT)
-void enviarDatosTanque(float presionBar) {
-  if (WiFi.status() != WL_CONNECTED || id_paciente == "") return;
+void procesarCalibracion() {
+  if (!calibrandoTanque) return;
 
-  float pct     = calcularPorcentajeTanque(presionBar);
-  int   tiempoM = (int)((pct / 100.0f) * 680.0f / 2.0f); // 680 L / 2 L·min⁻¹
-
-  WiFiClientSecure *client = new WiFiClientSecure;
-  client->setInsecure();
-  HTTPClient https;
-
-  https.begin(*client, "https://seroa-web-production.up.railway.app/api/tanques");
-  https.addHeader("Content-Type", "application/json");
-
-  // id_paciente se usa como proxy de id_dispositivo (el ESP32 no almacena device ID)
-  String payload = "{\"id_paciente\":" + id_paciente +
-                   ",\"presion_actual\":"          + String(presionBar, 3) +
-                   ",\"porcentaje\":"              + String((int)pct) +
-                   ",\"tiempo_restante_minutos\":" + String(tiempoM) + "}";
-
-  int httpCode = https.POST(payload);
-  if (httpCode > 0) {
-    Serial.print("Tanque DB actualizado. HTTP: "); Serial.println(httpCode);
-  } else {
-    Serial.print("Error enviando tanque DB: "); Serial.println(https.errorToString(httpCode).c_str());
+  if (millis() - tiempoUltimaLecturaCalib >= 300 && indiceCalib < 10) {
+    tiempoUltimaLecturaCalib = millis();
+    lecturasPresionCalib[indiceCalib++] = leerPresionBar();
+    Serial.print("Calib lectura "); Serial.print(indiceCalib); Serial.println("/10");
   }
 
-  https.end();
-  delete client;
-}
+  if (indiceCalib >= 10) {
+    float suma = 0;
+    for (int i = 0; i < 10; i++) suma += lecturasPresionCalib[i];
+    float presionMax = suma / 10.0;
 
-// Envía el baseline medido al backend Railway
-void enviarCalibracion(float baseline) {
-  if (WiFi.status() != WL_CONNECTED || id_paciente == "") return;
+    String rutaCalib = "Seroa/Pacientes/" + id_paciente + "/Calibracion";
+    Firebase.RTDB.setFloat(&fbdo, rutaCalib + "/presionMaxima", presionMax);
+    Firebase.RTDB.setString(&fbdo, rutaCalib + "/estado", "listo");
+    Firebase.RTDB.setInt(&fbdo, rutaCalib + "/timestamp", (int)(millis() / 1000));
 
-  WiFiClientSecure *client = new WiFiClientSecure;
-  client->setInsecure();
-  HTTPClient https;
+    calibrandoTanque = false;
+    indiceCalib = 0;
 
   https.begin(*client, "https://seroa-web-production.up.railway.app/api/tanques/calibrar");
   https.addHeader("Content-Type", "application/json");
@@ -290,49 +281,6 @@ void realizarCalibracion() {
     if (p > 0.1f) { suma += p; conteo++; }
     delay(100);
   }
-
-  if (conteo > 0) {
-    maxPsiBaseline = suma / (float)conteo;
-
-    // Persistir en flash
-    preferencias.begin("seroa-cred", false);
-    preferencias.putFloat("psiBaseline", maxPsiBaseline);
-    preferencias.end();
-
-    Serial.print("Baseline calibrado: ");
-    Serial.print(maxPsiBaseline, 3);
-    Serial.println(" bar = 100%");
-
-    // Enviar al backend (graba en calibraciones_tanque)
-    enviarCalibracion(maxPsiBaseline);
-
-    // Informar en OLED
-    mostrarMensajeOLED("Calibrado OK",
-                       String(maxPsiBaseline, 1) + " bar",
-                       "= 100%");
-    delay(2000);
-
-    // Limpiar flags en Firebase: éxito
-    if (Firebase.ready() && id_paciente != "") {
-      String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
-      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_pendiente").c_str(), false);
-      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_error").c_str(), false);
-    }
-  } else {
-    // Sin presión: notificar error al frontend vía Firebase
-    Serial.println("Calibracion fallida: sin presion detectada.");
-    mostrarMensajeOLED("Error calib.", "Sin presion", "detectada");
-    delay(2000);
-
-    if (Firebase.ready() && id_paciente != "") {
-      String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
-      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_pendiente").c_str(), false);
-      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_error").c_str(), true);
-    }
-  }
-
-  calibracionActiva = false;
-  Serial.println("=== CALIBRACIÓN FINALIZADA ===");
 }
 
 // ========== FIREBASE Y RAILWAY ==========
@@ -387,51 +335,6 @@ void enviarRailway(String idPac, int spo2, int bpm) {
     https.end();
     delete client;
   }
-}
-
-// ========== SINCRONIZACIÓN DE UMBRAL DESDE EL BACKEND ==========
-void sincronizarLimiteSpo2() {
-  if (WiFi.status() != WL_CONNECTED || id_paciente == "") return;
-
-  WiFiClientSecure *client = new WiFiClientSecure;
-  client->setInsecure();
-  HTTPClient https;
-
-  String url = "https://seroa-web-production.up.railway.app/api/pacientes/" + id_paciente + "/config";
-
-  if (https.begin(*client, url)) {
-    int httpCode = https.GET();
-
-    if (httpCode == HTTP_CODE_OK) {
-      String payload = https.getString();
-      // Parseo manual: busca "rango_spo2_min":XX
-      int idx = payload.indexOf("rango_spo2_min");
-      if (idx >= 0) {
-        int colonIdx = payload.indexOf(':', idx);
-        if (colonIdx >= 0) {
-          String valorStr = payload.substring(colonIdx + 1);
-          valorStr.trim();
-          int valor = valorStr.toInt();
-          if (valor > 50 && valor <= 100) {
-            LIMITE_SPO2_BAJO = valor;
-            Serial.print("Limite SpO2 sincronizado desde BD: ");
-            Serial.println(LIMITE_SPO2_BAJO);
-            mostrarMensajeOLED("Config OK", "SpO2 min:", String(LIMITE_SPO2_BAJO) + "%");
-            delay(1500);
-          } else {
-            Serial.println("Valor de limite fuera de rango, se mantiene el default.");
-          }
-        }
-      }
-    } else {
-      Serial.print("Error al obtener config del paciente. HTTP: ");
-      Serial.println(httpCode);
-    }
-
-    https.end();
-  }
-
-  delete client;
 }
 
 // ========== BLUETOOTH ==========
@@ -530,10 +433,9 @@ void setup() {
   Serial.println("Iniciando SEROA...");
 
   preferencias.begin("seroa-cred", false);
-  wifi_ssid      = preferencias.getString("ssid", "");
-  wifi_pass      = preferencias.getString("pass", "");
-  id_paciente    = preferencias.getString("paciente", "");
-  maxPsiBaseline = preferencias.getFloat("psiBaseline", 0.0f);
+  wifi_ssid = preferencias.getString("ssid", "");
+  wifi_pass = preferencias.getString("pass", "");
+  id_paciente = preferencias.getString("paciente", "");
   preferencias.end();
 
   if (maxPsiBaseline > 0.1f) {
@@ -580,11 +482,6 @@ void setup() {
   }
 
   Serial.println("\nWiFi conectado.");
-  mostrarMensajeOLED("WiFi OK", "Sincronizando", "config...");
-
-  // Descarga el umbral personalizado del paciente desde la BD antes de iniciar
-  sincronizarLimiteSpo2();
-
   mostrarMensajeOLED("WiFi OK", "Conectando", "Firebase");
 
   config.api_key = API_KEY;
@@ -669,6 +566,7 @@ void loop() {
     tiempoUltimoTanqueDB = millis();
     enviarDatosTanque(presionActual);
   }
+  procesarCalibracion();
 
   if (!sensorConectado) {
     desactivarValvula();

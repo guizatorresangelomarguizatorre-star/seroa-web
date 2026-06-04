@@ -43,6 +43,13 @@ db.getConnection((err, connection) => {
     }
 });
 
+// Migración: agrega presion_maxima si no existe
+db.query("ALTER TABLE tanques ADD COLUMN presion_maxima FLOAT DEFAULT NULL", (err) => {
+    if (err && err.code !== 'ER_DUP_FIELDNAME') {
+        console.warn('Nota migración tanques:', err.message);
+    }
+});
+
 // === RUTAS DEL SISTEMA ===
 const rutasBiometricos = require('./api_biometricos')(db);
 app.use('/api', rutasBiometricos);
@@ -716,27 +723,18 @@ app.post('/api/dispositivos/:id/configurar', (req, res) => {
 // POST /api/tanques — UPSERT: un único registro activo por dispositivo
 // Acepta id_paciente como proxy de id_dispositivo (ESP32 solo conoce el paciente)
 app.post('/api/tanques', (req, res) => {
-    let { id_dispositivo, id_paciente, presion_actual, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
-
-    // Usar id_paciente como id_dispositivo si el ESP32 no tiene device ID
-    const deviceId = id_dispositivo || id_paciente;
-    if (!deviceId || presion_actual === undefined) {
-        return res.status(400).json({ error: 'Se requiere id_dispositivo (o id_paciente) y presion_actual.' });
+    const { id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
+    if (!id_dispositivo || presion_actual === undefined || porcentaje === undefined || tiempo_restante_minutos === undefined) {
+        return res.status(400).json({ error: 'ID de dispositivo, presión, porcentaje y tiempo restante son requeridos.' });
     }
 
-    const ts = ultima_actualizacion || new Date();
-
-    // Recalcular porcentaje con baseline calibrado si está disponible
-    const lookupBaseline = (cb) => {
-        if (id_paciente) {
-            db.query('SELECT max_psi_baseline FROM calibraciones_tanque WHERE id_paciente = ? LIMIT 1',
-                [id_paciente], (err, rows) => {
-                    cb(err ? null : (rows[0] ? rows[0].max_psi_baseline : null));
-                });
-        } else {
-            cb(null);
+    const query = `INSERT INTO tanques (id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion) VALUES (?, ?, ?, ?, ?, ?)`;
+    db.query(query, [id_dispositivo, presion_actual, presion_maxima || null, porcentaje, tiempo_restante_minutos, ultima_actualizacion || new Date()], (err, result) => {
+        if (err) {
+            console.error('Error MySQL al agregar tanque:', err);
+            return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
         }
-    };
+    });
 
     lookupBaseline((baseline) => {
         let pct = porcentaje;

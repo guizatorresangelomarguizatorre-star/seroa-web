@@ -106,13 +106,18 @@
     <div class="d-flex align-items-center mb-3 mb-md-0">
       <i class="bi bi-exclamation-triangle-fill icono-alerta me-4"></i>
       <div>
-        <h2 class="fw-bold mb-1 text-white text-uppercase" style="letter-spacing:1px;">¡Alerta Crítica: SpO2 Bajo!</h2>
-        <p class="mb-0 fs-5 text-white">La saturación cayó a niveles críticos. Válvula activada.</p>
+        <h2 class="fw-bold mb-1 text-white text-uppercase" style="letter-spacing: 1px;">¡Alerta Crítica: SpO2 Bajo!</h2>
+        <p class="mb-0 fs-5 text-white">Saturación crítica detectada. Válvula activada.</p>
       </div>
     </div>
+<<<<<<< HEAD
     <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3"
             onclick="ocultarAlertaSeroa()">
       <i class="bi bi-check2-circle me-2"></i>ENTERADO
+=======
+    <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3" onclick="ocultarAlertaSeroa()">
+      <i class="bi bi-check2-circle me-2"></i> ENTERADO
+>>>>>>> b6f9fe4290168a1168ee7ad6c61725c745ee9a0a
     </button>
   </div>
 </div>
@@ -120,11 +125,9 @@
 <div id="header-container"></div>
 <div class="pattern-separator"></div>
 
-<!-- ===== NAVBAR ===== -->
 <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
   <div class="container-fluid">
-    <button class="navbar-toggler border-0 ms-auto" type="button"
-            data-bs-toggle="offcanvas" data-bs-target="#menuSeroa" aria-controls="menuSeroa">
+    <button class="navbar-toggler border-0 ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuSeroa" aria-controls="menuSeroa">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa">
@@ -140,13 +143,12 @@
   </div>
 </nav>
 
-<!-- ===== CONTENIDO PRINCIPAL ===== -->
 <div class="container mt-4 mb-5">
 
-  <!-- Encabezado de página -->
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <!-- Encabezado -->
+  <div class="d-flex justify-content-between align-items-start align-items-sm-center mb-4 flex-wrap gap-2">
     <div>
-      <h4 class="fw-bold mb-1" style="color:var(--color-seroa-teal);">
+      <h4 class="fw-bold mb-0" style="color: var(--color-seroa-teal) !important;">
         <i class="bi bi-speedometer2 me-2"></i>Estado del Tanque de Oxígeno
       </h4>
       <small class="text-muted">Monitoreo en tiempo real del cilindro de oxígeno medicinal</small>
@@ -251,10 +253,10 @@
                style="font-size:3.5rem;color:var(--color-seroa-teal);">
             --<span class="fs-5">%</span>
           </div>
-          <p id="txtEstado" class="fw-bold mb-1 text-secondary">Esperando datos...</p>
-          <p id="txtAlerta" class="small text-muted mb-3">Conectando con el dispositivo</p>
-          <div id="calibBadge" class="calib-badge sin-calibrar mx-auto">
-            <i class="bi bi-exclamation-circle"></i>Sin calibración base
+          <div class="mt-4">
+            <span id="txtPorcentaje" class="display-3 fw-bold text-muted">--<span class="fs-5">%</span></span>
+            <p id="txtEstado" class="fw-bold mb-1 text-muted">Esperando datos...</p>
+            <p id="tankAlertMode" class="text-secondary fw-semibold mb-0 small">--</p>
           </div>
         </div>
       </div>
@@ -267,27 +269,29 @@
           <i class="bi bi-graph-up-arrow me-1" style="color:var(--color-seroa-teal);"></i>Parámetros del Tanque
         </h6>
 
-        <!-- Tarjetas de estadísticas -->
-        <div class="row g-3 mb-4">
-          <div class="col-6 col-lg-4">
-            <div class="stat-card-tank">
-              <div class="stat-label">Presión Actual</div>
-              <div id="tankPresionBar" class="stat-value">--</div>
-              <div id="tankPresionPsi" class="stat-sub">-- PSI</div>
+        <div class="row text-center g-3 mb-4 pb-4 border-bottom">
+          <!-- Presión actual -->
+          <div class="col-12 col-md-4">
+            <div class="bg-light p-3 rounded-4 border">
+              <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Presión Actual</small>
+              <span id="txtPresionPSI" class="fs-3 fw-bold text-dark">--</span>
+              <small class="text-muted d-block" id="txtPresionBar">-- PSI</small>
             </div>
           </div>
-          <div class="col-6 col-lg-4">
-            <div class="stat-card-tank">
-              <div class="stat-label">Tiempo Restante Est.</div>
-              <div id="tankTiempo" class="stat-value" style="font-size:1.2rem;">--</div>
-              <div class="stat-sub">basado en flujo promedio</div>
+          <!-- Tiempo restante -->
+          <div class="col-12 col-md-4">
+            <div class="bg-light p-3 rounded-4 border">
+              <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Tiempo Restante Est.</small>
+              <span id="txtTiempoRestante" class="fs-3 fw-bold text-dark">--</span>
+              <small class="text-muted d-block">basado en flujo promedio</small>
             </div>
           </div>
-          <div class="col-12 col-lg-4">
-            <div class="stat-card-tank">
-              <div class="stat-label">Estado del Tanque</div>
-              <div id="tankEstadoVal" class="stat-value" style="font-size:1rem;">--</div>
-              <div id="tankEstadoSub" class="stat-sub">--</div>
+          <!-- Estado del tanque -->
+          <div class="col-12 col-md-4">
+            <div class="bg-light p-3 rounded-4 border">
+              <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Estado del Tanque</small>
+              <span id="txtEstadoTanque" class="fs-4 fw-bold text-dark">--</span>
+              <small id="txtSubestado" class="text-muted d-block">--</small>
             </div>
           </div>
         </div>
@@ -323,12 +327,14 @@
             </button>
           </div>
         </div>
+
       </div>
     </div>
 
   </div><!-- /row principal -->
 
-</div><!-- /container -->
+  </div>
+</div>
 
 
 <!-- ============================================================ -->
@@ -340,16 +346,17 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 20px 50px rgba(0,0,0,.2);">
 
-      <div class="modal-header"
-           style="background:linear-gradient(135deg,#2c3e50,#3b8b88);border-radius:16px 16px 0 0;border:none;padding:1.5rem 2rem;">
-        <div>
-          <h5 class="modal-title fw-bold text-white mb-0" id="modalCalibracionLabel">
-            <i class="bi bi-crosshair2 me-2"></i>Calibrar Nuevo Tanque
+      <!-- Cabecera degradado -->
+      <div class="modal-header border-0 pb-0 rounded-top-4"
+           style="background: linear-gradient(135deg, var(--color-seroa-teal, #3b8b88), #6fc873);">
+        <div class="text-white py-1">
+          <h5 class="fw-bold mb-0" id="modalCalibracionLabel">
+            <i class="bi bi-bullseye me-2"></i>Calibrar Nuevo Tanque
           </h5>
-          <small style="color:rgba(255,255,255,.75);">Proceso guiado de registro de presión máxima</small>
+          <small class="opacity-75">Proceso guiado de registro de presión máxima</small>
         </div>
-        <button type="button" class="btn-close btn-close-white" id="btnCerrarModalCalib"
-                data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <button type="button" class="btn-close btn-close-white ms-auto mt-1"
+                data-bs-dismiss="modal" id="btnCerrarModal" aria-label="Cerrar"></button>
       </div>
 
       <div class="modal-body p-4">
@@ -435,23 +442,14 @@
             El dispositivo está tomando 50 lecturas durante 5 segundos y calculará el promedio.
             Por favor, mantén la válvula completamente abierta.
           </p>
-        </div>
-
-        <!-- RESULTADO: Éxito -->
-        <div id="calExito" class="d-none text-center py-3">
-          <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle"
-               style="width:70px;height:70px;background:linear-gradient(135deg,#3b8b88,#66bb6a);">
-            <i class="bi bi-check-circle-fill text-white" style="font-size:2rem;"></i>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small" for="calibIdDispositivo">ID del Dispositivo Seroa</label>
+            <input type="number" id="calibIdDispositivo" class="form-control rounded-3"
+                   placeholder="Ej: 1" min="1">
+            <div class="form-text">Encuéntralo en la sección de Configuración.</div>
           </div>
-          <h6 class="fw-bold mb-2" style="color:var(--color-seroa-teal);">¡Calibración Completada!</h6>
-          <div class="alert alert-success py-2 px-3 text-start" style="border-radius:10px;font-size:.83rem;">
-            <i class="bi bi-info-circle-fill me-1"></i>
-            <span id="calExitoBaseline">Presión máxima registrada correctamente.</span>
-          </div>
-          <button type="button" class="btn text-white fw-bold px-4 rounded-pill mt-2"
-                  style="background:linear-gradient(135deg,var(--color-seroa-teal),var(--color-accent-green));"
-                  data-bs-dismiss="modal" onclick="calibReset()">
-            <i class="bi bi-check-circle me-1"></i>Cerrar
+          <button class="btn btn-success w-100 rounded-3 fw-semibold" onclick="iniciarCalibracion()">
+            <i class="bi bi-play-circle me-1"></i> Iniciar calibración
           </button>
         </div>
 
@@ -477,7 +475,7 @@
       </div><!-- /modal-body -->
     </div>
   </div>
-</div><!-- /modal calibración -->
+</div>
 
 
 <!-- ===== SCRIPTS ===== -->
@@ -487,7 +485,5 @@
 <script src="global.js"></script>
 <script src="notificaciones.js"></script>
 <script src="tanque.js"></script>
-<script src="footer.js"></script>
-
 </body>
 </html>
