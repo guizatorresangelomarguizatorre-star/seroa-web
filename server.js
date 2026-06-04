@@ -727,20 +727,22 @@ app.post('/api/dispositivos/:id/configurar', (req, res) => {
     });
 });
 
-// POST /api/tanques — UPSERT: un único registro activo por dispositivo/paciente
-// El ESP32 solo conoce id_paciente; se acepta como proxy de id_dispositivo
+// POST /api/tanques — UPSERT del estado del tanque enviado por el ESP32
+// El ESP32 solo conoce id_paciente. Se resuelve el id_dispositivo real desde
+// paciente_dispositivo para respetar la FK constraint de la tabla tanques.
 app.post('/api/tanques', (req, res) => {
-    const { id_dispositivo, id_paciente, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
-    const deviceKey = id_dispositivo || id_paciente; // id_paciente actúa como proxy cuando no hay dispositivo real
-    const pacKey    = id_paciente    || id_dispositivo;
+    const { id_dispositivo, id_paciente, presion_actual, presion_maxima,
+            porcentaje, tiempo_restante_minutos, ultima_actualizacion } = req.body;
 
-    if (!deviceKey || presion_actual === undefined) {
-        return res.status(400).json({ error: 'ID de dispositivo o paciente y presión son requeridos.' });
+    const pacKey = id_paciente || id_dispositivo;
+    if (!pacKey || presion_actual === undefined) {
+        return res.status(400).json({ error: 'ID de paciente y presión son requeridos.' });
     }
 
-    const ts = ultima_actualizacion ? new Date(ultima_actualizacion) : new Date();
+    const ts   = ultima_actualizacion ? new Date(ultima_actualizacion) : new Date();
+    const pBar = parseFloat(presion_actual);
 
-    // Obtener baseline de calibración para calcular porcentaje correcto
+    // 1. Obtener baseline para calcular porcentaje correcto
     db.query(
         'SELECT max_psi_baseline FROM calibraciones_tanque WHERE id_paciente = ? ORDER BY fecha_calibracion DESC LIMIT 1',
         [pacKey],
@@ -749,49 +751,69 @@ app.post('/api/tanques', (req, res) => {
 
             let pct;
             if (baseline > 0) {
-                pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / baseline) * 100)));
+                pct = Math.min(100, Math.max(0, Math.round((pBar / baseline) * 100)));
             } else if (porcentaje !== undefined && porcentaje !== null) {
                 pct = Number(porcentaje);
             } else {
-                pct = Math.min(100, Math.max(0, Math.round((parseFloat(presion_actual) / 12.0) * 100)));
+                pct = Math.min(100, Math.max(0, Math.round((pBar / 12.0) * 100)));
             }
 
             const tiempoMin = (tiempo_restante_minutos !== undefined && tiempo_restante_minutos !== null)
                 ? Number(tiempo_restante_minutos)
-                : Math.round((pct / 100) * 680 / 2); // 680 L a 2 L/min
+                : Math.round((pct / 100) * 680 / 2);
 
-            // Intentar UPDATE primero; si no existe fila, INSERT
-            const updateQ = `UPDATE tanques
-                             SET presion_actual = ?, porcentaje = ?,
-                                 tiempo_restante_minutos = ?, ultima_actualizacion = ?
-                             WHERE id_dispositivo = ?`;
-            db.query(updateQ, [parseFloat(presion_actual), pct, tiempoMin, ts, deviceKey], (err, result) => {
-                if (err) {
-                    console.error('Error MySQL UPDATE tanques:', err);
-                    return res.status(500).json({ error: 'No se pudo actualizar el tanque.' });
-                }
-                // Publica en Firebase RTDB para que tanque.js reciba la presión en tiempo real
-                const pBar = parseFloat(presion_actual);
-                const etq  = pBar <= 0.3 ? 'SIN_PRESION' : pBar < 2.0 ? 'TANQUE_BAJO' : 'TANQUE_OK';
-                writeRealtimePaciente(String(pacKey), {
-                    presionBar:            pBar,
-                    presionPSI:            parseFloat((pBar * 14.5038).toFixed(2)),
-                    porcentajeTanque:      pct,
-                    estadoTanque:          etq,
-                    tiempoRestanteMinutos: tiempoMin
-                }).catch(() => {});
+            // 2. Publicar en Firebase RTDB para que tanque.js reciba la presión en tiempo real
+            const etq = pBar <= 0.3 ? 'SIN_PRESION' : pBar < 2.0 ? 'TANQUE_BAJO' : 'TANQUE_OK';
+            writeRealtimePaciente(String(pacKey), {
+                presionBar:            pBar,
+                presionPSI:            parseFloat((pBar * 14.5038).toFixed(2)),
+                porcentajeTanque:      pct,
+                estadoTanque:          etq,
+                tiempoRestanteMinutos: tiempoMin
+            }).catch(() => {});
 
-                if (result.affectedRows > 0) {
-                    return res.json({ mensaje: 'Tanque actualizado.', porcentaje: pct });
+            // 3. Resolver id_dispositivo real (FK constraint: tanques → dispositivos_seroa)
+            //    Si se manda id_dispositivo explícito, usarlo; si no, buscarlo por paciente.
+            const resolverDispositivo = (cb) => {
+                if (id_dispositivo) return cb(null, id_dispositivo);
+                db.query(
+                    `SELECT id_dispositivo FROM paciente_dispositivo
+                     WHERE id_paciente = ? AND estado_vinculo = 'Activo'
+                     ORDER BY fecha_vinculacion DESC LIMIT 1`,
+                    [pacKey],
+                    (err, rows) => cb(null, rows && rows.length ? rows[0].id_dispositivo : null)
+                );
+            };
+
+            resolverDispositivo((_, deviceId) => {
+                if (!deviceId) {
+                    // Sin dispositivo vinculado en BD: Firebase ya fue actualizado, responder OK
+                    return res.json({ mensaje: 'Presión recibida (sin dispositivo vinculado en BD).', porcentaje: pct });
                 }
-                const insertQ = `INSERT INTO tanques (id_dispositivo, presion_actual, presion_maxima, porcentaje, tiempo_restante_minutos, ultima_actualizacion)
-                                 VALUES (?, ?, ?, ?, ?, ?)`;
-                db.query(insertQ, [deviceKey, parseFloat(presion_actual), presion_maxima || null, pct, tiempoMin, ts], (err2, res2) => {
-                    if (err2) {
-                        console.error('Error MySQL INSERT tanques:', err2);
-                        return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
+
+                const updateQ = `UPDATE tanques
+                                 SET presion_actual = ?, porcentaje = ?,
+                                     tiempo_restante_minutos = ?, ultima_actualizacion = ?
+                                 WHERE id_dispositivo = ?`;
+                db.query(updateQ, [pBar, pct, tiempoMin, ts, deviceId], (err, result) => {
+                    if (err) {
+                        console.error('Error MySQL UPDATE tanques:', err);
+                        return res.status(500).json({ error: 'No se pudo actualizar el tanque.' });
                     }
-                    res.json({ mensaje: 'Tanque registrado.', id_tanque: res2.insertId, porcentaje: pct });
+                    if (result.affectedRows > 0) {
+                        return res.json({ mensaje: 'Tanque actualizado.', porcentaje: pct });
+                    }
+                    const insertQ = `INSERT INTO tanques
+                                     (id_dispositivo, presion_actual, presion_maxima, porcentaje,
+                                      tiempo_restante_minutos, ultima_actualizacion)
+                                     VALUES (?, ?, ?, ?, ?, ?)`;
+                    db.query(insertQ, [deviceId, pBar, presion_maxima || null, pct, tiempoMin, ts], (err2, res2) => {
+                        if (err2) {
+                            console.error('Error MySQL INSERT tanques:', err2);
+                            return res.status(500).json({ error: 'No se pudo registrar el tanque.' });
+                        }
+                        res.json({ mensaje: 'Tanque registrado.', id_tanque: res2.insertId, porcentaje: pct });
+                    });
                 });
             });
         }
