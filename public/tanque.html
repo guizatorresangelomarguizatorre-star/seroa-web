@@ -16,8 +16,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <link rel="stylesheet" href="estilos.css">
   <style>
+    /* ── Tarjetas de parámetros ── */
     .stat-card-tank {
-      background-color: rgba(59,139,136,0.06);
+      background: rgba(59,139,136,0.06);
       border-radius: 14px;
       padding: 1.1rem 0.8rem;
       text-align: center;
@@ -26,91 +27,75 @@
     }
     .stat-card-tank:hover { box-shadow: 0 4px 12px rgba(59,139,136,0.12); }
     .stat-card-tank .stat-label {
-      font-size: .68rem;
-      letter-spacing: .6px;
-      text-transform: uppercase;
-      font-weight: 700;
-      color: #888;
+      font-size: .68rem; letter-spacing: .6px;
+      text-transform: uppercase; font-weight: 700; color: #888;
     }
     .stat-card-tank .stat-value {
-      color: var(--color-seroa-teal);
-      font-weight: 700;
-      font-size: 1.5rem;
-      margin: 0.3rem 0 0;
-      line-height: 1.2;
+      color: var(--color-seroa-teal); font-weight: 700;
+      font-size: 1.5rem; margin: .3rem 0 0; line-height: 1.2;
     }
-    .stat-card-tank .stat-sub {
-      font-size: .75rem;
-      color: #aaa;
-      margin-top: 2px;
-    }
-    /* Indicador de calibración */
+    .stat-card-tank .stat-sub { font-size: .75rem; color: #aaa; margin-top: 2px; }
+
+    /* ── Badge de calibración ── */
     .calib-badge {
       background: rgba(59,139,136,0.1);
       border: 1px solid rgba(59,139,136,0.3);
       color: var(--color-seroa-teal);
-      border-radius: 20px;
-      padding: 0.3rem 0.9rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
+      border-radius: 20px; padding: .3rem .9rem;
+      font-size: .75rem; font-weight: 600;
+      display: inline-flex; align-items: center; gap: .4rem;
     }
     .calib-badge.sin-calibrar {
-      background: rgba(255,152,0,0.1);
-      border-color: rgba(255,152,0,0.4);
+      background: rgba(255,152,0,.1);
+      border-color: rgba(255,152,0,.4);
       color: #e65100;
     }
-    /* Modal calibración pasos */
-    .step-indicator {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-    }
+
+    /* ── Modal calibración: pasos ── */
+    .step-indicator { display:flex; align-items:center; gap:.5rem; margin-bottom:1.5rem; }
     .step-dot {
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.78rem; font-weight: 700;
-      background: #e9ecef; color: #adb5bd;
-      flex-shrink: 0;
-      transition: all 0.3s;
+      width:28px; height:28px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.78rem; font-weight:700;
+      background:#e9ecef; color:#adb5bd; flex-shrink:0; transition:all .3s;
     }
-    .step-dot.active   { background: var(--color-seroa-teal); color: white; }
-    .step-dot.done     { background: var(--color-accent-green); color: white; }
-    .step-line {
-      flex: 1; height: 2px;
-      background: #e9ecef;
-      transition: background 0.3s;
-    }
-    .step-line.done { background: var(--color-accent-green); }
-    /* Spinner calibrando */
+    .step-dot.active { background:var(--color-seroa-teal); color:#fff; }
+    .step-dot.done   { background:var(--color-accent-green); color:#fff; }
+    .step-line { flex:1; height:2px; background:#e9ecef; transition:background .3s; }
+    .step-line.done  { background:var(--color-accent-green); }
     .spinner-calib {
-      width: 50px; height: 50px;
-      border: 4px solid rgba(59,139,136,0.2);
-      border-top-color: var(--color-seroa-teal);
-      border-radius: 50%;
-      animation: spin-seroa 0.9s linear infinite;
-      margin: 0 auto 1rem;
+      width:50px; height:50px;
+      border:4px solid rgba(59,139,136,.2);
+      border-top-color:var(--color-seroa-teal);
+      border-radius:50%; animation:spin-seroa .9s linear infinite;
+      margin:0 auto 1rem;
     }
+
+    /* ── Botón principal calibrar ── */
     .btn-calibrar-principal {
-      background: linear-gradient(135deg, var(--color-seroa-teal), var(--color-accent-green));
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 0.75rem 1.8rem;
-      font-weight: 700;
-      font-size: 1rem;
-      transition: all 0.3s;
-      box-shadow: 0 4px 14px rgba(59,139,136,0.3);
+      background: linear-gradient(135deg,var(--color-seroa-teal),var(--color-accent-green));
+      color:#fff; border:none; border-radius:12px;
+      padding:.75rem 1.8rem; font-weight:700; font-size:1rem;
+      transition:all .3s; box-shadow:0 4px 14px rgba(59,139,136,.3);
+      cursor:pointer;
     }
     .btn-calibrar-principal:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 18px rgba(59,139,136,0.4);
-      color: white;
+      transform:translateY(-2px);
+      box-shadow:0 6px 18px rgba(59,139,136,.4); color:#fff;
     }
+
+    /* ── Sección "Sin dispositivo" ── */
+    .no-device-section {
+      background: linear-gradient(135deg,rgba(59,139,136,.05),rgba(59,139,136,.02));
+      border: 2px dashed rgba(59,139,136,.35);
+      border-radius: 18px; padding: 2rem;
+    }
+
+    /* ── Tanque vacío overlay ── */
+    #sinTanqueBanner { display:none; }
+    #sinTanqueBanner.visible { display:block; }
+
+    @keyframes spin-seroa { to { transform:rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -127,7 +112,7 @@
     </div>
     <button type="button" class="btn btn-outline-light btn-lg fw-bold shadow-sm px-5 py-3"
             onclick="ocultarAlertaSeroa()">
-      <i class="bi bi-check2-circle me-2"></i> ENTERADO
+      <i class="bi bi-check2-circle me-2"></i>ENTERADO
     </button>
   </div>
 </div>
@@ -142,10 +127,9 @@
             data-bs-toggle="offcanvas" data-bs-target="#menuSeroa" aria-controls="menuSeroa">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa"
-         aria-labelledby="menuSeroaLabel">
+    <div class="offcanvas offcanvas-end sidebar-custom" tabindex="-1" id="menuSeroa">
       <div class="offcanvas-header border-bottom border-light">
-        <h5 class="offcanvas-title text-white" id="menuSeroaLabel">Seroa Menú</h5>
+        <h5 class="offcanvas-title text-white">Seroa Menú</h5>
         <button type="button" class="btn-close btn-close-white"
                 data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
       </div>
@@ -169,27 +153,51 @@
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <span class="badge bg-light text-dark border px-3 py-2 rounded-pill shadow-sm" data-paciente-actual>
-        <i class="bi bi-person-fill text-teal me-1"></i>Paciente Actual: <strong>Sin selección</strong>
+        <i class="bi bi-person-fill text-teal me-1"></i>Paciente: <strong>Sin selección</strong>
       </span>
-      <button class="btn-calibrar-principal" data-bs-toggle="modal" data-bs-target="#modalCalibracion">
+      <!-- Botón calibrar: visible solo cuando hay dispositivo vinculado -->
+      <button id="btnCalibracionAbierta" class="btn-calibrar-principal d-none"
+              data-bs-toggle="modal" data-bs-target="#modalCalibracion">
         <i class="bi bi-crosshair2 me-2"></i>Calibrar nuevo tanque
       </button>
     </div>
   </div>
 
-  <!-- ===== ALERTA: TANQUE VACÍO O NO DETECTADO ===== -->
-  <div id="alertaTanqueVacio" class="tank-empty-alert d-none mb-4">
-    <i class="bi bi-exclamation-triangle-fill text-danger mb-3 d-block" style="font-size:3rem;"></i>
-    <h4 class="fw-bold text-danger mb-2">No se ha detectado ningún tanque, o el tanque está vacío</h4>
-    <p class="text-muted mb-3">
-      El sensor de presión no registra gas. Verifique que el tanque esté correctamente conectado
-      al regulador y a la pieza Tee del dispositivo Seroa, y que la válvula esté abierta.
-    </p>
-    <div class="d-flex justify-content-center gap-2 flex-wrap">
-      <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill fw-semibold">
-        <i class="bi bi-dash-circle me-1"></i>Presión: 0 bar
-      </span>
-      <button class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+  <!-- ===== SECCIÓN: SIN DISPOSITIVO VINCULADO ===== -->
+  <div id="seccionSinDispositivo" class="no-device-section mb-4 d-none">
+    <div class="d-flex align-items-start gap-3 mb-3">
+      <div class="bg-white rounded-circle shadow-sm d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:52px;height:52px;">
+        <i class="bi bi-cpu" style="font-size:1.5rem;color:var(--color-seroa-teal);"></i>
+      </div>
+      <div>
+        <h5 class="fw-bold mb-1" style="color:var(--color-seroa-teal);">
+          Sin dispositivo Seroa vinculado
+        </h5>
+        <p class="text-muted small mb-0">
+          Para ver el estado del tanque, primero vincula el dispositivo ESP32 al paciente desde la
+          sección <strong>Configuración → Dispositivos y Red</strong>.
+        </p>
+      </div>
+    </div>
+    <a href="configuracion.html" class="btn text-white fw-bold px-4 rounded-pill"
+       style="background:linear-gradient(135deg,var(--color-seroa-teal),var(--color-accent-green));">
+      <i class="bi bi-gear me-2"></i>Ir a Configuración para vincular
+    </a>
+  </div>
+
+  <!-- ===== BANNER: SIN TANQUE / TANQUE VACÍO ===== -->
+  <div id="sinTanqueBanner" class="sin-tanque-banner mb-4">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <i class="bi bi-exclamation-triangle-fill text-warning fs-4 flex-shrink-0"></i>
+      <div class="flex-grow-1">
+        <div class="fw-bold text-danger mb-1">No hay tanque agregado o el tanque no tiene oxígeno</div>
+        <div class="small text-muted">
+          El sensor de presión no detecta gas. Verifica que el tanque esté conectado al regulador
+          y que la válvula esté abierta.
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 flex-shrink-0"
               data-bs-toggle="modal" data-bs-target="#modalCalibracion">
         <i class="bi bi-crosshair2 me-1"></i>Calibrar tanque nuevo
       </button>
@@ -199,31 +207,48 @@
   <!-- ===== FILA PRINCIPAL: CILINDRO + DATOS ===== -->
   <div id="tankMainContent" class="row g-4">
 
-    <!-- COLUMNA IZQUIERDA: Cilindro O2 -->
+    <!-- ── COLUMNA IZQUIERDA: Tanque O₂ ── -->
     <div class="col-md-4 col-lg-5">
       <div class="card border-0 shadow-sm h-100 p-4 text-center">
         <h6 class="text-muted fw-bold mb-4 text-uppercase" style="letter-spacing:.5px;font-size:.75rem;">
           <i class="bi bi-water me-1"></i>Nivel de Oxígeno
         </h6>
 
-        <!-- Cilindro minimalista -->
-        <div class="o2-cyl-wrap mb-3">
-          <div class="o2-cyl-track">
-            <div id="cylFill" class="o2-cyl-fill fill-optimo" style="height:0%"></div>
-          </div>
-          <div class="o2-cyl-scale">
-            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">100%</span></span>
-            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">75%</span></span>
-            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">50%</span></span>
-            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">25%</span></span>
-            <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">0%</span></span>
+        <!-- Tanque visual con válvula + cuerpo + escala -->
+        <div id="tankArea" class="d-flex justify-content-center mb-3">
+          <div class="tank-assembly">
+            <!-- Válvula decorativa -->
+            <div class="tank-valve"></div>
+            <!-- Tapa -->
+            <div class="tank-cap"></div>
+            <!-- Cuerpo + escala lateral -->
+            <div class="o2-cyl-wrap">
+              <div class="o2-cyl-track">
+                <!-- Líquido con ola + burbujas -->
+                <div id="cylFill" class="o2-cyl-fill fill-optimo" style="height:0%">
+                  <div class="bubble b1"></div>
+                  <div class="bubble b2"></div>
+                  <div class="bubble b3"></div>
+                </div>
+                <!-- Brillo del vidrio -->
+                <div class="cyl-shine"></div>
+              </div>
+              <!-- Escala -->
+              <div class="o2-cyl-scale">
+                <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">100%</span></span>
+                <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">75%</span></span>
+                <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">50%</span></span>
+                <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">25%</span></span>
+                <span class="o2-cyl-mark"><span class="o2-cyl-mark-label">0%</span></span>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Porcentaje y estado textual -->
-        <div class="mt-2">
+        <div class="mt-1">
           <div id="txtPorcentaje" class="fw-bold lh-1 mb-1"
-               style="font-size:3.5rem; color:var(--color-seroa-teal);">
+               style="font-size:3.5rem;color:var(--color-seroa-teal);">
             --<span class="fs-5">%</span>
           </div>
           <p id="txtEstado" class="fw-bold mb-1 text-secondary">Esperando datos...</p>
@@ -235,7 +260,7 @@
       </div>
     </div>
 
-    <!-- COLUMNA DERECHA: Tarjetas de datos -->
+    <!-- ── COLUMNA DERECHA: Tarjetas de datos ── -->
     <div class="col-md-8 col-lg-7">
       <div class="card border-0 shadow-sm h-100 p-4">
         <h6 class="text-muted fw-bold mb-4 text-uppercase" style="letter-spacing:.5px;font-size:.75rem;">
@@ -268,7 +293,8 @@
         </div>
 
         <!-- Info de calibración activa -->
-        <div id="calibracionActualInfo" class="alert alert-success d-flex align-items-start gap-2 py-2 px-3 mb-4 d-none"
+        <div id="calibracionActualInfo"
+             class="alert alert-success d-flex align-items-start gap-2 py-2 px-3 mb-4 d-none"
              style="border-radius:10px;font-size:.83rem;">
           <i class="bi bi-check-circle-fill mt-1 flex-shrink-0"></i>
           <div>
@@ -277,7 +303,7 @@
           </div>
         </div>
 
-        <!-- Separador y sección de calibración -->
+        <!-- Separador y botón de calibración -->
         <div class="border-top pt-3 mt-auto">
           <div class="d-flex align-items-start gap-3 flex-wrap">
             <div class="flex-grow-1">
@@ -290,7 +316,8 @@
                 presión máxima del cilindro y calcule el nivel correctamente.
               </p>
             </div>
-            <button class="btn-calibrar-principal flex-shrink-0"
+            <button id="btnCalibracionRowSecundario"
+                    class="btn-calibrar-principal flex-shrink-0 d-none"
                     data-bs-toggle="modal" data-bs-target="#modalCalibracion">
               <i class="bi bi-crosshair2 me-2"></i>Calibrar nuevo tanque
             </button>
@@ -298,19 +325,20 @@
         </div>
       </div>
     </div>
+
   </div><!-- /row principal -->
 
 </div><!-- /container -->
 
-<!-- =========================================================== -->
+
+<!-- ============================================================ -->
 <!-- MODAL: CALIBRACIÓN DE TANQUE (2 pasos)                      -->
-<!-- =========================================================== -->
+<!-- ============================================================ -->
 <div class="modal fade" id="modalCalibracion" tabindex="-1"
      aria-labelledby="modalCalibracionLabel" aria-hidden="true"
      data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border-radius:16px;border:none;
-         box-shadow:0 20px 50px rgba(0,0,0,0.2);">
+    <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 20px 50px rgba(0,0,0,.2);">
 
       <div class="modal-header"
            style="background:linear-gradient(135deg,#2c3e50,#3b8b88);border-radius:16px 16px 0 0;border:none;padding:1.5rem 2rem;">
@@ -345,15 +373,13 @@
             <h6 class="fw-bold mb-1">Paso 1 de 2 — Conexión del Tanque</h6>
           </div>
           <div class="alert alert-info d-flex align-items-start gap-3 py-3 px-3"
-               style="border-radius:12px;border:none;background:rgba(59,139,136,0.08);color:#1a4a48;">
+               style="border-radius:12px;border:none;background:rgba(59,139,136,.08);color:#1a4a48;">
             <i class="bi bi-wrench-adjustable-circle-fill mt-1 flex-shrink-0 fs-5"
                style="color:var(--color-seroa-teal);"></i>
             <div>
-              <strong>Por favor, conecta tu nuevo tanque de oxígeno mediante el regulador a la
-              pieza Tee del dispositivo Seroa.</strong>
+              <strong>Conecta tu nuevo tanque de oxígeno mediante el regulador a la pieza T del dispositivo.</strong>
               <p class="mb-0 mt-1 small" style="color:#3a5e5c;">
-                Asegúrate de que las conexiones estén firmes y seguras. Verifica que no haya fugas
-                de gas antes de continuar.
+                Asegúrate de que las conexiones estén firmes y sin fugas de gas antes de continuar.
               </p>
             </div>
           </div>
@@ -361,7 +387,7 @@
             <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
                     data-bs-dismiss="modal">Cancelar</button>
             <button type="button" class="btn text-white fw-bold px-4 rounded-pill"
-                    style="background-color:var(--color-seroa-teal);"
+                    style="background:var(--color-seroa-teal);"
                     onclick="calibIrPaso2()">
               Siguiente <i class="bi bi-arrow-right ms-1"></i>
             </button>
@@ -378,14 +404,13 @@
             <h6 class="fw-bold mb-1">Paso 2 de 2 — Apertura de Válvula</h6>
           </div>
           <div class="alert alert-warning d-flex align-items-start gap-3 py-3 px-3"
-               style="border-radius:12px;border:none;background:rgba(255,152,0,0.1);color:#7a4000;">
+               style="border-radius:12px;border:none;background:rgba(255,152,0,.1);color:#7a4000;">
             <i class="bi bi-exclamation-diamond-fill mt-1 flex-shrink-0 fs-5"></i>
             <div>
               <strong>Abre la válvula del tanque por completo.</strong>
               <p class="mb-0 mt-1 small">
-                Una vez abierta, presiona el botón <strong>"Calibrar"</strong> para que el sistema
-                registre la presión máxima del cilindro durante 3 segundos. A partir de ese momento,
-                el nivel se calculará en base a ese valor (100%).
+                Una vez abierta, presiona <strong>"Calibrar"</strong>. El dispositivo tomará
+                50 lecturas en 5 segundos y establecerá ese promedio como el <strong>100% de referencia</strong>.
               </p>
             </div>
           </div>
@@ -405,10 +430,10 @@
         <!-- ESTADO: Calibrando -->
         <div id="calCalibrando" class="d-none text-center py-3">
           <div class="spinner-calib mb-3"></div>
-          <h6 class="fw-bold mb-1">Enviando señal al dispositivo...</h6>
+          <h6 class="fw-bold mb-1">Tomando muestras de presión...</h6>
           <p class="text-muted small mb-0">
-            El dispositivo Seroa está tomando el promedio de la presión durante 3 segundos.
-            Por favor, mantén la válvula abierta y no muevas el dispositivo.
+            El dispositivo está tomando 50 lecturas durante 5 segundos y calculará el promedio.
+            Por favor, mantén la válvula completamente abierta.
           </p>
         </div>
 
@@ -442,7 +467,7 @@
             <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
                     data-bs-dismiss="modal" onclick="calibReset()">Cancelar</button>
             <button type="button" class="btn text-white rounded-pill px-4"
-                    style="background-color:var(--color-seroa-teal);"
+                    style="background:var(--color-seroa-teal);"
                     onclick="calibIrPaso2()">
               <i class="bi bi-arrow-clockwise me-1"></i>Reintentar
             </button>
@@ -450,9 +475,10 @@
         </div>
 
       </div><!-- /modal-body -->
-    </div><!-- /modal-content -->
+    </div>
   </div>
 </div><!-- /modal calibración -->
+
 
 <!-- ===== SCRIPTS ===== -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>

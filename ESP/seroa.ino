@@ -98,6 +98,7 @@ bool onDisconnectConfigurado = false;
 // ========== CALIBRACIÓN DE TANQUE ==========
 float maxPsiBaseline = 0.0;   // 0 = sin calibrar (usa MAX_BAR_DEFAULT)
 bool  calibracionActiva = false;
+bool  autoCalibPendiente = false;  // true cuando arranca sin baseline guardado
 unsigned long tiempoCalibCheck = 0;
 const unsigned long INTERVALO_CALIB_CHECK = 4000; // ms entre chequeos del flag
 
@@ -271,19 +272,20 @@ void enviarCalibracion(float baseline) {
   delete client;
 }
 
-// Toma lecturas de presión durante 3 segundos y calcula el promedio (baseline)
+// Toma lecturas de presión durante 5 segundos (50 muestras) y calcula el promedio (baseline = 100%)
 void realizarCalibracion() {
   if (calibracionActiva) return;
   calibracionActiva = true;
 
   Serial.println("=== CALIBRACIÓN DE TANQUE INICIADA ===");
-  mostrarMensajeOLED("Calibrando", "tanque O2...", "Espere 3s");
+  mostrarMensajeOLED("Calibrando", "tanque O2...", "Espere 5s");
 
   float suma  = 0.0f;
   int conteo  = 0;
   unsigned long inicio = millis();
 
-  while (millis() - inicio < 3000) {
+  // 50 muestras en 5 s → promedio robusto que se establece como el 100%
+  while (millis() - inicio < 5000) {
     float p = leerPresionBar();
     if (p > 0.1f) { suma += p; conteo++; }
     delay(100);
@@ -340,13 +342,19 @@ void enviarFirebase(int spo2Final, int bpmFinal, String estado, float presionBar
   String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
 
   float pctTanque = calcularPorcentajeTanque(presionBar);
+  // Tiempo restante: 680 L de referencia a 2 L/min de flujo promedio
+  int tiempoMinutos = (pctTanque > 0.0f) ? (int)((pctTanque / 100.0f) * 680.0f / 2.0f) : 0;
+  // PSI para visualización directa en el frontend
+  float presionPSI = presionBar * 14.5038f;
 
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/spo2", spo2Final);
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/bpm", bpmFinal);
   Firebase.RTDB.setString(&fbdo, rutaBase + "/estado", estado);
   Firebase.RTDB.setFloat(&fbdo, rutaBase + "/presionBar", presionBar);
+  Firebase.RTDB.setFloat(&fbdo, rutaBase + "/presionPSI", presionPSI);
   Firebase.RTDB.setFloat(&fbdo, rutaBase + "/porcentajeTanque", pctTanque);
   Firebase.RTDB.setString(&fbdo, rutaBase + "/estadoTanque", estadoTanque(presionBar));
+  Firebase.RTDB.setInt(&fbdo, rutaBase + "/tiempoRestanteMinutos", tiempoMinutos);
   Firebase.RTDB.setBool(&fbdo, rutaBase + "/valvulaActiva", valvulaActiva);
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/limiteSpo2Bajo", LIMITE_SPO2_BAJO);
   Firebase.RTDB.setInt(&fbdo, rutaBase + "/ultimaActualizacion", millis());
@@ -532,6 +540,10 @@ void setup() {
     Serial.print("Baseline de calibración cargado: ");
     Serial.print(maxPsiBaseline, 2);
     Serial.println(" bar");
+  } else {
+    // Sin baseline guardado: se auto-calibrará en cuanto Firebase esté listo y haya presión
+    autoCalibPendiente = true;
+    Serial.println("Sin calibración previa. Auto-calibración pendiente al detectar presión.");
   }
 
   if (wifi_ssid == "" || id_paciente == "") {
@@ -626,8 +638,22 @@ void loop() {
     Serial.println("OnDisconnect configurado: Firebase escribirá 'Desconectado' al perder enlace.");
   }
 
-  // Verificar flag de calibración pendiente desde Firebase (cada 4 s)
-  if (!calibracionActiva && Firebase.ready() && id_paciente != "" &&
+  // Auto-calibración en primer arranque (sin baseline guardado)
+  // Se activa en cuanto Firebase está listo y se detecta presión > 0.5 bar
+  if (autoCalibPendiente && !calibracionActiva && Firebase.ready() && id_paciente != "") {
+    if (presionActual > 0.5f) {
+      autoCalibPendiente = false;
+      // Notificar al frontend que la calibración automática está en progreso
+      String rutaBase = "Seroa/Pacientes/" + id_paciente + "/Actual";
+      Firebase.RTDB.setBool(&fbdo, (rutaBase + "/calibracion_pendiente").c_str(), true);
+      Serial.println("Auto-calibración iniciada con primera medida del tanque.");
+      mostrarMensajeOLED("Auto-calibrando", "Primera medida", "No mover tanque");
+      realizarCalibracion();
+    }
+  }
+
+  // Verificar flag de calibración pendiente desde Firebase (cada 4 s) — calibración manual
+  if (!calibracionActiva && !autoCalibPendiente && Firebase.ready() && id_paciente != "" &&
       (millis() - tiempoCalibCheck > INTERVALO_CALIB_CHECK)) {
     tiempoCalibCheck = millis();
     String rutaCalib = "Seroa/Pacientes/" + id_paciente + "/Actual/calibracion_pendiente";

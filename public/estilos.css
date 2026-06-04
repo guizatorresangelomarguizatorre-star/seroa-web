@@ -1548,6 +1548,34 @@ body {
 }
 .seroa-footer { margin-top: auto; }
 
+/* ============================================================ */
+/* === TANQUE DE OXÍGENO — Cilindro visual minimalista       === */
+/* ============================================================ */
+
+/* Ensamblaje completo del tanque (válvula + cuerpo + escala) */
+.tank-assembly {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+/* Válvula decorativa en la parte superior */
+.tank-valve {
+  width: 14px; height: 22px;
+  background: linear-gradient(180deg, #b0c4c4 0%, #d4e4e4 60%, #c2d6d6 100%);
+  border: 1.5px solid #b8cecc;
+  border-radius: 4px 4px 2px 2px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+/* Tapa superior */
+.tank-cap {
+  width: 60px; height: 10px;
+  background: linear-gradient(90deg, #c2d6d6 0%, #e0eeee 50%, #c2d6d6 100%);
+  border: 1.5px solid #c8dcdc;
+  border-radius: 8px 8px 2px 2px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+/* Cuerpo del cilindro */
 .o2-cyl-wrap {
   display: flex;
   align-items: center;
@@ -1556,48 +1584,86 @@ body {
   width: fit-content;
 }
 .o2-cyl-track {
-  width: 62px;
-  height: 210px;
-  background: #eef3f3;
-  border-radius: 31px;
-  border: 2px solid #d4e4e4;
+  width: 80px;
+  height: 280px;
+  background: linear-gradient(180deg, #f4fafa 0%, #eef3f3 100%);
+  border-radius: 40px;
+  border: 2.5px solid #cde4e3;
   position: relative;
   overflow: hidden;
-  box-shadow: inset 0 3px 8px rgba(0,0,0,0.06), 0 4px 14px rgba(59,139,136,0.1);
+  box-shadow: inset 0 4px 12px rgba(0,0,0,0.05),
+              inset 4px 0 10px rgba(255,255,255,0.6),
+              0 6px 20px rgba(59,139,136,0.12);
 }
+/* Brillo/reflejo del vidrio */
+.cyl-shine {
+  position: absolute;
+  top: 8px; left: 8px;
+  width: 18px; height: 85%;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.55) 0%,
+    rgba(255,255,255,0.15) 60%,
+    transparent 100%);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 10;
+}
+/* Líquido */
 .o2-cyl-fill {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  border-radius: 0 0 29px 29px;
-  transition: height 1.2s cubic-bezier(0.4,0,0.2,1), background 0.8s;
+  border-radius: 0 0 37px 37px;
+  transition: height 1.4s cubic-bezier(0.4,0,0.2,1), background 0.9s;
+  overflow: hidden;
 }
+/* Ola en la superficie del líquido */
+.o2-cyl-fill::before {
+  content: '';
+  position: absolute;
+  top: -12px; left: -30%;
+  width: 160%; height: 24px;
+  background: rgba(255,255,255,0.28);
+  border-radius: 50%;
+  animation: liquidWave 3.2s ease-in-out infinite;
+  z-index: 3;
+}
+/* Textura de brillo deslizante */
 .o2-cyl-fill::after {
   content: '';
   position: absolute;
   top: 0; left: 0;
   width: 200%; height: 100%;
-  background: repeating-linear-gradient(50deg,
-    rgba(255,255,255,0.1), rgba(255,255,255,0.1) 8px,
-    transparent 8px, transparent 16px);
-  animation: tankGlide 10s linear infinite;
+  background: repeating-linear-gradient(55deg,
+    rgba(255,255,255,0.08), rgba(255,255,255,0.08) 8px,
+    transparent 8px, transparent 18px);
+  animation: tankGlide 12s linear infinite;
+  z-index: 1;
 }
-.o2-cyl-fill.fill-optimo {
-  background: linear-gradient(0deg, #3b8b88 0%, #4eab8a 55%, #66bb6a 100%);
+/* Burbujas */
+.bubble {
+  position: absolute;
+  background: rgba(255,255,255,0.35);
+  border-radius: 50%;
+  z-index: 2;
+  animation: bubbleRise var(--dur,4s) ease-in var(--delay,0s) infinite;
 }
-.o2-cyl-fill.fill-bajo {
-  background: linear-gradient(0deg, #e65100 0%, #fb8c00 60%, #ffb74d 100%);
-}
-.o2-cyl-fill.fill-critico {
-  background: linear-gradient(0deg, #b71c1c 0%, #e53935 65%, #ef9a9a 100%);
-}
+.bubble.b1 { width:6px; height:6px; left:22%; bottom:8%; --dur:3.8s; --delay:0s; }
+.bubble.b2 { width:4px; height:4px; left:55%; bottom:4%; --dur:5s;   --delay:1.2s; }
+.bubble.b3 { width:5px; height:5px; left:38%; bottom:12%; --dur:4.5s; --delay:2.4s; }
+
+/* Gradientes de nivel */
+.o2-cyl-fill.fill-optimo  { background: linear-gradient(0deg, #2e7a77 0%, #3b8b88 40%, #4eab8a 75%, #66bb6a 100%); }
+.o2-cyl-fill.fill-bajo    { background: linear-gradient(0deg, #bf360c 0%, #e65100 35%, #fb8c00 70%, #ffb74d 100%); }
+.o2-cyl-fill.fill-critico { background: linear-gradient(0deg, #7f0000 0%, #b71c1c 40%, #e53935 72%, #ef9a9a 100%); }
+
 /* Escala lateral */
 .o2-cyl-scale {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 210px;
+  height: 280px;
   padding: 2px 0;
 }
 .o2-cyl-mark {
@@ -1607,32 +1673,65 @@ body {
 }
 .o2-cyl-mark::before {
   content: '';
-  width: 6px;
+  width: 7px;
   height: 1.5px;
-  background: #c0c0c0;
+  background: #bbd0d0;
   display: block;
   flex-shrink: 0;
 }
 .o2-cyl-mark-label {
-  font-size: 0.58rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  color: #b0b0b0;
+  color: #a0b8b8;
   letter-spacing: -0.5px;
   white-space: nowrap;
 }
+
+/* Keyframes */
 @keyframes tankGlide {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+@keyframes liquidWave {
+  0%,100% { transform: scaleX(1)   translateY(0); }
+  33%     { transform: scaleX(0.92) translateY(-4px); }
+  66%     { transform: scaleX(1.08) translateY(3px); }
+}
+@keyframes bubbleRise {
+  0%   { transform: translateY(0) scale(1);   opacity: 0.75; }
+  80%  { opacity: 0.3; }
+  100% { transform: translateY(-160px) scale(0.4); opacity: 0; }
+}
 
-/* Alerta tanque vacío */
-.tank-empty-alert {
-  background: linear-gradient(135deg, rgba(255,193,7,0.08), rgba(220,53,69,0.06));
-  border: 2px solid rgba(220,53,69,0.5);
-  border-radius: 16px;
-  padding: 2.5rem 2rem;
-  text-align: center;
-  animation: deslizarAlarma 0.4s ease;
+/* Banner "sin tanque" sobre el contenido */
+.sin-tanque-banner {
+  background: linear-gradient(135deg, rgba(255,152,0,0.08), rgba(220,53,69,0.06));
+  border: 1.5px dashed rgba(220,53,69,0.45);
+  border-radius: 14px;
+  padding: 1.2rem 1.4rem;
+  animation: fadeInDown 0.4s ease;
+}
+
+/* Sección de vinculación sin dispositivo */
+.linking-step-card {
+  background: rgba(59,139,136,0.05);
+  border: 1px solid rgba(59,139,136,0.15);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+}
+.step-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--color-seroa-teal);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+@keyframes fadeInDown {
+  from { opacity:0; transform:translateY(-8px); }
+  to   { opacity:1; transform:translateY(0); }
 }
 
 /* ============================================================ */
