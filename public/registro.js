@@ -135,9 +135,19 @@ async function cargarRegistrosMySQL(idPaciente) {
     try {
         const respuesta = await fetch(`/api/registros?id_paciente=${idPaciente}`);
         const registros = await respuesta.json();
-        latestRegistros = registros || [];
+        
+        // === FILTRO MÁGICO: Solo conservar las lecturas de hoy ===
+        const fechaHoy = new Date().toLocaleDateString('es-MX');
+        const lecturasDeHoy = (registros || []).filter(r => {
+            const fechaRegistro = new Date(r.fecha_hora).toLocaleDateString('es-MX');
+            return fechaRegistro === fechaHoy;
+        });
+
+        // Pasamos solo los de hoy a la tabla y a los filtros
+        latestRegistros = lecturasDeHoy;
         renderRegistrosMySQL(latestRegistros);
-        actualizarResumenDiario(latestRegistros);
+        actualizarResumenDiario(lecturasDeHoy);
+        
     } catch (error) {
         console.error('Error cargando registros desde MySQL:', error);
     }
