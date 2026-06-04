@@ -217,17 +217,24 @@
     <!-- ── FILA 1: Válvula · SpO2 · BPM · Promedio ── -->
     <div class="row g-4 mb-4">
 
-      <!-- Estado del Sistema (Válvula) -->
+      <!-- Estado del Sistema (Válvula + Presión + Estado Firmware) -->
       <div class="col-sm-6 col-lg-3">
         <div id="estadoSistemaCard" class="card border-0 shadow-sm h-100 text-center" style="border-radius:16px;">
           <div class="card-body d-flex flex-column justify-content-center align-items-center py-4 px-3">
-            <div class="mb-3">
+            <div class="mb-2">
               <div id="indicadorValvula" class="indicador-valvula inactiva mx-auto">
                 <i id="iconValvula" class="bi bi-wind fs-2 d-none"></i>
               </div>
             </div>
             <h6 id="estadoSistemaTitulo" class="fw-bold text-secondary mb-1">NO SUMINISTRANDO</h6>
-            <p id="estadoSistemaTexto" class="text-secondary small mb-4">Válvula Cerrada</p>
+            <p id="estadoSistemaTexto" class="text-secondary small mb-2">Válvula Cerrada</p>
+            <!-- Badge estado firmware -->
+            <span id="estadoFirmwareBadge" class="badge rounded-pill bg-secondary mb-2" style="font-size:.68rem;letter-spacing:.3px;">SIN SEÑAL</span>
+            <!-- Presión en bar -->
+            <div class="d-flex align-items-center justify-content-center gap-1 mb-3">
+              <i class="bi bi-speedometer2 small" id="iconPresion" style="color:var(--color-seroa-teal);"></i>
+              <span id="valorPresionDosificacion" class="fw-bold small" style="color:var(--color-seroa-teal);">-- bar</span>
+            </div>
             <button id="btnForzarApagado" class="btn btn-sm btn-outline-secondary rounded-pill w-100 fw-bold rol-editar">
               <i class="bi bi-stop-circle-fill me-1"></i> Forzar Apagado
             </button>
