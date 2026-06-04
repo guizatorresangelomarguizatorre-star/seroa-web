@@ -544,7 +544,7 @@ void loop() {
 
     } else {
       estadoActual = "CALIBRANDO";
-      desactivarValvula();
+      desactivarValvula(); 
 
       enviarFirebase(0, 0, estadoActual, presionActual);
       mostrarOLED("CALIB", 0, 0, presionActual, valvulaActiva);
