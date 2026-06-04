@@ -201,20 +201,23 @@ function iniciarPollingBaseline() {
 }
 
 // ─── Firebase real-time ──────────────────────────────────────
+// El firmware envía: presionBar, spo2, bpm, estado, valvulaActiva
+// NO envía: estadoTanque, porcentajeTanque, tiempoRestanteMinutos
+// Todo se deriva de presionBar + baseline de calibración
 function suscribirDatosFirebase() {
     if (!window.SeroaRealtime) return;
 
     window.SeroaRealtime.subscribe((datos) => {
         if (!datos) return;
 
-        // ESP32 en auto-calibración (primer arranque)
+        // Señal del servidor para calibración (no del firmware)
         if (datos.calibracion_pendiente === true) {
             mostrarEstado('auto_calibrando');
             iniciarPollingBaseline();
             return;
         }
 
-        // Error de calibración notificado por el ESP32
+        // Error de calibración devuelto por el servidor
         if (_calibEscuchandoError && datos.calibracion_error === true) {
             _calibMostrarError(
                 'No se detectó presión en el tanque. Asegúrese de que el cilindro esté ' +
@@ -223,35 +226,41 @@ function suscribirDatosFirebase() {
             return;
         }
 
-        const presionBar        = Number(datos.presionBar != null ? datos.presionBar : -1);
-        const estadoTanque      = datos.estadoTanque || '--';
-        const tiempoRestanteMin = datos.tiempoRestanteMinutos != null
-                                  ? Number(datos.tiempoRestanteMinutos) : null;
+        // presionBar es el único campo de tanque que envía el firmware (GPIO 34)
+        const presionBar = Number.isFinite(Number(datos.presionBar))
+                           ? Number(datos.presionBar) : -1;
 
         if (presionBar < 0) return;
 
-        // Hay datos del ESP32 → hay dispositivo
+        // Hay datos del ESP32 → dispositivo vinculado
         _hayDispositivo = true;
         document.getElementById('seccionSinDispositivo')?.classList.add('d-none');
+        window.confirmarConexion?.();
 
         if (presionBar <= 0.3) { manejarTanqueVacio(presionBar); return; }
 
         // Hay presión → ocultar banner "sin tanque"
         document.getElementById('sinTanqueBanner')?.classList.remove('visible');
 
-        // Calcular porcentaje
-        let porcentaje;
-        if (datos.porcentajeTanque != null && Number.isFinite(Number(datos.porcentajeTanque))) {
-            porcentaje = Number(datos.porcentajeTanque);
-            if (maxPsiBaselineLocal <= 0 && porcentaje > 0 && presionBar > 0) {
-                cargarBaselineApi().catch(() => {
-                    if (maxPsiBaselineLocal <= 0) maxPsiBaselineLocal = presionBar / (porcentaje / 100);
-                });
-            }
+        // Calcular porcentaje desde presionBar usando el baseline de calibración
+        const ref = maxPsiBaselineLocal > 0 ? maxPsiBaselineLocal : MAX_BAR_DEFAULT;
+        const porcentaje = Math.min(100, Math.max(0, (presionBar / ref) * 100));
+
+        // Si aún no hay baseline, intentar cargarlo en background
+        if (maxPsiBaselineLocal <= 0) cargarBaselineApi().catch(() => {});
+
+        // Derivar estado del tanque solo a partir del porcentaje calculado
+        // (datos.estado del firmware describe el sensor SPO2, no el tanque)
+        // Umbrales alineados con los colores del cilindro: <=20 crítico, <=50 bajo
+        let estadoTanque;
+        if (porcentaje <= 50) {
+            estadoTanque = 'TANQUE_BAJO';
         } else {
-            const ref = maxPsiBaselineLocal > 0 ? maxPsiBaselineLocal : MAX_BAR_DEFAULT;
-            porcentaje = Math.min(100, (presionBar / ref) * 100);
+            estadoTanque = 'TANQUE_OK';
         }
+
+        // Tiempo restante estimado a partir del porcentaje y flujo promedio
+        const tiempoRestanteMin = Math.round((porcentaje / 100) * VOLUMEN_MAX_L / FLUJO_PROMEDIO_LPM);
 
         actualizarCilindro(porcentaje, presionBar, estadoTanque, tiempoRestanteMin);
 
