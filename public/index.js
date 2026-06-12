@@ -213,8 +213,15 @@ if (window.SeroaRealtime) {
             if (textoEstado) textoEstado.innerText = "Calibrando señal... Mantén el dedo inmóvil unos segundos.";
             if (valorSpo2) valorSpo2.innerText = "--";
             if (valorBpm) valorBpm.innerText = "--";
-        } else if (estadoSensor === "ACTIVO" || valoresValidos) {
+        } else if (estadoSensor === "ACTIVO" && valoresValidos) { 
+            // CAMBIADO: Ahora exige '&&' (AND). Si viene un 0 o un valor corrupto, no entrará aquí.
             mostrarDatosValidos(actualSpo2, actualBpm, presionBar, valvulaActiva, datos);
+        } else {
+            // Filtro de seguridad por si el estado se desfasa o llegan ceros inesperados
+            if (cartelEstado) cartelEstado.style.display = 'block';
+            if (textoEstado) textoEstado.innerText = "Buscando lectura estable...";
+            if (valorSpo2) valorSpo2.innerText = "--";
+            if (valorBpm) valorBpm.innerText = "--";
         }
 
         temporizadorDesconexionIndex = setTimeout(aplicarEstadoDesconectado, 15000);
